@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { supabase } from './lib/supabase';
 import { 
   RefreshCcw,
   Tv, 
@@ -85,34 +86,51 @@ export default function App() {
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   
   // User Reports History
-  const [userReports, setUserReports] = useState<UserReport[]>(() => {
-    try {
-      const saved = localStorage.getItem('iptv_user_history');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Failed to parse history from localStorage');
-    }
-    return [];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('iptv_user_history', JSON.stringify(userReports));
-  }, [userReports]);
+  const [userReports, setUserReports] = useState<UserReport[]>([]);
 
   // Announcements
-  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
-    try {
-      const saved = localStorage.getItem('iptv_announcements');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Failed to parse announcements from localStorage');
-    }
-    return [];
-  });
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
-  React.useEffect(() => {
-    localStorage.setItem('iptv_announcements', JSON.stringify(announcements));
-  }, [announcements]);
+  // Carregar dados iniciais e escutar mudanças em tempo real
+  useEffect(() => {
+    const fetchData = async () => {
+      const { data: ann } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+      if (ann) setAnnouncements(ann.map((a: any) => ({
+        id: a.id, category: a.category, name: a.name, status: a.status, 
+        message: a.message, expiryDate: a.expiry_date, mediaUrl: a.media_url, mediaType: a.media_type
+      })));
+
+      const { data: mov } = await supabase.from('movie_updates').select('*').order('created_at', { ascending: false });
+      if (mov) setMovieUpdates(mov.map((m: any) => m.title));
+
+      const { data: ser } = await supabase.from('series_updates').select('*').order('created_at', { ascending: false });
+      if (ser) setSeriesUpdates(ser.map((s: any) => s.title));
+
+      const { data: cli } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
+      if (cli) setClients(cli.map((c: any) => ({
+        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, addedAt: c.added_at
+      })));
+
+      const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
+      if (rep) setUserReports(rep.map((r: any) => ({
+        id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp
+      })));
+    };
+
+    fetchData();
+
+    const channel = supabase.channel('db-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movie_updates' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_updates' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // States specific to 'Outro' selections
   const [issueType, setIssueType] = useState<string>('');
@@ -160,49 +178,11 @@ export default function App() {
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
 
-  const [movieUpdates, setMovieUpdates] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('iptv_movie_updates');
-      return saved ? JSON.parse(saved) : [
-        "Michael - 2026",
-        "Zico O Samurai de Quintino - 2026",
-        "Mortal Kombat 2 - 2026",
-        "Ate Que Amanheca - 2026",
-        "Ate Que Amanheca - 2026 (L)",
-        "A Desconhecida - 2026 (L)",
-        "A Desconhecida - 2026",
-        "Furia no Asfalto - 2025",
-        "Furia no Asfalto - 2025 (L)",
-        "Maravilhoso Mundo Novo - 2025"
-      ];
-    } catch { return []; }
-  });
-
-  const [seriesUpdates, setSeriesUpdates] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('iptv_series_updates');
-      return saved ? JSON.parse(saved) : [
-        "O Paraiso das Plus Size Abusos e Mentiras",
-        "Rise Again",
-        "No Limite da Lei",
-        "Viral Hit",
-        "Operacao Guerra Verde",
-        "Dragon Striker",
-        "Noruega O Retorno Que Promete",
-        "Confissoes de Assassinos Verdades Perturbadoras",
-        "The First Jasmine",
-        "Un buen divorcio"
-      ];
-    } catch { return []; }
-  });
+  const [movieUpdates, setMovieUpdates] = useState<string[]>([]);
+  const [seriesUpdates, setSeriesUpdates] = useState<string[]>([]);
 
   const [newMovieTitle, setNewMovieTitle] = useState('');
   const [newSeriesTitle, setNewSeriesTitle] = useState('');
-
-  useEffect(() => {
-    localStorage.setItem('iptv_movie_updates', JSON.stringify(movieUpdates));
-    localStorage.setItem('iptv_series_updates', JSON.stringify(seriesUpdates));
-  }, [movieUpdates, seriesUpdates]);
 
   const [accessCode, setAccessCode] = useState('');
   const [accessCodeError, setAccessCodeError] = useState('');
@@ -217,19 +197,7 @@ export default function App() {
     canvasLink: string;
     addedAt: string;
   }
-  const [clients, setClients] = useState<Client[]>(() => {
-    try {
-      const saved = localStorage.getItem('iptv_clients');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.warn('Failed to parse clients from localStorage');
-    }
-    return [];
-  });
-
-  React.useEffect(() => {
-    localStorage.setItem('iptv_clients', JSON.stringify(clients));
-  }, [clients]);
+  const [clients, setClients] = useState<Client[]>([]);
 
   const handleReset = () => {
     setContentType(null);
@@ -271,17 +239,14 @@ export default function App() {
     
     const sendData = async (data: any) => {
       try {
-        // Save to local history
-        const newReport: UserReport = {
-          id: Date.now().toString(),
+        // Save to Supabase
+        await supabase.from('user_reports').insert([{
           type: data.tipoConteudo_Selecionado || '',
           name: data.nome || '',
           issue: data.tipoProblema || '',
           device: data.dispositivo || '',
-          description: data.descricao || '',
-          timestamp: new Date().toISOString(),
-        };
-        setUserReports(prev => [newReport, ...prev]);
+          description: data.descricao || ''
+        }]);
 
         const response = await fetch(WEBHOOK_URL, {
           method: 'POST',
@@ -921,18 +886,16 @@ export default function App() {
       });
     }
 
-    const newAnn: Announcement = {
-      id: Date.now().toString(),
+    await supabase.from('announcements').insert([{
       category: annCategory,
       name: isServiceDown ? 'Serviço de Streaming' : annName,
       status: annStatus,
       message: annMessage,
-      expiryDate: annExpiry,
-      mediaUrl,
-      mediaType
-    };
+      expiry_date: annExpiry,
+      media_url: mediaUrl,
+      media_type: mediaType
+    }]);
 
-    setAnnouncements(prev => [newAnn, ...prev]);
     setAnnName('');
     setAnnMessage('');
     setAnnExpiry('');
@@ -948,43 +911,37 @@ export default function App() {
     setAnnExpiry(ann.expiryDate.slice(0, 16));
   };
 
-  const handleDeleteAnnouncement = (id: string) => {
-    setAnnouncements(prev => prev.filter(a => a.id !== id));
+  const handleDeleteAnnouncement = async (id: string) => {
+    await supabase.from('announcements').delete().eq('id', id);
   };
 
-  const handleResolveAnnouncement = (id: string) => {
-    setAnnouncements(prev => prev.map(a => 
-      a.id === id ? { ...a, status: 'Problema Resolvido' } : a
-    ));
+  const handleResolveAnnouncement = async (id: string) => {
+    await supabase.from('announcements').update({ status: 'Problema Resolvido' }).eq('id', id);
   };
 
-  const handleAddClient = (e: React.FormEvent) => {
+  const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientCode || !clientLink) return;
 
-    // verify if code exists
     if (clients.some(c => c.code === clientCode)) {
       alert("Atenção: Este código já está em uso por outro cliente.");
       return;
     }
 
-    const newClient: Client = {
-      id: Date.now().toString(),
+    await supabase.from('clients').insert([{
       name: clientName,
       code: clientCode,
-      canvasLink: clientLink,
-      addedAt: new Date().toISOString()
-    };
+      canvas_link: clientLink
+    }]);
 
-    setClients(prev => [newClient, ...prev]);
     setClientName('');
     setClientCode('');
     setClientLink('https://testetestettt.my.canva.site/sr-carlos');
   };
 
-  const handleDeleteClient = (id: string) => {
+  const handleDeleteClient = async (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
-      setClients(prev => prev.filter(c => c.id !== id));
+      await supabase.from('clients').delete().eq('id', id);
     }
   };
 
@@ -1353,10 +1310,10 @@ export default function App() {
                                   <h3 className="text-white font-medium text-sm flex items-center gap-2">
                                     <Film size={16} className="text-amber-400" /> Filmes
                                   </h3>
-                                  <form onSubmit={(e) => {
+                                  <form onSubmit={async (e) => {
                                     e.preventDefault();
                                     if (newMovieTitle.trim()) {
-                                      setMovieUpdates([newMovieTitle.trim(), ...movieUpdates]);
+                                      await supabase.from('movie_updates').insert([{ title: newMovieTitle.trim() }]);
                                       setNewMovieTitle('');
                                     }
                                   }} className="flex gap-2">
@@ -1372,10 +1329,10 @@ export default function App() {
                                   <h3 className="text-white font-medium text-sm flex items-center gap-2">
                                     <Tv size={16} className="text-purple-400" /> Séries
                                   </h3>
-                                  <form onSubmit={(e) => {
+                                  <form onSubmit={async (e) => {
                                     e.preventDefault();
                                     if (newSeriesTitle.trim()) {
-                                      setSeriesUpdates([newSeriesTitle.trim(), ...seriesUpdates]);
+                                      await supabase.from('series_updates').insert([{ title: newSeriesTitle.trim() }]);
                                       setNewSeriesTitle('');
                                     }
                                   }} className="flex gap-2">

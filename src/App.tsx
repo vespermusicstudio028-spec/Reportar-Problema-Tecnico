@@ -1246,6 +1246,33 @@ export default function App() {
                            className="overflow-hidden"
                          >
                            <div className="p-5 pt-0 space-y-6">
+                              {/* Formulário para Adicionar Cliente */}
+                              <form onSubmit={handleAddClient} className="bg-[#0c0e12] p-5 rounded-2xl border border-slate-800 space-y-4">
+                                <h3 className="text-white font-medium text-sm flex items-center gap-2">
+                                  <User size={16} className="text-blue-400"/> Novo Cliente
+                                </h3>
+                                <div className="space-y-3">
+                                  <input
+                                    type="text" required value={clientName} onChange={(e) => setClientName(e.target.value)}
+                                    placeholder="Nome do cliente"
+                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
+                                  />
+                                  <input
+                                    type="text" required value={clientCode} onChange={(e) => setClientCode(e.target.value)}
+                                    placeholder="Código de acesso único"
+                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
+                                  />
+                                  <input
+                                    type="url" required value={clientLink} onChange={(e) => setClientLink(e.target.value)}
+                                    placeholder="Link do Canva do cliente"
+                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
+                                  />
+                                </div>
+                                <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-colors">
+                                  Cadastrar Cliente
+                                </button>
+                              </form>
+
                               <div className="space-y-3">
                                 <h3 className="text-white font-medium text-sm flex items-center justify-between">
                                   Lista de Clientes ({clients.length})

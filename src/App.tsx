@@ -402,7 +402,8 @@ export default function App() {
         </div>
 
         <div id="tour-report" className="w-full max-w-lg mx-auto">
-          <div className="text-center space-y-2 mb-8 mt-4 relative z-10">
+          <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
+            <img src="/logo.png" alt="The Best IPTV" className="w-32 h-32 object-contain mb-4 drop-shadow-lg" />
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
             <p className="text-slate-300 font-medium text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
           </div>

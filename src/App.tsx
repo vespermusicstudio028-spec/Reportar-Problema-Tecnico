@@ -403,7 +403,7 @@ export default function App() {
 
         <div id="tour-report" className="w-full max-w-lg mx-auto">
           <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
-            <img src="/logo.png" alt="The Best IPTV" className="w-32 h-32 object-contain mb-4 drop-shadow-lg" />
+            <img src="/logo.png?v=2" alt="The Best IPTV" className="w-32 h-32 object-contain mb-4 drop-shadow-lg" />
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
             <p className="text-slate-300 font-medium text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
           </div>
@@ -1676,9 +1676,8 @@ export default function App() {
       {/* Sidebar - Hidden on mobile, visible on md+ screens */}
       <aside className="hidden md:flex w-64 border-r border-slate-800/50 bg-[#0c0e12]/80 backdrop-blur-xl flex-col p-6 relative z-10">
         <div className="flex flex-col items-center justify-center mb-10 mt-2">
-           <div className="bg-white rounded-2xl p-2 mb-4 shadow-lg shadow-black/40 border border-slate-800 flex items-center justify-center">
-             <img src="/logo.png" alt="The Best IPTV Streaming" className="w-28 h-28 object-contain" />
-
+           <div className="mb-4 flex items-center justify-center drop-shadow-lg">
+             <img src="/logo.png?v=2" alt="The Best IPTV Streaming" className="w-32 h-32 object-contain" />
            </div>
            <span className="text-base font-bold tracking-wider text-slate-300 uppercase shrink-0">Suporte Técnico</span>
         </div>
@@ -1714,8 +1713,8 @@ export default function App() {
       <main className="flex-1 flex flex-col p-4 md:p-8 pb-24 md:pb-8 overflow-hidden relative">
         <header className="flex justify-between items-start md:items-center mb-6 shrink-0 pt-2 md:pt-0">
           <div className="flex items-center gap-3 md:gap-4">
-             <div className="md:hidden bg-white/5 rounded-xl p-1 shadow-lg shadow-black/20 flex items-center justify-center border border-slate-700">
-               <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+             <div className="md:hidden flex items-center justify-center drop-shadow-md mr-1">
+               <img src="/logo.png?v=2" alt="Logo" className="w-12 h-12 object-contain" />
              </div>
              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">Reportar<br className="md:hidden" />Problema Técnico</h1>
           </div>

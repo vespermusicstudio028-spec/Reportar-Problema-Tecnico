@@ -1,0 +1,6 @@
+{
+  "name": "Suporte Streaming PWA",
+  "description": "Aplicativo PWA focado em suporte técnico para clientes de streaming. Relate problemas de canais, filmes ou séries.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

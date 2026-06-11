@@ -1,0 +1,1795 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  RefreshCcw,
+  Tv, 
+  Film, 
+  Clapperboard, 
+  UploadCloud, 
+  CheckCircle2, 
+  Loader2, 
+  ChevronRight, 
+  ChevronDown,
+  History,
+  User,
+  LayoutDashboard,
+  LogOut,
+  Shield,
+  Trash2,
+  Bell,
+  AlertTriangle,
+  Key,
+  Dices,
+  MessageCircle,
+  HelpCircle,
+  Info,
+  Copy
+} from 'lucide-react';
+
+const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
+
+type ContentType = 'Canal' | 'Filme' | 'Série' | null;
+type ActiveView = 'dashboard' | 'history' | 'profile';
+
+interface UserReport {
+  id: string;
+  type: string;
+  name: string;
+  issue: string;
+  device: string;
+  description: string;
+  timestamp: string;
+}
+
+const BACKGROUNDS = [
+  'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2094&auto=format&fit=crop', // default dark/blue
+  'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop', // neon/cyberpunk
+  'https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=2070&auto=format&fit=crop', // green matrix
+  'https://images.unsplash.com/photo-1509653087866-91f6c2ab5a42?q=80&w=2070&auto=format&fit=crop', // steampunk/gears
+  'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1974&auto=format&fit=crop', // digital retro
+  'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1925&auto=format&fit=crop', // cinema retro
+  'https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?q=80&w=1974&auto=format&fit=crop', // comic book style
+];
+
+const ISSUE_TYPES = [
+  "Áudio em inglês",
+  "Sem áudio",
+  "Sem legenda",
+  "Vídeo travando",
+  "Episódio não abre",
+  "Outro"
+];
+
+const DEVICES = [
+  "TV",
+  "Celular Android",
+  "iPhone",
+  "Computador",
+  "TV Box",
+  "Outro"
+];
+
+interface Announcement {
+  id: string;
+  category: string;
+  name: string;
+  status: string;
+  message: string;
+  expiryDate: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video' | null;
+}
+
+export default function App() {
+  const [contentType, setContentType] = useState<ContentType>(null);
+  const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+  
+  // User Reports History
+  const [userReports, setUserReports] = useState<UserReport[]>(() => {
+    try {
+      const saved = localStorage.getItem('iptv_user_history');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse history from localStorage');
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('iptv_user_history', JSON.stringify(userReports));
+  }, [userReports]);
+
+  // Announcements
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
+    try {
+      const saved = localStorage.getItem('iptv_announcements');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse announcements from localStorage');
+    }
+    return [];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('iptv_announcements', JSON.stringify(announcements));
+  }, [announcements]);
+
+  // States specific to 'Outro' selections
+  const [issueType, setIssueType] = useState<string>('');
+  const [issueTypeOther, setIssueTypeOther] = useState<string>('');
+  
+  const [device, setDevice] = useState<string>('');
+  const [deviceOther, setDeviceOther] = useState<string>('');
+  
+  // Attachment state (to show filename)
+  const [fileName, setFileName] = useState<string>('');
+
+  // Submit states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  // Background rotation state
+  const [bgIndex, setBgIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBgIndex(prev => (prev + 1) % BACKGROUNDS.length);
+    }, 2 * 60 * 60 * 1000); // 2 hours
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auth states
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isAdminLogged, setIsAdminLogged] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
+  // Announcement Form State
+  const [annCategory, setAnnCategory] = useState('Canal');
+  const [annName, setAnnName] = useState('');
+  const [annStatus, setAnnStatus] = useState('Problemas Técnicos');
+  const [annMessage, setAnnMessage] = useState('');
+  const [annExpiry, setAnnExpiry] = useState('');
+  const [annMedia, setAnnMedia] = useState<File | null>(null);
+  const [annMediaName, setAnnMediaName] = useState('');
+
+  // Clients & Code Modal State
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | null>(null);
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showUpdatesModal, setShowUpdatesModal] = useState(false);
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
+
+  const [movieUpdates, setMovieUpdates] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('iptv_movie_updates');
+      return saved ? JSON.parse(saved) : [
+        "Michael - 2026",
+        "Zico O Samurai de Quintino - 2026",
+        "Mortal Kombat 2 - 2026",
+        "Ate Que Amanheca - 2026",
+        "Ate Que Amanheca - 2026 (L)",
+        "A Desconhecida - 2026 (L)",
+        "A Desconhecida - 2026",
+        "Furia no Asfalto - 2025",
+        "Furia no Asfalto - 2025 (L)",
+        "Maravilhoso Mundo Novo - 2025"
+      ];
+    } catch { return []; }
+  });
+
+  const [seriesUpdates, setSeriesUpdates] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('iptv_series_updates');
+      return saved ? JSON.parse(saved) : [
+        "O Paraiso das Plus Size Abusos e Mentiras",
+        "Rise Again",
+        "No Limite da Lei",
+        "Viral Hit",
+        "Operacao Guerra Verde",
+        "Dragon Striker",
+        "Noruega O Retorno Que Promete",
+        "Confissoes de Assassinos Verdades Perturbadoras",
+        "The First Jasmine",
+        "Un buen divorcio"
+      ];
+    } catch { return []; }
+  });
+
+  const [newMovieTitle, setNewMovieTitle] = useState('');
+  const [newSeriesTitle, setNewSeriesTitle] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('iptv_movie_updates', JSON.stringify(movieUpdates));
+    localStorage.setItem('iptv_series_updates', JSON.stringify(seriesUpdates));
+  }, [movieUpdates, seriesUpdates]);
+
+  const [accessCode, setAccessCode] = useState('');
+  const [accessCodeError, setAccessCodeError] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientCode, setClientCode] = useState('');
+  const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
+  
+  interface Client {
+    id: string;
+    name: string;
+    code: string;
+    canvasLink: string;
+    addedAt: string;
+  }
+  const [clients, setClients] = useState<Client[]>(() => {
+    try {
+      const saved = localStorage.getItem('iptv_clients');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Failed to parse clients from localStorage');
+    }
+    return [];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('iptv_clients', JSON.stringify(clients));
+  }, [clients]);
+
+  const handleReset = () => {
+    setContentType(null);
+    setIssueType('');
+    setIssueTypeOther('');
+    setDevice('');
+    setDeviceOther('');
+    setFileName('');
+    setSubmitStatus('idle');
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setSubmitStatus('idle');
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    
+    // Build payload JSON
+    const payload: Record<string, any> = {
+      tipoConteudo_Selecionado: contentType,
+      tipoProblema: issueType === 'Outro' ? issueTypeOther : issueType,
+      dispositivo: device === 'Outro' ? deviceOther : device,
+    };
+
+    // Extract all basic text/number fields automatically
+    for (const [key, value] of formData.entries()) {
+      if (key !== 'attachment' && key !== 'issueType' && key !== 'device' && key !== 'issueTypeOther' && key !== 'deviceOther' && key !== 'issueTypeGroup' && key !== 'deviceGroup') {
+         // Only add to payload if it's string
+         if (typeof value === 'string' && value.trim() !== '') {
+           payload[key] = value;
+         }
+      }
+    }
+
+    // Handle file attachment manually to append as Base64 if needed
+    const fileField = formData.get('attachment') as File | null;
+    
+    const sendData = async (data: any) => {
+      try {
+        // Save to local history
+        const newReport: UserReport = {
+          id: Date.now().toString(),
+          type: data.tipoConteudo_Selecionado || '',
+          name: data.nome || '',
+          issue: data.tipoProblema || '',
+          device: data.dispositivo || '',
+          description: data.descricao || '',
+          timestamp: new Date().toISOString(),
+        };
+        setUserReports(prev => [newReport, ...prev]);
+
+        const response = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+           console.warn('Webhook request failed, probably due to dummy URL.');
+        }
+      } catch (err) {
+        console.error('Submission Error:', err);
+      } finally {
+        // Redirecionamento para o WhatsApp
+        let waText = `*Novo Reporte de Problema*\n\n`;
+        waText += `*Tipo:* ${data.tipoConteudo_Selecionado}\n`;
+        if (data.nome) waText += `*Nome:* ${data.nome}\n`;
+        if (data.temporada) waText += `*Temporada:* ${data.temporada}\n`;
+        if (data.episodio) waText += `*Episódio:* ${data.episodio}\n`;
+        waText += `*Problema:* ${data.tipoProblema}\n`;
+        waText += `*Dispositivo:* ${data.dispositivo}\n`;
+        if (data.descricao) waText += `*Descrição:* ${data.descricao}\n`;
+        
+        const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
+        window.open(waUrl, '_blank');
+
+        setSubmitStatus('success');
+        setIsSubmitting(false);
+      }
+    };
+
+    if (fileField && fileField.size > 0) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        payload.attachmentBase64 = reader.result;
+        payload.attachmentName = fileField.name;
+        sendData(payload);
+      };
+      reader.onerror = () => {
+        sendData(payload);
+      };
+      reader.readAsDataURL(fileField);
+    } else {
+      sendData(payload);
+    }
+  };
+
+  const renderContentSelection = () => {
+    const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
+
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+      >
+        <div id="tour-announcements" className="w-full max-w-2xl mb-8">
+          <button 
+            type="button"
+            onClick={() => setIsAnnouncementsOpen(!isAnnouncementsOpen)}
+            className="w-full flex items-center justify-between text-white font-bold mb-2 p-3 bg-slate-800/50 hover:bg-slate-800/80 rounded-xl transition-colors border border-slate-700/50"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="text-amber-400" size={20} />
+              Avisos Importantes {activeAnnouncements.length > 0 && <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full">{activeAnnouncements.length}</span>}
+            </div>
+            <ChevronDown size={20} className={`min-w-5 shrink-0 transition-transform ${isAnnouncementsOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          <AnimatePresence>
+            {isAnnouncementsOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-3 pt-2">
+                  {activeAnnouncements.length > 0 ? (
+                    activeAnnouncements.map(ann => (
+                      <div key={ann.id} className={`${ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'} rounded-xl p-4 flex gap-4 items-start shadow-lg border`}>
+                        <div className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${ann.status === 'Removido' ? 'bg-red-500' : ann.status === 'Mudança' ? 'bg-amber-500' : ann.status === 'Problema Resolvido' ? 'bg-emerald-500' : 'bg-orange-500'}`} />
+                        <div>
+                          <h4 className={`font-bold leading-tight ${ann.status === 'Problema Resolvido' ? 'text-emerald-50' : 'text-amber-50'}`}>{ann.name} <span className={`font-normal text-xs ml-2 ${ann.status === 'Problema Resolvido' ? 'text-emerald-400/80' : 'text-amber-400/80'}`}>({ann.status})</span></h4>
+                          <p className={`text-sm mt-1 leading-snug ${ann.status === 'Problema Resolvido' ? 'text-emerald-200/80' : 'text-amber-200/80'}`}>{ann.message}</p>
+                          {ann.mediaUrl && (
+                            <div className="mt-3 rounded-xl overflow-hidden border border-white/5 shadow-2xl relative group">
+                              {ann.mediaType === 'image' ? (
+                                <img 
+                                  src={ann.mediaUrl} 
+                                  alt="Evidência" 
+                                  className="w-full max-h-64 object-cover cursor-zoom-in hover:scale-110 transition-transform duration-500"
+                                  onClick={() => window.open(ann.mediaUrl, '_blank')}
+                                />
+                              ) : (
+                                <video src={ann.mediaUrl} className="w-full max-h-64 object-cover" controls />
+                              )}
+                              <div className="absolute top-2 right-2 px-2 py-1 bg-black/40 backdrop-blur-md rounded-md text-[10px] font-bold text-white/70 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                {ann.mediaType === 'image' ? 'CLIQUE PARA AMPLIAR' : 'VÍDEO'}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4 text-center">
+                      <p className="text-slate-400 text-sm">Nenhum aviso importante ou problema técnico no momento.</p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div id="tour-report" className="w-full max-w-lg mx-auto">
+          <div className="text-center space-y-2 mb-8 mt-4 relative z-10">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
+            <p className="text-slate-300 font-medium text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
+          </div>
+          
+          <div className="flex flex-col gap-4 w-full relative z-10">
+
+        {[
+          { id: 'Canal', icon: <Tv size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
+          { id: 'Filme', icon: <Film size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
+          { id: 'Série', icon: <Clapperboard size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
+        ].map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => {
+              setContentType(item.id as ContentType);
+              setIssueType('');
+              setDevice('');
+            }}
+            className="flex items-center w-full p-5 md:p-6 gap-6 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 rounded-[1.5rem] transition-all group shadow-xl shadow-black/30"
+          >
+            <div className="flex items-center justify-center p-3 sm:p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl group-hover:bg-indigo-500 group-hover:border-indigo-400 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
+              {item.icon}
+            </div>
+            <span className="font-bold text-white text-xl md:text-2xl tracking-wide">{item.label}</span>
+          </button>
+        ))}
+        </div>
+        </div>
+    </motion.div>
+    );
+  };
+
+  const renderFormFields = () => (
+    <motion.form
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      onSubmit={handleSubmit}
+      className="h-full flex flex-col pt-4 md:pt-0"
+    >
+      <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-white/5">
+        <button 
+          type="button"
+          onClick={() => setContentType(null)}
+          className="text-slate-400 hover:text-white transition-colors text-sm font-semibold uppercase tracking-wider flex items-center gap-1"
+        >
+          <ChevronRight size={16} className="rotate-180" /> Voltar
+        </button>
+        <span className="text-slate-600">•</span>
+        <span className="text-indigo-400 text-sm font-semibold uppercase tracking-wider">Relatando problema em: {contentType}</span>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 flex-1 pb-8 lg:pb-0 overflow-y-auto pr-1">
+        {/* Left Column */}
+        <div className="space-y-6">
+          {contentType === 'Série' ? (
+            <div className="grid grid-cols-12 gap-4">
+              <div className="col-span-12 sm:col-span-6 space-y-2">
+                <label htmlFor="nomeSerie" className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">
+                  📺 Nome da série
+                </label>
+                <input 
+                  required 
+                  id="nomeSerie" 
+                  name="nome" 
+                  type="text" 
+                  placeholder="Ex: The Last of Us" 
+                  className="w-full bg-[#15181e] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 px-4 py-3 rounded-xl text-sm transition-all outline-none"
+                />
+              </div>
+              <div className="col-span-6 sm:col-span-3 space-y-2">
+                <label htmlFor="temporada" className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">
+                  📅 Temp.
+                </label>
+                <input 
+                  required 
+                  id="temporada" 
+                  name="temporada" 
+                  type="text" 
+                  placeholder="Ex: 1" 
+                  className="w-full bg-[#15181e] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 px-4 py-3 rounded-xl text-sm transition-all outline-none"
+                />
+              </div>
+              <div className="col-span-6 sm:col-span-3 space-y-2">
+                <label htmlFor="episodio" className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">
+                  🎬 Ep.
+                </label>
+                <input 
+                  required 
+                  id="episodio" 
+                  name="episodio" 
+                  type="text" 
+                  placeholder="Ex: 3" 
+                  className="w-full bg-[#15181e] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 px-4 py-3 rounded-xl text-sm transition-all outline-none"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <label htmlFor="nomeConteudo" className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">
+                📺 Nome do {contentType}
+              </label>
+              <input 
+                required 
+                id="nomeConteudo" 
+                name="nome" 
+                type="text" 
+                placeholder={`Digite o nome do ${contentType?.toLowerCase()}`} 
+                className="w-full bg-[#15181e] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 px-4 py-3 rounded-xl text-sm transition-all outline-none"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Tipo do Problema */}
+            <div className="bg-black/20 p-4 rounded-xl border border-slate-800/50 flex flex-col">
+              <p className="text-xs font-bold text-indigo-400 uppercase mb-3">❌ Tipo do problema</p>
+              <div className="space-y-3 flex-1 flex flex-col">
+                {ISSUE_TYPES.map((type) => (
+                  <label key={type} className="flex items-center gap-3 text-sm text-slate-300 cursor-pointer hover:text-white transition-colors group">
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <input 
+                        type="radio" 
+                        name="issueTypeGroup"
+                        value={type} 
+                        checked={issueType === type}
+                        onChange={(e) => setIssueType(e.target.value)}
+                        className="peer appearance-none w-5 h-5 bg-[#15181e] border border-slate-700 rounded-md checked:bg-indigo-600 checked:border-indigo-500 transition-colors cursor-pointer"
+                      />
+                      <svg className="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="2.75 7.5 5.5 10.25 11.25 3.5"></polyline>
+                      </svg>
+                    </div>
+                    {type}
+                  </label>
+                ))}
+                
+                <div className="mt-auto pt-2">
+                  <AnimatePresence>
+                    {issueType === 'Outro' && (
+                      <motion.input 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        required
+                        type="text" 
+                        name="issueTypeOther"
+                        value={issueTypeOther}
+                        onChange={(e) => setIssueTypeOther(e.target.value)}
+                        placeholder="Descreva..." 
+                        className="w-full bg-[#15181e] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 px-3 py-2 rounded-lg text-sm transition-all outline-none"
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
+
+            {/* Dispositivo */}
+            <div className="bg-black/20 p-4 rounded-xl border border-slate-800/50 flex flex-col">
+              <p className="text-xs font-bold text-indigo-400 uppercase mb-3">📱 Dispositivo</p>
+              <div className="space-y-3 flex-1 flex flex-col">
+                {DEVICES.map((dev) => (
+                  <label key={dev} className="flex items-center gap-3 text-sm text-slate-300 cursor-pointer hover:text-white transition-colors group">
+                    <div className="relative flex items-center justify-center shrink-0">
+                      <input 
+                        type="radio" 
+                        name="deviceGroup"
+                        value={dev} 
+                        checked={device === dev}
+                        onChange={(e) => setDevice(e.target.value)}
+                        className="peer appearance-none w-5 h-5 bg-[#15181e] border border-slate-700 rounded-md checked:bg-indigo-600 checked:border-indigo-500 transition-colors cursor-pointer"
+                      />
+                      <svg className="absolute w-3.5 h-3.5 text-white opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="2.75 7.5 5.5 10.25 11.25 3.5"></polyline>
+                      </svg>
+                    </div>
+                    {dev}
+                  </label>
+                ))}
+
+                <div className="mt-auto pt-2">
+                  <AnimatePresence>
+                    {device === 'Outro' && (
+                      <motion.input 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        required
+                        type="text" 
+                        name="deviceOther"
+                        value={deviceOther}
+                        onChange={(e) => setDeviceOther(e.target.value)}
+                        placeholder="Descreva..." 
+                        className="w-full bg-[#15181e] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 px-3 py-2 rounded-lg text-sm transition-all outline-none"
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="space-y-4 flex flex-col h-full lg:mb-1">
+          <div className="flex-1 flex flex-col space-y-2">
+            <label htmlFor="descricao" className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">
+              📝 Descreva o problema
+            </label>
+            <textarea 
+              required 
+              id="descricao" 
+              name="descricao" 
+              placeholder="Detalhes adicionais sobre o erro..." 
+              className="flex-1 w-full min-h-[120px] lg:min-h-0 bg-[#15181e] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 p-4 rounded-xl resize-none text-sm transition-all outline-none"
+            />
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <label className="text-xs uppercase tracking-wider text-slate-500 font-bold mb-1 block">
+              📸 Evidência (Foto/Vídeo)
+            </label>
+            <div className="flex items-center justify-center w-full">
+              <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-700 bg-slate-800/10 rounded-xl cursor-pointer hover:bg-indigo-600/5 hover:border-indigo-500/50 transition-all relative overflow-hidden">
+                <input 
+                  type="file" 
+                  id="attachment"
+                  name="attachment"
+                  accept="image/*,video/*"
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      setFileName(e.target.files[0].name);
+                    } else {
+                      setFileName('');
+                    }
+                  }}
+                />
+                <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                  {fileName ? (
+                    <>
+                      <CheckCircle2 size={24} className="text-indigo-400 mb-1.5" />
+                      <p className="text-xs text-indigo-300 truncate w-full max-w-[200px]">{fileName}</p>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={24} className="text-slate-500 mb-1.5" />
+                      <p className="text-xs text-slate-500">Clique ou arraste para anexar</p>
+                    </>
+                  )}
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting || !issueType || !device}
+            className="w-full mt-6 py-4 bg-gradient-to-br from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 disabled:from-indigo-600/50 disabled:to-indigo-600/50 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl shadow-xl shadow-indigo-500/10 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] lg:mt-auto shrink-0"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 size={20} className="animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              <>
+                Enviar Reporte
+                <ChevronRight size={20} />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </motion.form>
+  );
+
+  const renderSuccess = () => (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="absolute inset-0 bg-[#0c0e12]/95 backdrop-blur-sm flex flex-col items-center justify-center text-center p-10 z-20 rounded-3xl"
+    >
+      <div className="w-20 h-20 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/10">
+        <CheckCircle2 size={40} className="text-emerald-500" />
+      </div>
+      <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Recebemos seu reporte!</h2>
+      <p className="text-slate-400 mb-8 max-w-md">
+        Nossa equipe técnica já foi notificada e está analisando o problema.<br/>Você receberá uma atualização em breve.
+      </p>
+      <button
+        onClick={handleReset}
+        className="px-8 py-3 bg-[#15181e] hover:bg-[#1a1d24] border border-slate-700 hover:border-slate-600 text-white rounded-full font-semibold transition-all"
+      >
+        Novo Chamado
+      </button>
+    </motion.div>
+  );
+
+  const renderHistoryView = () => (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col h-full"
+    >
+      <div className="flex items-center justify-between mb-8 border-b border-white/5 pb-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Meu Histórico</h2>
+          <p className="text-slate-400 text-sm">Acompanhe seus reportes técnicos</p>
+        </div>
+        {userReports.length > 0 && (
+          <button 
+            onClick={() => {
+              if (confirm('Deseja limpar todo o seu histórico de reportes?')) {
+                setUserReports([]);
+              }
+            }}
+            className="flex items-center gap-2 text-red-500 hover:text-red-400 text-sm font-semibold transition-colors bg-red-500/10 px-3 py-2 rounded-lg"
+          >
+            <Trash2 size={16} /> Limpar Tudo
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+        {userReports.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 bg-black/10 rounded-3xl border border-dashed border-slate-800">
+            <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center text-slate-500">
+              <History size={32} />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-white">Nenhum reporte encontrado</p>
+              <p className="text-slate-500 text-sm">Seus problemas relatados aparecerão aqui.</p>
+            </div>
+          </div>
+        ) : (
+          userReports.map((report) => (
+            <div key={report.id} className="bg-[#15181e] border border-slate-800 p-5 rounded-2xl space-y-3 relative overflow-hidden group hover:border-slate-700 transition-all shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                    report.type === 'Canal' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                    report.type === 'Filme' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                    'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                  }`}>
+                    {report.type}
+                  </span>
+                  <p className="text-white font-bold">{report.name}</p>
+                </div>
+                <span className="text-[10px] text-slate-600 font-mono">
+                  {new Date(report.timestamp).toLocaleString()}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Problema</p>
+                  <p className="text-sm text-slate-300 flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-amber-500" /> {report.issue}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Dispositivo</p>
+                  <p className="text-sm text-slate-300 flex items-center gap-2">
+                    <Tv size={14} className="text-indigo-400" /> {report.device}
+                  </p>
+                </div>
+              </div>
+
+              {report.description && (
+                <div className="pt-2 border-t border-slate-800/50">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Descrição</p>
+                  <p className="text-sm text-slate-400 leading-relaxed italic">"{report.description}"</p>
+                </div>
+              )}
+
+              <div className="absolute top-0 right-0 w-1 h-full bg-indigo-600/20 group-hover:bg-indigo-600 transition-all" />
+            </div>
+          ))
+        )}
+      </div>
+    </motion.div>
+  );
+
+  const renderProfileView = () => (
+    <motion.div
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -20 }}
+      className="flex flex-col h-full"
+    >
+      <div className="mb-8 border-b border-white/5 pb-4">
+        <h2 className="text-2xl font-bold text-white tracking-tight">Meu Perfil</h2>
+        <p className="text-slate-400 text-sm">Gerencie suas informações de acesso</p>
+      </div>
+
+      <div className="space-y-6 flex-1 overflow-y-auto pr-1 pb-4">
+        <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 rounded-3xl relative overflow-hidden shadow-2xl shadow-indigo-600/20">
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+            <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 shadow-inner">
+              <User size={48} className="text-white" />
+            </div>
+            <div className="text-center md:text-left space-y-1">
+              <h3 className="text-2xl font-bold text-white tracking-tight">Usuário The Best IPTV</h3>
+              <p className="text-indigo-200/80 font-medium">Conta de Acesso via Código</p>
+              <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                <span className="text-xs text-white/70 font-semibold uppercase tracking-widest">Acesso Ativo</span>
+              </div>
+            </div>
+          </div>
+          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute -top-10 -left-10 w-40 h-40 bg-black/10 rounded-full blur-3xl" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-[#15181e] border border-slate-800 p-6 rounded-2xl space-y-4">
+            <h4 className="text-white font-bold flex items-center gap-2">
+              <Info size={18} className="text-indigo-400" /> Sobre esta conta
+            </h4>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                <span className="text-slate-500 text-sm">Tipo de Acesso</span>
+                <span className="text-slate-300 text-sm font-medium">Cliente Final</span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                <span className="text-slate-500 text-sm">Status da Sessão</span>
+                <span className="text-emerald-500 text-sm font-bold uppercase tracking-wider">OK</span>
+              </div>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-slate-500 text-sm">Local Storage ID</span>
+                <span className="text-slate-400 text-[10px] font-mono">iptv_user_v1</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-[#15181e] border border-slate-800 p-6 rounded-2xl space-y-4">
+            <h4 className="text-white font-bold flex items-center gap-2">
+              <HelpCircle size={18} className="text-indigo-400" /> Suporte & Ajuda
+            </h4>
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                Caso precise de auxílio além dos reportes técnicos, você pode entrar em contato com nossa central de atendimento especializada.
+              </p>
+              <button 
+                onClick={() => window.open('https://wa.me/5521959368651', '_blank')}
+                className="w-full py-3 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <MessageCircle size={18} /> Central WhatsApp
+              </button>
+              <button 
+                onClick={() => setShowCodeModal(true)}
+                className="w-full py-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <Key size={18} /> Alterar Código
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-4">
+          <AlertTriangle className="text-amber-500 shrink-0" size={24} />
+          <div>
+            <h5 className="text-amber-500 font-bold text-sm mb-1 uppercase tracking-wider">Segurança dos Dados</h5>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Suas informações de reporte são armazenadas localmente em seu navegador para seu controle privado. Ao limpar o cache do navegador ou trocar de dispositivo, o histórico local será removido.
+            </p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderDashboard = () => (
+    <AnimatePresence mode="wait">
+      {submitStatus === 'success' ? (
+        <div key="success" className="absolute inset-0">{renderSuccess()}</div>
+      ) : !contentType ? (
+        <div key="selection" className="flex-1 overflow-y-auto w-full">{renderContentSelection()}</div>
+      ) : (
+        <div key="form" className="flex-1 overflow-hidden w-full">{renderFormFields()}</div>
+      )}
+    </AnimatePresence>
+  );
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginEmail === 'thebestiptv10@gmail.com' && loginPassword === '#Senhasecreta2e') {
+      setIsAdminLogged(true);
+      setLoginError('');
+      setLoginEmail('');
+      setLoginPassword('');
+    } else {
+      setLoginError('Credenciais inválidas!');
+    }
+  };
+
+  const handleAddAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const isServiceDown = annCategory === 'Serviço de Streaming' && annStatus === 'Problemas Técnicos';
+    if (!isServiceDown && !annName) return;
+    if (!annMessage || !annExpiry) return;
+
+    let mediaUrl: string | undefined = undefined;
+    let mediaType: 'image' | 'video' | null = null;
+
+    if (annMedia) {
+      mediaType = annMedia.type.startsWith('image/') ? 'image' : 'video';
+      mediaUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(annMedia);
+      });
+    }
+
+    const newAnn: Announcement = {
+      id: Date.now().toString(),
+      category: annCategory,
+      name: isServiceDown ? 'Serviço de Streaming' : annName,
+      status: annStatus,
+      message: annMessage,
+      expiryDate: annExpiry,
+      mediaUrl,
+      mediaType
+    };
+
+    setAnnouncements(prev => [newAnn, ...prev]);
+    setAnnName('');
+    setAnnMessage('');
+    setAnnExpiry('');
+    setAnnMedia(null);
+    setAnnMediaName('');
+  };
+
+  const handleDuplicateAnnouncement = (ann: Announcement) => {
+    setAnnCategory(ann.category);
+    setAnnStatus(ann.status);
+    if (ann.name) setAnnName(ann.name);
+    setAnnMessage(ann.message);
+    setAnnExpiry(ann.expiryDate.slice(0, 16));
+  };
+
+  const handleDeleteAnnouncement = (id: string) => {
+    setAnnouncements(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleResolveAnnouncement = (id: string) => {
+    setAnnouncements(prev => prev.map(a => 
+      a.id === id ? { ...a, status: 'Problema Resolvido' } : a
+    ));
+  };
+
+  const handleAddClient = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientName || !clientCode || !clientLink) return;
+
+    // verify if code exists
+    if (clients.some(c => c.code === clientCode)) {
+      alert("Atenção: Este código já está em uso por outro cliente.");
+      return;
+    }
+
+    const newClient: Client = {
+      id: Date.now().toString(),
+      name: clientName,
+      code: clientCode,
+      canvasLink: clientLink,
+      addedAt: new Date().toISOString()
+    };
+
+    setClients(prev => [newClient, ...prev]);
+    setClientName('');
+    setClientCode('');
+    setClientLink('https://testetestettt.my.canva.site/sr-carlos');
+  };
+
+  const handleDeleteClient = (id: string) => {
+    if(confirm('Tem certeza que deseja remover este cliente?')) {
+      setClients(prev => prev.filter(c => c.id !== id));
+    }
+  };
+
+  const handleWhatsAppMessage = (clientName: string, code: string) => {
+    const message = `📢 COMUNICADO IMPORTANTE – THE BEST IPTV+ 📢\n\nOlá, caro cliente ${clientName}, tudo bem? 😊\n\nInformamos que o seu código de acesso foi atualizado. 🔄\n\n🆔 Seu novo código de cliente é: ${code}\n\nCom este código você poderá acessar o site e visualizar todas as informações da sua assinatura, dados da conta e demais recursos disponíveis. 📺✨\n\n⚠️ Guarde este código em local seguro.\n\nEm caso de dúvidas, entre em contato com nosso suporte. 🤝\n\nAgradecemos pela preferência! 💙\n\nTHE BEST IPTV+ 🚀📺`;
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+  };
+
+  const handleAccessWithCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    const foundClient = clients.find(c => c.code === accessCode);
+    if (foundClient) {
+      localStorage.setItem('iptv_access_code_v1', accessCode);
+      setShowCodeModal(false);
+      setAccessCode('');
+      setAccessCodeError('');
+    } else {
+      setAccessCodeError('Código inválido ou não encontrado.');
+    }
+  };
+
+  const renderLoginModal = () => (
+    <AnimatePresence>
+      {showLoginModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto pt-20"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className={`bg-[#15181e] border border-slate-800 rounded-3xl p-6 md:p-8 w-full ${isAdminLogged ? 'max-w-2xl' : 'max-w-md'} shadow-2xl relative my-auto`}
+          >
+            <button 
+              onClick={() => setShowLoginModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-white"
+            >
+              ✕
+            </button>
+            
+            {isAdminLogged ? (
+               <div className="space-y-6">
+                 <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
+                   <div className="w-12 h-12 bg-indigo-600/20 rounded-full flex items-center justify-center shrink-0">
+                     <LayoutDashboard size={24} className="text-indigo-400" />
+                   </div>
+                   <div className="flex-1">
+                     <h2 className="text-xl font-bold text-white tracking-tight">Painel Admin</h2>
+                     <p className="text-emerald-400 text-sm">Autenticado com sucesso</p>
+                   </div>
+                 </div>
+
+                 <div className="space-y-3">
+                   {/* Accordion: Informes */}
+                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'informes' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
+                     <button 
+                       onClick={() => setAdminTab(adminTab === 'informes' ? null : 'informes')}
+                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'informes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>
+                           <Bell size={20} />
+                         </div>
+                         <div>
+                           <span className="text-white font-bold block">Informes</span>
+                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Gestão de comunicados</span>
+                         </div>
+                       </div>
+                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'informes' ? 'rotate-180 text-indigo-400' : ''}`} />
+                     </button>
+                     <AnimatePresence initial={false}>
+                       {adminTab === 'informes' && (
+                         <motion.div
+                           initial={{ height: 0, opacity: 0 }}
+                           animate={{ height: 'auto', opacity: 1 }}
+                           exit={{ height: 0, opacity: 0 }}
+                           transition={{ duration: 0.3, ease: 'easeInOut' }}
+                           className="overflow-hidden"
+                         >
+                           <div className="p-5 pt-0 space-y-6">
+                             <form onSubmit={handleAddAnnouncement} className="bg-[#0c0e12] p-5 rounded-2xl border border-slate-800 space-y-4">
+                                <h3 className="text-white font-medium text-sm flex items-center gap-2">
+                                  <Bell size={16} className="text-indigo-400"/>
+                                  Novo Informe
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-slate-500 font-bold uppercase">Categoria</label>
+                                    <select 
+                                      value={annCategory} onChange={(e) => setAnnCategory(e.target.value)}
+                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
+                                    >
+                                      <option>Canal</option><option>Filme</option><option>Série</option><option>Serviço de Streaming</option>
+                                    </select>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-slate-500 font-bold uppercase">Status/Motivo</label>
+                                    <select 
+                                      value={annStatus} onChange={(e) => setAnnStatus(e.target.value)}
+                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
+                                    >
+                                      <option>Problemas Técnicos</option><option>Mudança</option><option>Removido</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-slate-500 font-bold uppercase">Nome do Conteúdo</label>
+                                    <input 
+                                      type="text"
+                                      disabled={annCategory === 'Serviço de Streaming'}
+                                      placeholder={annCategory === 'Serviço de Streaming' ? 'N/A' : 'Ex: HBO Brasil'}
+                                      value={annCategory === 'Serviço de Streaming' ? '' : annName}
+                                      onChange={(e) => setAnnName(e.target.value)}
+                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500 disabled:opacity-50"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs text-slate-500 font-bold uppercase">Data de Expiração</label>
+                                    <input 
+                                      type="datetime-local"
+                                      required
+                                      value={annExpiry}
+                                      onFocus={() => {
+                                        if (!annExpiry) {
+                                          const now = new Date();
+                                          const offset = now.getTimezoneOffset() * 60000;
+                                          const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16);
+                                          setAnnExpiry(localISOTime);
+                                        }
+                                      }}
+                                      onChange={(e) => setAnnExpiry(e.target.value)}
+                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs text-slate-500 font-bold uppercase">Mensagem visível</label>
+                                  <textarea 
+                                    required value={annMessage} onChange={(e) => setAnnMessage(e.target.value)} rows={2}
+                                    placeholder="Descreva o que está acontecendo..."
+                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm resize-none outline-none focus:border-indigo-500"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs text-slate-500 font-bold uppercase">Anexo (Opcional)</label>
+                                  <div className="flex items-center gap-2">
+                                    <label className="flex-1 flex items-center justify-center h-10 border border-dashed border-slate-700 bg-[#15181e] rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
+                                      <input 
+                                        type="file" 
+                                        accept="image/*,video/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          if (e.target.files && e.target.files[0]) {
+                                            setAnnMedia(e.target.files[0]);
+                                            setAnnMediaName(e.target.files[0].name);
+                                          }
+                                        }}
+                                      />
+                                      <span className="text-xs text-slate-500 truncate px-2">
+                                        {annMediaName || "Selecionar Foto ou Vídeo"}
+                                      </span>
+                                    </label>
+                                    {annMedia && (
+                                      <button 
+                                        type="button" 
+                                        onClick={() => { setAnnMedia(null); setAnnMediaName(''); }}
+                                        className="p-2 text-red-500 hover:text-red-400"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors">
+                                  Publicar Informe
+                                </button>
+                              </form>
+
+                              {/* Histórico de Informes */}
+                              <div className="space-y-3">
+                                <h3 className="text-white font-medium text-sm flex items-center justify-between">
+                                  Histórico de Informes ({announcements.length})
+                                </h3>
+                                {announcements.length === 0 ? (
+                                  <p className="text-slate-500 text-sm italic py-4 text-center bg-[#0c0e12] rounded-xl border border-dashed border-slate-800">
+                                    Nenhum informe publicado.
+                                  </p>
+                                ) : (
+                                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                    {announcements.map((ann) => (
+                                      <div key={ann.id} className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 space-y-3">
+                                        <div className="flex justify-between items-start gap-4">
+                                          <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700`}>
+                                                {ann.category}
+                                              </span>
+                                              <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                                                ann.status === 'Removido' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                                ann.status === 'Mudança' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                                ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                                'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                                              }`}>
+                                                {ann.status}
+                                              </span>
+                                            </div>
+                                            <p className="text-white font-bold text-sm">{ann.name}</p>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            {ann.status !== 'Problema Resolvido' && (
+                                              <button 
+                                                title="Marcar como Resolvido"
+                                                onClick={() => handleResolveAnnouncement(ann.id)} 
+                                                className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                                              >
+                                                <CheckCircle2 size={16} />
+                                              </button>
+                                            )}
+                                            <button 
+                                              title="Enviar via WhatsApp"
+                                              onClick={() => {
+                                                const text = `📢 *${ann.name}*\n\n*Status:* ${ann.status}\n*Informe:* ${ann.message}\n\n_Expira em: ${new Date(ann.expiryDate).toLocaleString()}_`;
+                                                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                              }} 
+                                              className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                                            >
+                                              <MessageCircle size={16} />
+                                            </button>
+                                            <button 
+                                              title="Duplicar/Editar"
+                                              onClick={() => handleDuplicateAnnouncement(ann)} 
+                                              className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                                            >
+                                              <Copy size={16} />
+                                            </button>
+                                            <button 
+                                              title="Excluir"
+                                              onClick={() => handleDeleteAnnouncement(ann.id)} 
+                                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                                            >
+                                              <Trash2 size={16} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                        
+                                        <p className="text-slate-400 text-xs line-clamp-2 italic">"{ann.message}"</p>
+                                        
+                                        {ann.mediaUrl && (
+                                          <div className="mt-2 rounded-lg overflow-hidden border border-slate-800 bg-black/20">
+                                            {ann.mediaType === 'image' ? (
+                                              <img src={ann.mediaUrl} alt="Anexo" className="w-full h-24 object-cover" />
+                                            ) : (
+                                              <video src={ann.mediaUrl} className="w-full h-24 object-cover" controls />
+                                            )}
+                                          </div>
+                                        )}
+
+                                        <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">
+                                          <span className="text-[10px] text-slate-600 uppercase font-bold">Expira em:</span>
+                                          <span className="text-[10px] font-mono text-slate-500">{new Date(ann.expiryDate).toLocaleString()}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                   </div>
+
+                   {/* Accordion: Clientes */}
+                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'clientes' ? 'bg-white/5 border-blue-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
+                     <button 
+                       onClick={() => setAdminTab(adminTab === 'clientes' ? null : 'clientes')}
+                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'clientes' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-slate-800 text-slate-400'}`}>
+                           <User size={20} />
+                         </div>
+                         <div>
+                           <span className="text-white font-bold block">Clientes</span>
+                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Base de usuários</span>
+                         </div>
+                       </div>
+                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'clientes' ? 'rotate-180 text-blue-400' : ''}`} />
+                     </button>
+                     <AnimatePresence initial={false}>
+                       {adminTab === 'clientes' && (
+                         <motion.div
+                           initial={{ height: 0, opacity: 0 }}
+                           animate={{ height: 'auto', opacity: 1 }}
+                           exit={{ height: 0, opacity: 0 }}
+                           transition={{ duration: 0.3, ease: 'easeInOut' }}
+                           className="overflow-hidden"
+                         >
+                           <div className="p-5 pt-0 space-y-6">
+                              <div className="space-y-3">
+                                <h3 className="text-white font-medium text-sm flex items-center justify-between">
+                                  Lista de Clientes ({clients.length})
+                                </h3>
+                                {clients.length === 0 ? (
+                                  <p className="text-slate-500 text-sm italic">Nenhum cliente cadastrado.</p>
+                                ) : (
+                                  <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
+                                    {clients.map(client => (
+                                      <div key={client.id} className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 flex justify-between items-center gap-4">
+                                        <div className="overflow-hidden">
+                                          <p className="text-white font-bold text-sm truncate">{client.name}</p>
+                                          <div className="flex items-center gap-3 mt-1">
+                                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">Código: {client.code}</span>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center shrink-0">
+                                          <button type="button" onClick={() => handleDeleteClient(client.id)} className="text-slate-500 hover:text-red-400 p-2 transition-colors flex items-center justify-center">
+                                            <Trash2 size={18} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                   </div>
+
+                   {/* Accordion: Atualizações */}
+                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'atualizacoes' ? 'bg-white/5 border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 'bg-[#0c0e12] border-slate-800'}`}>
+                     <button 
+                       onClick={() => setAdminTab(adminTab === 'atualizacoes' ? null : 'atualizacoes')}
+                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'atualizacoes' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'bg-slate-800 text-slate-400'}`}>
+                           <RefreshCcw size={20} />
+                         </div>
+                         <div>
+                           <span className="text-white font-bold block">Atualizações</span>
+                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Conteúdo do catálogo</span>
+                         </div>
+                       </div>
+                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'atualizacoes' ? 'rotate-180 text-amber-400' : ''}`} />
+                     </button>
+                     <AnimatePresence initial={false}>
+                       {adminTab === 'atualizacoes' && (
+                         <motion.div
+                           initial={{ height: 0, opacity: 0 }}
+                           animate={{ height: 'auto', opacity: 1 }}
+                           exit={{ height: 0, opacity: 0 }}
+                           transition={{ duration: 0.3, ease: 'easeInOut' }}
+                           className="overflow-hidden"
+                         >
+                           <div className="p-5 pt-0 space-y-6">
+                              <div className="space-y-6">
+                                <div className="space-y-4">
+                                  <h3 className="text-white font-medium text-sm flex items-center gap-2">
+                                    <Film size={16} className="text-amber-400" /> Filmes
+                                  </h3>
+                                  <form onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (newMovieTitle.trim()) {
+                                      setMovieUpdates([newMovieTitle.trim(), ...movieUpdates]);
+                                      setNewMovieTitle('');
+                                    }
+                                  }} className="flex gap-2">
+                                    <input
+                                      type="text" value={newMovieTitle} onChange={(e) => setNewMovieTitle(e.target.value)}
+                                      placeholder="Novo filme..."
+                                      className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-amber-500"
+                                    />
+                                    <button type="submit" className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors">Add</button>
+                                  </form>
+                                </div>
+                                <div className="space-y-4">
+                                  <h3 className="text-white font-medium text-sm flex items-center gap-2">
+                                    <Tv size={16} className="text-purple-400" /> Séries
+                                  </h3>
+                                  <form onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (newSeriesTitle.trim()) {
+                                      setSeriesUpdates([newSeriesTitle.trim(), ...seriesUpdates]);
+                                      setNewSeriesTitle('');
+                                    }
+                                  }} className="flex gap-2">
+                                    <input
+                                      type="text" value={newSeriesTitle} onChange={(e) => setNewSeriesTitle(e.target.value)}
+                                      placeholder="Nova série..."
+                                      className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-purple-500"
+                                    />
+                                    <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-colors">Add</button>
+                                  </form>
+                                </div>
+                              </div>
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                   </div>
+                 </div>
+
+                 <button 
+                    type="button"
+                    onClick={() => {
+                      setIsAdminLogged(false);
+                      setShowLoginModal(false);
+                    }}
+                    className="w-full pt-4 border-t border-slate-800 text-slate-400 hover:text-white font-medium transition-colors flex items-center justify-center gap-2"
+                  >
+                    <LogOut size={18} /> Sair do Painel Admin
+                </button>
+               </div>
+            ) : (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="flex flex-col items-center justify-center mb-6">
+                    <div className="w-16 h-16 bg-indigo-600/20 rounded-full flex items-center justify-center mb-4">
+                      <User size={32} className="text-indigo-400" />
+                    </div>
+                  </div>
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold text-white tracking-tight">Login Admin</h2>
+                    <p className="text-slate-400 text-sm mt-1">Acesso exclusivo para administradores</p>
+                  </div>
+                  
+                  {loginError && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+                      {loginError}
+                    </div>
+                  )}
+
+                  <div className="space-y-2 text-left">
+                    <label className="text-xs uppercase tracking-wider text-slate-500 font-bold block">E-mail</label>
+                    <input 
+                      type="email" 
+                      required
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="w-full bg-[#0c0e12] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                      placeholder="admin@email.com"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 text-left">
+                    <label className="text-xs uppercase tracking-wider text-slate-500 font-bold block">Senha</label>
+                    <input 
+                      type="password" 
+                      required
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="w-full bg-[#0c0e12] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 px-4 py-3 rounded-xl text-sm outline-none transition-all"
+                      placeholder="••••••••"
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full mt-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    Entrar <ChevronRight size={18} />
+                  </button>
+                </form>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const renderCodeModal = () => (
+    <AnimatePresence>
+      {showCodeModal && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[#15181e] border border-slate-800 rounded-3xl p-6 md:p-8 w-full max-w-sm shadow-2xl relative my-auto"
+          >
+            {(
+              <button 
+                onClick={() => setShowCodeModal(false)}
+                className="absolute top-6 right-6 text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            )}
+            <div className="flex flex-col items-center justify-center mb-6">
+              <div className="w-16 h-16 bg-indigo-600/20 rounded-full flex items-center justify-center mb-4">
+                <Key size={32} className="text-indigo-400" />
+              </div>
+            </div>
+            
+            <form onSubmit={handleAccessWithCode} className="space-y-4">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-bold text-white tracking-tight">Área do Cliente</h2>
+                <p className="text-slate-400 text-sm mt-1">Insira seu código de acesso</p>
+              </div>
+              
+              {accessCodeError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm text-center">
+                  {accessCodeError}
+                </div>
+              )}
+
+              <div className="space-y-2 text-left">
+                <label className="text-xs uppercase tracking-wider text-slate-500 font-bold block">Seu Código</label>
+                <input 
+                  type="text" 
+                  required
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                  className="w-full bg-[#0c0e12] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 px-4 py-3 rounded-xl text-sm outline-none transition-all uppercase"
+                  placeholder="Ex: SEUCODIGO123"
+                  autoComplete="off"
+                />
+              </div>
+
+              <button 
+                type="submit"
+                className="w-full mt-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                Acessar Painel <ChevronRight size={18} />
+              </button>
+            </form>
+
+            <div className="mt-8 pt-6 border-t border-slate-800/50 space-y-4">
+              <div className="relative flex justify-center text-[10px] uppercase tracking-[0.2em]">
+                <span className="bg-[#15181e] px-3 text-slate-600 font-bold">Acesso Restrito</span>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  setShowCodeModal(false);
+                  setShowLoginModal(true);
+                }}
+                className="w-full py-3 bg-slate-800/30 hover:bg-slate-800/50 text-slate-400 hover:text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 border border-slate-700/30 group"
+              >
+                <Shield size={14} className="group-hover:text-indigo-400 transition-colors" /> 
+                Acesso Administrativo
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+
+  const getMoviesText = () => `*Atualizações de Filmes:*\n` + movieUpdates.map(m => `- ${m}`).join('\n');
+  const getSeriesText = () => `*Atualizações de Séries:*\n` + seriesUpdates.map(s => `- ${s}`).join('\n');
+  const getAllText = () => getMoviesText() + '\n\n' + getSeriesText();
+
+  const renderUpdatesModal = () => (
+    <AnimatePresence>
+      {showUpdatesModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 overflow-y-auto"
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowUpdatesModal(false)} />
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[#fcfbf9] border border-slate-200 rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-2xl relative my-auto mx-auto max-h-[90vh] overflow-y-auto"
+          >
+            <button 
+              onClick={() => setShowUpdatesModal(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600"
+            >
+              ✕
+            </button>
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Atualizações de Conteúdo</h2>
+              <p className="text-slate-500 text-sm mt-1">Novidades mais recentes do catálogo</p>
+            </div>
+            
+            <div className="space-y-6">
+              {/* FILMES */}
+              <div className="bg-amber-50/50 border border-amber-200/50 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-amber-600 flex items-center gap-2">
+                    <Film size={18} /> FILMES
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => {
+                        navigator.clipboard.writeText(getMoviesText());
+                        alert('Copiado para a área de transferência!');
+                      }} 
+                      className="px-3 py-1.5 bg-slate-200/50 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors border border-slate-300/50">
+                      <Copy size={14} /> Copiar
+                    </button>
+                    <button onClick={() => {
+                        window.open(`https://wa.me/?text=${encodeURIComponent(getMoviesText())}`, '_blank');
+                      }} 
+                      className="px-3 py-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                      <MessageCircle size={14} /> WhatsApp
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2 text-left">
+                  {movieUpdates.length > 0 ? movieUpdates.map((item, i) => (
+                    <div key={i} className="bg-white border border-amber-100 p-3 rounded-lg text-slate-700 text-sm shadow-sm">{item}</div>
+                  )) : (
+                    <div className="text-amber-600/70 text-sm italic">Nenhum filme novo no momento.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* SÉRIES */}
+              <div className="bg-purple-50/50 border border-purple-200/50 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-purple-600 flex items-center gap-2 uppercase">
+                    <Tv size={18} /> SÉRIES
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => {
+                        navigator.clipboard.writeText(getSeriesText());
+                        alert('Copiado para a área de transferência!');
+                      }} 
+                      className="px-3 py-1.5 bg-slate-200/50 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors border border-slate-300/50">
+                      <Copy size={14} /> Copiar
+                    </button>
+                    <button onClick={() => {
+                        window.open(`https://wa.me/?text=${encodeURIComponent(getSeriesText())}`, '_blank');
+                      }} 
+                      className="px-3 py-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                      <MessageCircle size={14} /> WhatsApp
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2 text-left">
+                  {seriesUpdates.length > 0 ? seriesUpdates.map((item, i) => (
+                    <div key={i} className="bg-white border border-purple-100 p-3 rounded-lg text-slate-700 text-sm shadow-sm">{item}</div>
+                  )) : (
+                    <div className="text-purple-600/70 text-sm italic">Nenhuma série nova no momento.</div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 text-sm text-slate-400 mt-4 border-t border-slate-200 pt-4">
+                <span className="flex-1">Copiar ou enviar via WhatsApp</span>
+                <button onClick={() => {
+                   navigator.clipboard.writeText(getAllText());
+                   alert('Copiado para a área de transferência!');
+                }} className="px-3 py-1.5 bg-slate-200/50 hover:bg-slate-200 text-slate-600 rounded-lg font-medium flex items-center gap-2 transition-colors border border-slate-300/50">
+                  <Copy size={14} /> Copiar
+                </button>
+                <button onClick={() => {
+                   window.open(`https://wa.me/?text=${encodeURIComponent(getAllText())}`, '_blank');
+                }} className="px-3 py-1.5 bg-[#25D366] hover:bg-[#20bd5a] text-white rounded-lg font-medium flex items-center gap-2 transition-colors">
+                  <MessageCircle size={14} /> WhatsApp
+                </button>
+              </div>
+
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+
+  return (
+    <div className="flex h-[100dvh] w-full text-[#e2e8f0] font-sans overflow-hidden relative">
+      {/* Background Image & Overlay */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-1000 ease-in-out"
+        style={{ backgroundImage: `url('${BACKGROUNDS[bgIndex]}')` }}
+      />
+      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#090b0e]/70 via-[#151828]/60 to-[#040507]/90 backdrop-blur-md" />
+
+      {/* Sidebar - Hidden on mobile, visible on md+ screens */}
+      <aside className="hidden md:flex w-64 border-r border-slate-800/50 bg-[#0c0e12]/80 backdrop-blur-xl flex-col p-6 relative z-10">
+        <div className="flex flex-col items-center justify-center mb-10 mt-2">
+           <div className="bg-white rounded-2xl p-2 mb-4 shadow-lg shadow-black/40 border border-slate-800 flex items-center justify-center">
+             <img src="/logo.png" alt="The Best IPTV Streaming" className="w-28 h-28 object-contain" />
+
+           </div>
+           <span className="text-base font-bold tracking-wider text-slate-300 uppercase shrink-0">Suporte Técnico</span>
+        </div>
+        
+        <nav className="space-y-2">
+          <button 
+            onClick={() => {
+              setActiveView('dashboard');
+              setContentType(null);
+            }} 
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${activeView === 'dashboard' ? 'bg-indigo-600/20 text-indigo-400 shadow-[inset_0_0_12px_rgba(79,70,229,0.1)] border border-indigo-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+          >
+            <LayoutDashboard size={20} /> Dashboard
+          </button>
+          <button 
+            onClick={() => setActiveView('profile')} 
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${activeView === 'profile' ? 'bg-indigo-600/20 text-indigo-400 shadow-[inset_0_0_12px_rgba(79,70,229,0.1)] border border-indigo-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
+          >
+            <User size={20} /> Perfil
+          </button>
+        </nav>
+        
+        <div className="mt-auto p-4 bg-[#1a1d24]/80 backdrop-blur-md border border-white/5 rounded-2xl">
+          <p className="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wider">Status do Servidor</p>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+            <span className="text-sm font-semibold text-emerald-500">Operacional</span>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col p-4 md:p-8 pb-24 md:pb-8 overflow-hidden relative">
+        <header className="flex justify-between items-start md:items-center mb-6 shrink-0 pt-2 md:pt-0">
+          <div className="flex items-center gap-3 md:gap-4">
+             <div className="md:hidden bg-white/5 rounded-xl p-1 shadow-lg shadow-black/20 flex items-center justify-center border border-slate-700">
+               <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
+             </div>
+             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">Reportar<br className="md:hidden" />Problema Técnico</h1>
+          </div>
+          
+          <div className="flex items-center gap-2 md:gap-3 text-sm text-slate-400">
+            <button
+              type="button"
+              onClick={() => setShowUpdatesModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 rounded-lg text-emerald-300 hover:text-emerald-200 font-bold transition-all h-9"
+            >
+              <Clapperboard size={15} />
+              <span className="hidden sm:inline">Atualizações</span>
+            </button>
+            <button
+              id="tour-access-code"
+              type="button"
+              onClick={() => setShowCodeModal(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 rounded-lg text-indigo-300 hover:text-indigo-200 font-bold transition-all h-9"
+            >
+              <Key size={14} />
+              <span className="hidden sm:inline">Acessar com meu código</span>
+              <span className="sm:hidden">Código</span>
+            </button>
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors"
+            >
+               <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
+            </button>
+          </div>
+        </header>
+        
+        <div className="flex-1 flex flex-col min-h-0 bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-4 sm:p-6 md:p-8 overflow-hidden relative shadow-2xl shadow-black/50">
+          <AnimatePresence mode="wait">
+            {activeView === 'dashboard' ? (
+              <div key="dashboard" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {renderDashboard()}
+              </div>
+            ) : activeView === 'history' ? (
+              <div key="history" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {renderHistoryView()}
+              </div>
+            ) : (
+              <div key="profile" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                {renderProfileView()}
+              </div>
+            )}
+          </AnimatePresence>
+        </div>
+      </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0c0e12]/90 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around p-2 pb-6">
+        <button 
+          onClick={() => {
+            setActiveView('dashboard');
+            setContentType(null);
+          }} 
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${activeView === 'dashboard' ? 'text-indigo-400' : 'text-slate-500'}`}
+        >
+          <LayoutDashboard size={20} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Início</span>
+        </button>
+        <button 
+          onClick={() => setActiveView('profile')} 
+          className={`flex flex-col items-center gap-1 p-2 transition-all ${activeView === 'profile' ? 'text-indigo-400' : 'text-slate-500'}`}
+        >
+          <User size={20} />
+          <span className="text-[10px] font-bold uppercase tracking-wider">Perfil</span>
+        </button>
+      </nav>
+
+      {renderCodeModal()}
+      {renderUpdatesModal()}
+      {renderLoginModal()}
+    </div>
+  );
+}

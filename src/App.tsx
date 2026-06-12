@@ -158,7 +158,13 @@ export default function App() {
 
   // Auth states
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [isAdminLogged, setIsAdminLogged] = useState(false);
+  const [isAdminLogged, setIsAdminLogged] = useState(() => {
+    return localStorage.getItem('iptv_admin_logged') === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('iptv_admin_logged', isAdminLogged.toString());
+  }, [isAdminLogged]);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -190,6 +196,10 @@ export default function App() {
   const [clientCode, setClientCode] = useState('');
   const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
   
+  const [loggedClientCode, setLoggedClientCode] = useState(() => {
+    return localStorage.getItem('iptv_access_code_v1') || '';
+  });
+
   interface Client {
     id: string;
     name: string;
@@ -755,6 +765,8 @@ export default function App() {
     </motion.div>
   );
 
+  const currentClient = clients.find(c => c.code === loggedClientCode);
+
   const renderProfileView = () => (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -774,11 +786,11 @@ export default function App() {
               <User size={48} className="text-white" />
             </div>
             <div className="text-center md:text-left space-y-1">
-              <h3 className="text-2xl font-bold text-white tracking-tight">Usuário The Best IPTV</h3>
-              <p className="text-indigo-200/80 font-medium">Conta de Acesso via Código</p>
+              <h3 className="text-2xl font-bold text-white tracking-tight">{currentClient ? currentClient.name : 'Usuário The Best IPTV'}</h3>
+              <p className="text-indigo-200/80 font-medium">{currentClient ? 'Cliente Final' : 'Conta Padrão'}</p>
               <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-                <span className="text-xs text-white/70 font-semibold uppercase tracking-widest">Acesso Ativo</span>
+                <span className={`w-2 h-2 rounded-full animate-pulse ${currentClient ? 'bg-emerald-400' : 'bg-slate-400'}`}></span>
+                <span className="text-xs text-white/70 font-semibold uppercase tracking-widest">{currentClient ? 'Acesso Ativo' : 'Não Logado'}</span>
               </div>
             </div>
           </div>
@@ -821,12 +833,33 @@ export default function App() {
               >
                 <MessageCircle size={18} /> Central WhatsApp
               </button>
-              <button 
-                onClick={() => setShowCodeModal(true)}
-                className="w-full py-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-              >
-                <Key size={18} /> Alterar Código
-              </button>
+              {currentClient ? (
+                <>
+                  <button 
+                    onClick={() => window.open(currentClient.canvasLink, '_blank')}
+                    className="w-full py-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                  >
+                    <Tv size={18} /> Minha Área Exclusiva
+                  </button>
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem('iptv_access_code_v1');
+                      setLoggedClientCode('');
+                      setActiveView('dashboard');
+                    }}
+                    className="w-full py-3 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                  >
+                    <LogOut size={18} /> Sair da Conta
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => setShowCodeModal(true)}
+                  className="w-full py-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                >
+                  <Key size={18} /> Fazer Login (Código)
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -928,6 +961,16 @@ export default function App() {
       return;
     }
 
+    // Atualização otimista na UI para aparecer na hora
+    const tempClient = { 
+      id: Date.now().toString(), 
+      name: clientName, 
+      code: clientCode, 
+      canvasLink: clientLink, 
+      addedAt: new Date().toISOString() 
+    };
+    setClients(prev => [tempClient, ...prev]);
+
     await supabase.from('clients').insert([{
       name: clientName,
       code: clientCode,
@@ -956,9 +999,11 @@ export default function App() {
     const foundClient = clients.find(c => c.code === accessCode);
     if (foundClient) {
       localStorage.setItem('iptv_access_code_v1', accessCode);
+      setLoggedClientCode(accessCode);
       setShowCodeModal(false);
       setAccessCode('');
       setAccessCodeError('');
+      setActiveView('profile'); // Redireciona para o perfil para ele ver que logou
     } else {
       setAccessCodeError('Código inválido ou não encontrado.');
     }

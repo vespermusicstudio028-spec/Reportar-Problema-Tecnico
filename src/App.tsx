@@ -27,7 +27,8 @@ import {
   Copy,
   Eye,
   EyeOff,
-  Pencil
+  Pencil,
+  X
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -261,6 +262,9 @@ export default function App() {
   }
   const [clients, setClients] = useState<Client[]>([]);
 
+  // Image Viewer State
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
   const handleReset = () => {
     setContentType(null);
     setIssueType('');
@@ -405,7 +409,7 @@ export default function App() {
                                   src={ann.mediaUrl} 
                                   alt="Evidência" 
                                   className="w-full max-h-64 object-cover cursor-zoom-in hover:scale-110 transition-transform duration-500"
-                                  onClick={() => window.open(ann.mediaUrl, '_blank')}
+                                  onClick={() => setSelectedImage(ann.mediaUrl)}
                                 />
                               ) : (
                                 <video src={ann.mediaUrl} className="w-full max-h-64 object-cover" controls />
@@ -1527,7 +1531,12 @@ export default function App() {
                                         {ann.mediaUrl && (
                                           <div className="mt-2 rounded-lg overflow-hidden border border-slate-800 bg-black/20">
                                             {ann.mediaType === 'image' ? (
-                                              <img src={ann.mediaUrl} alt="Anexo" className="w-full h-24 object-cover" />
+                                              <img 
+                                                src={ann.mediaUrl} 
+                                                alt="Anexo" 
+                                                className="w-full h-24 object-cover cursor-zoom-in" 
+                                                onClick={() => setSelectedImage(ann.mediaUrl!)}
+                                              />
                                             ) : (
                                               <video src={ann.mediaUrl} className="w-full h-24 object-cover" controls />
                                             )}
@@ -2237,6 +2246,34 @@ export default function App() {
       {renderCodeModal()}
       {renderUpdatesModal()}
       {renderLoginModal()}
+
+      {/* Image Viewer Modal */}
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+            onClick={() => setSelectedImage(null)}
+          >
+            <button 
+              className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors z-[101]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedImage(null);
+              }}
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Ampliada" 
+              className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] cursor-zoom-out" 
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

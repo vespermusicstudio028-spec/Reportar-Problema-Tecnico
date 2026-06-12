@@ -1257,11 +1257,21 @@ export default function App() {
                                     placeholder="Nome do cliente"
                                     className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
                                   />
-                                  <input
-                                    type="text" required value={clientCode} onChange={(e) => setClientCode(e.target.value)}
-                                    placeholder="Código de acesso único"
-                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
-                                  />
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text" required value={clientCode} onChange={(e) => setClientCode(e.target.value)}
+                                      placeholder="Código de acesso único"
+                                      className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
+                                    />
+                                    <button 
+                                      type="button" 
+                                      onClick={() => setClientCode(Math.floor(100000 + Math.random() * 900000).toString())}
+                                      className="px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors flex items-center justify-center border border-slate-700 hover:border-slate-600"
+                                      title="Gerar código aleatório de 6 dígitos"
+                                    >
+                                      <RefreshCcw size={16} />
+                                    </button>
+                                  </div>
                                   <input
                                     type="url" required value={clientLink} onChange={(e) => setClientLink(e.target.value)}
                                     placeholder="Link do Canva do cliente"

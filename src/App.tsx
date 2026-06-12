@@ -24,7 +24,9 @@ import {
   MessageCircle,
   HelpCircle,
   Info,
-  Copy
+  Copy,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -168,6 +170,7 @@ export default function App() {
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   // Announcement Form State
   const [annCategory, setAnnCategory] = useState('Canal');
@@ -192,6 +195,7 @@ export default function App() {
 
   const [accessCode, setAccessCode] = useState('');
   const [accessCodeError, setAccessCodeError] = useState('');
+  const [showClientCode, setShowClientCode] = useState(false);
   const [clientName, setClientName] = useState('');
   const [clientCode, setClientCode] = useState('');
   const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
@@ -1477,14 +1481,23 @@ export default function App() {
                   
                   <div className="space-y-2 text-left">
                     <label className="text-xs uppercase tracking-wider text-slate-500 font-bold block">Senha</label>
-                    <input 
-                      type="password" 
-                      required
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="w-full bg-[#0c0e12] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 px-4 py-3 rounded-xl text-sm outline-none transition-all"
-                      placeholder="••••••••"
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showAdminPassword ? "text" : "password"} 
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        className="w-full bg-[#0c0e12] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 px-4 py-3 rounded-xl text-sm outline-none transition-all pr-12"
+                        placeholder="••••••••"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowAdminPassword(!showAdminPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
 
                   <button 
@@ -1544,15 +1557,24 @@ export default function App() {
 
               <div className="space-y-2 text-left">
                 <label className="text-xs uppercase tracking-wider text-slate-500 font-bold block">Seu Código</label>
-                <input 
-                  type="text" 
-                  required
-                  value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                  className="w-full bg-[#0c0e12] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 px-4 py-3 rounded-xl text-sm outline-none transition-all uppercase"
-                  placeholder="Ex: SEUCODIGO123"
-                  autoComplete="off"
-                />
+                <div className="relative">
+                  <input 
+                    type={showClientCode ? "text" : "password"} 
+                    required
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                    className="w-full bg-[#0c0e12] border border-slate-800 text-slate-50 placeholder-slate-600 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 px-4 py-3 rounded-xl text-sm outline-none transition-all uppercase pr-12"
+                    placeholder="Ex: SEUCODIGO123"
+                    autoComplete="off"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowClientCode(!showClientCode)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showClientCode ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
 
               <button 

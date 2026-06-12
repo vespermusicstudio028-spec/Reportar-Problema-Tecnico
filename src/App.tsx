@@ -200,7 +200,7 @@ export default function App() {
   const [annExpiry, setAnnExpiry] = useState('');
   const [annMedia, setAnnMedia] = useState<File | null>(null);
   const [annMediaName, setAnnMediaName] = useState('');
-  const [isPollEnabled, setIsPollEnabled] = useState(false);
+
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
@@ -991,7 +991,10 @@ export default function App() {
   const handleAddAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     const isServiceDown = annCategory === 'Serviço de Streaming' && annStatus === 'Problemas Técnicos';
-    if (!isServiceDown && !annName) return;
+    const isEnqueteEvento = annCategory === 'Enquete / Evento';
+    
+    // Se não for serviço fora do ar nem enquete, nome do conteúdo é obrigatório
+    if (!isServiceDown && !isEnqueteEvento && !annName) return;
     if (!annMessage || !annExpiry) return;
 
     let mediaUrl: string | undefined = undefined;
@@ -1007,7 +1010,7 @@ export default function App() {
     }
 
     let finalPollOptions = null;
-    if (isPollEnabled) {
+    if (annStatus === 'Enquete') {
       const validOptions = pollOptionsInput.filter(opt => opt.trim() !== '');
       if (validOptions.length >= 2) {
         finalPollOptions = validOptions.map(opt => ({
@@ -1019,7 +1022,7 @@ export default function App() {
 
     await supabase.from('announcements').insert([{
       category: annCategory,
-      name: isServiceDown ? 'Serviço de Streaming' : annName,
+      name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
       status: annStatus,
       message: annMessage,
       expiry_date: annExpiry,
@@ -1033,7 +1036,6 @@ export default function App() {
     setAnnExpiry('');
     setAnnMedia(null);
     setAnnMediaName('');
-    setIsPollEnabled(false);
     setPollOptionsInput(['', '']);
   };
 
@@ -1041,6 +1043,7 @@ export default function App() {
     setAnnCategory(ann.category);
     setAnnStatus(ann.status);
     if (ann.name) setAnnName(ann.name);
+    else setAnnName('');
     setAnnMessage(ann.message);
     setAnnExpiry(ann.expiryDate.slice(0, 16));
   };
@@ -1193,7 +1196,14 @@ export default function App() {
                                   <div className="space-y-1">
                                     <label className="text-xs text-slate-500 font-bold uppercase">Categoria</label>
                                     <select 
-                                      value={annCategory} onChange={(e) => setAnnCategory(e.target.value)}
+                                      value={annCategory} onChange={(e) => {
+                                        setAnnCategory(e.target.value);
+                                        if (e.target.value === 'Enquete / Evento') {
+                                          setAnnStatus('Enquete');
+                                        } else if (annStatus === 'Enquete' || annStatus === 'Evento') {
+                                          setAnnStatus('Problemas Técnicos');
+                                        }
+                                      }}
                                       className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
                                     >
                                       <option>Canal</option><option>Filme</option><option>Série</option><option>Serviço de Streaming</option><option>Enquete / Evento</option>
@@ -1205,7 +1215,18 @@ export default function App() {
                                       value={annStatus} onChange={(e) => setAnnStatus(e.target.value)}
                                       className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
                                     >
-                                      <option>Problemas Técnicos</option><option>Mudança</option><option>Removido</option>
+                                      {annCategory === 'Enquete / Evento' ? (
+                                        <>
+                                          <option>Enquete</option>
+                                          <option>Evento</option>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <option>Problemas Técnicos</option>
+                                          <option>Mudança</option>
+                                          <option>Removido</option>
+                                        </>
+                                      )}
                                     </select>
                                   </div>
                                 </div>
@@ -1215,7 +1236,7 @@ export default function App() {
                                     <input 
                                       type="text"
                                       disabled={annCategory === 'Serviço de Streaming'}
-                                      placeholder={annCategory === 'Serviço de Streaming' ? 'N/A' : 'Ex: HBO Brasil'}
+                                      placeholder={annCategory === 'Serviço de Streaming' ? 'N/A' : (annCategory === 'Enquete / Evento' ? 'Ex: Melhor Filme do Ano (Opcional)' : 'Ex: HBO Brasil')}
                                       value={annCategory === 'Serviço de Streaming' ? '' : annName}
                                       onChange={(e) => setAnnName(e.target.value)}
                                       className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500 disabled:opacity-50"
@@ -1279,21 +1300,7 @@ export default function App() {
                                   </div>
                                 </div>
                                 
-                                <div className="pt-2">
-                                  <label className="flex items-center gap-2 cursor-pointer group">
-                                    <input 
-                                      type="checkbox" 
-                                      checked={isPollEnabled} 
-                                      onChange={(e) => setIsPollEnabled(e.target.checked)} 
-                                      className="accent-indigo-500 w-4 h-4 cursor-pointer"
-                                    />
-                                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
-                                      Adicionar Enquete de Votação
-                                    </span>
-                                  </label>
-                                </div>
-
-                                {isPollEnabled && (
+                                {annStatus === 'Enquete' && (
                                   <div className="space-y-3 bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/20">
                                     <div className="flex justify-between items-center">
                                       <label className="text-xs text-indigo-300 font-bold uppercase">Opções da Enquete</label>

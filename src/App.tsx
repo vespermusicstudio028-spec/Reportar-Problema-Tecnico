@@ -1402,16 +1402,24 @@ export default function App() {
                                   <form onSubmit={async (e) => {
                                     e.preventDefault();
                                     if (newMovieTitle.trim()) {
-                                      await supabase.from('movie_updates').insert([{ title: newMovieTitle.trim() }]);
-                                      setNewMovieTitle('');
+                                      const titles = newMovieTitle
+                                        .split('\n')
+                                        .map(t => t.replace(/^[>\-🍿\*]\s*(Atualização de.*)?/i, '').replace(/^[>\-]\s*/, '').trim())
+                                        .filter(t => t && !t.toLowerCase().includes('atualização de'));
+                                      
+                                      if (titles.length > 0) {
+                                        await supabase.from('movie_updates').insert(titles.map(t => ({ title: t })));
+                                        setNewMovieTitle('');
+                                      }
                                     }
-                                  }} className="flex gap-2">
-                                    <input
-                                      type="text" value={newMovieTitle} onChange={(e) => setNewMovieTitle(e.target.value)}
-                                      placeholder="Novo filme..."
-                                      className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-amber-500"
+                                  }} className="flex flex-col gap-2">
+                                    <textarea
+                                      value={newMovieTitle} onChange={(e) => setNewMovieTitle(e.target.value)}
+                                      placeholder="Ex:&#10;> Filme 1&#10;> Filme 2"
+                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-amber-500 resize-y"
+                                      rows={3}
                                     />
-                                    <button type="submit" className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors">Add</button>
+                                    <button type="submit" className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors">Adicionar Filmes</button>
                                   </form>
                                   <div className="max-h-48 overflow-y-auto space-y-2 mt-4 pr-2">
                                     {movieUpdates.map(m => (
@@ -1439,16 +1447,24 @@ export default function App() {
                                   <form onSubmit={async (e) => {
                                     e.preventDefault();
                                     if (newSeriesTitle.trim()) {
-                                      await supabase.from('series_updates').insert([{ title: newSeriesTitle.trim() }]);
-                                      setNewSeriesTitle('');
+                                      const titles = newSeriesTitle
+                                        .split('\n')
+                                        .map(t => t.replace(/^[>\-🍿\*]\s*(Atualização de.*)?/i, '').replace(/^[>\-]\s*/, '').trim())
+                                        .filter(t => t && !t.toLowerCase().includes('atualização de'));
+
+                                      if (titles.length > 0) {
+                                        await supabase.from('series_updates').insert(titles.map(t => ({ title: t })));
+                                        setNewSeriesTitle('');
+                                      }
                                     }
-                                  }} className="flex gap-2">
-                                    <input
-                                      type="text" value={newSeriesTitle} onChange={(e) => setNewSeriesTitle(e.target.value)}
-                                      placeholder="Nova série..."
-                                      className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-purple-500"
+                                  }} className="flex flex-col gap-2">
+                                    <textarea
+                                      value={newSeriesTitle} onChange={(e) => setNewSeriesTitle(e.target.value)}
+                                      placeholder="Ex:&#10;> Série 1&#10;> Série 2"
+                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-purple-500 resize-y"
+                                      rows={3}
                                     />
-                                    <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-colors">Add</button>
+                                    <button type="submit" className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-colors">Adicionar Séries</button>
                                   </form>
                                   <div className="max-h-48 overflow-y-auto space-y-2 mt-4 pr-2">
                                     {seriesUpdates.map(s => (
@@ -1647,8 +1663,8 @@ export default function App() {
   );
 
 
-  const getMoviesText = () => `*Atualizações de Filmes:*\n` + movieUpdates.map(m => `- ${m.title}`).join('\n');
-  const getSeriesText = () => `*Atualizações de Séries:*\n` + seriesUpdates.map(s => `- ${s.title}`).join('\n');
+  const getMoviesText = () => `🍿 Atualização de *FILMES*\n\n` + movieUpdates.map(m => `> ${m.title}`).join('\n');
+  const getSeriesText = () => `🍿 Atualização de *SÉRIES*\n\n` + seriesUpdates.map(s => `> ${s.title}`).join('\n');
   const getAllText = () => getMoviesText() + '\n\n' + getSeriesText();
 
   const renderUpdatesModal = () => (

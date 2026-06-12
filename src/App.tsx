@@ -360,6 +360,7 @@ export default function App() {
 
   const renderContentSelection = () => {
     const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
+    const currentCode = loggedClientCode || (isAdminLogged ? 'admin' : null);
 
     return (
       <motion.div 
@@ -417,8 +418,8 @@ export default function App() {
                           {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
                             const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
                             const totalVotes = annVotes.length;
-                            const hasVoted = loggedClientCode ? annVotes.some(v => v.client_code === loggedClientCode) : false;
-                            const myVote = loggedClientCode ? annVotes.find(v => v.client_code === loggedClientCode) : null;
+                            const hasVoted = currentCode ? annVotes.some(v => v.client_code === currentCode) : false;
+                            const myVote = currentCode ? annVotes.find(v => v.client_code === currentCode) : null;
                             return (
                               <div className="mt-4 space-y-2">
                                 <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-300 mb-2">📊 Enquete</p>
@@ -432,7 +433,7 @@ export default function App() {
                                       type="button"
                                       disabled={hasVoted}
                                       onClick={() => {
-                                        if (!loggedClientCode) {
+                                        if (!currentCode) {
                                           setShowCodeModal(true);
                                           return;
                                         }
@@ -446,7 +447,7 @@ export default function App() {
                                             : 'border-slate-700/50 bg-slate-800/30 hover:border-indigo-500/40 hover:bg-indigo-500/5 cursor-pointer active:scale-[0.98]'
                                       }`}
                                     >
-                                      {(hasVoted || !loggedClientCode) && (
+                                      {(hasVoted || !currentCode) && (
                                         <div
                                           className={`absolute inset-0 rounded-xl transition-all duration-500 ${
                                             isMyChoice ? 'bg-indigo-500/15' : 'bg-slate-700/15'
@@ -460,7 +461,7 @@ export default function App() {
                                         }`}>
                                           {isMyChoice && '✓ '}{opt.text}
                                         </span>
-                                        {(hasVoted || !loggedClientCode) && (
+                                        {(hasVoted || !currentCode) && (
                                           <span className={`text-xs font-bold ${
                                             isMyChoice ? 'text-indigo-300' : 'text-slate-500'
                                           }`}>
@@ -473,7 +474,7 @@ export default function App() {
                                 })}
                                 <p className="text-[10px] text-slate-500 text-right">
                                   {totalVotes} voto{totalVotes !== 1 ? 's' : ''}
-                                  {!loggedClientCode && ' · Faça login para votar'}
+                                  {!currentCode && ' · Faça login para votar'}
                                   {hasVoted && ' · Você já votou'}
                                 </p>
                               </div>
@@ -484,12 +485,12 @@ export default function App() {
                             <div className="flex flex-wrap gap-1.5">
                               {['❤️', '👏', '🔥', '👌', '👍'].map(emoji => {
                                 const reactionsForEmoji = annReactions.filter(r => r.announcement_id === ann.id && r.emoji === emoji).length;
-                                const myReaction = loggedClientCode ? annReactions.some(r => r.announcement_id === ann.id && r.client_code === loggedClientCode && r.emoji === emoji) : false;
+                                const myReaction = currentCode ? annReactions.some(r => r.announcement_id === ann.id && r.client_code === currentCode && r.emoji === emoji) : false;
                                 return (
                                   <button
                                     key={emoji}
                                     onClick={() => {
-                                      if (!loggedClientCode) {
+                                      if (!currentCode) {
                                         setShowCodeModal(true);
                                         return;
                                       }
@@ -1130,7 +1131,7 @@ export default function App() {
   };
 
   const handleVote = async (announcementId: string, optionId: string) => {
-    const voterCode = loggedClientCode;
+    const voterCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
     if (!voterCode) return;
     const alreadyVoted = pollVotes.some(v => v.announcement_id === announcementId && v.client_code === voterCode);
     if (alreadyVoted) return;
@@ -1142,32 +1143,33 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!loggedClientCode || !isAnnouncementsOpen) return;
+    const viewerCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
+    if (!viewerCode || !isAnnouncementsOpen) return;
     
     const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
     activeAnnouncements.forEach(async (ann) => {
-      const hasViewed = annViews.some(v => v.announcement_id === ann.id && v.client_code === loggedClientCode);
+      const hasViewed = annViews.some(v => v.announcement_id === ann.id && v.client_code === viewerCode);
       if (!hasViewed) {
-        // Optimistically update to avoid multiple calls while waiting for realtime
-        setAnnViews(prev => [...prev, { id: 'temp', announcement_id: ann.id, client_code: loggedClientCode }]);
+        setAnnViews(prev => [...prev, { id: 'temp', announcement_id: ann.id, client_code: viewerCode }]);
         await supabase.from('announcement_views').insert([{
           announcement_id: ann.id,
-          client_code: loggedClientCode
+          client_code: viewerCode
         }]);
       }
     });
-  }, [isAnnouncementsOpen, announcements, loggedClientCode, annViews]);
+  }, [isAnnouncementsOpen, announcements, loggedClientCode, isAdminLogged, annViews]);
 
   const handleReaction = async (announcementId: string, emoji: string) => {
-    if (!loggedClientCode) return;
-    const existingReaction = annReactions.find(r => r.announcement_id === announcementId && r.client_code === loggedClientCode && r.emoji === emoji);
+    const voterCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
+    if (!voterCode) return;
+    const existingReaction = annReactions.find(r => r.announcement_id === announcementId && r.client_code === voterCode && r.emoji === emoji);
 
     if (existingReaction) {
       await supabase.from('announcement_reactions').delete().eq('id', existingReaction.id);
     } else {
       await supabase.from('announcement_reactions').insert([{
         announcement_id: announcementId,
-        client_code: loggedClientCode,
+        client_code: voterCode,
         emoji
       }]);
     }

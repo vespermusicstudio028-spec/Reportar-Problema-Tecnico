@@ -73,6 +73,18 @@ const DEVICES = [
   "Outro"
 ];
 
+interface PollOption {
+  id: string;
+  text: string;
+}
+
+interface PollVote {
+  id: string;
+  announcement_id: string;
+  option_id: string;
+  client_code: string;
+}
+
 interface Announcement {
   id: string;
   category: string;
@@ -82,6 +94,7 @@ interface Announcement {
   expiryDate: string;
   mediaUrl?: string;
   mediaType?: 'image' | 'video' | null;
+  pollOptions?: PollOption[] | null;
 }
 
 export default function App() {
@@ -93,6 +106,7 @@ export default function App() {
 
   // Announcements
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [pollVotes, setPollVotes] = useState<PollVote[]>([]);
 
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
@@ -100,8 +114,12 @@ export default function App() {
       const { data: ann } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
       if (ann) setAnnouncements(ann.map((a: any) => ({
         id: a.id, category: a.category, name: a.name, status: a.status, 
-        message: a.message, expiryDate: a.expiry_date, mediaUrl: a.media_url, mediaType: a.media_type
+        message: a.message, expiryDate: a.expiry_date, mediaUrl: a.media_url, mediaType: a.media_type,
+        pollOptions: a.poll_options
       })));
+
+      const { data: votes } = await supabase.from('poll_votes').select('*');
+      if (votes) setPollVotes(votes);
 
       const { data: mov } = await supabase.from('movie_updates').select('*').order('created_at', { ascending: false });
       if (mov) setMovieUpdates(mov.map((m: any) => ({ id: m.id, title: m.title })));
@@ -128,6 +146,7 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series_updates' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
       .subscribe();
 
     return () => {
@@ -181,6 +200,8 @@ export default function App() {
   const [annExpiry, setAnnExpiry] = useState('');
   const [annMedia, setAnnMedia] = useState<File | null>(null);
   const [annMediaName, setAnnMediaName] = useState('');
+  const [isPollEnabled, setIsPollEnabled] = useState(false);
+  const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
   const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | null>(null);
@@ -369,6 +390,65 @@ export default function App() {
                               </div>
                             </div>
                           )}
+                          {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
+                            const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
+                            const totalVotes = annVotes.length;
+                            const hasVoted = loggedClientCode ? annVotes.some(v => v.client_code === loggedClientCode) : false;
+                            const myVote = loggedClientCode ? annVotes.find(v => v.client_code === loggedClientCode) : null;
+                            return (
+                              <div className="mt-4 space-y-2">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-300 mb-2">📊 Enquete</p>
+                                {ann.pollOptions.map((opt: PollOption) => {
+                                  const optVotes = annVotes.filter(v => v.option_id === opt.id).length;
+                                  const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
+                                  const isMyChoice = myVote?.option_id === opt.id;
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      disabled={hasVoted || !loggedClientCode}
+                                      onClick={() => handleVote(ann.id, opt.id)}
+                                      className={`w-full text-left rounded-xl p-3 border transition-all relative overflow-hidden ${
+                                        isMyChoice
+                                          ? 'border-indigo-500/60 bg-indigo-500/15'
+                                          : hasVoted
+                                            ? 'border-slate-700/50 bg-slate-800/30 cursor-default'
+                                            : 'border-slate-700/50 bg-slate-800/30 hover:border-indigo-500/40 hover:bg-indigo-500/5 cursor-pointer active:scale-[0.98]'
+                                      }`}
+                                    >
+                                      {(hasVoted || !loggedClientCode) && (
+                                        <div
+                                          className={`absolute inset-0 rounded-xl transition-all duration-500 ${
+                                            isMyChoice ? 'bg-indigo-500/15' : 'bg-slate-700/15'
+                                          }`}
+                                          style={{ width: `${pct}%` }}
+                                        />
+                                      )}
+                                      <div className="relative z-10 flex items-center justify-between">
+                                        <span className={`text-sm font-medium ${
+                                          isMyChoice ? 'text-indigo-200' : 'text-slate-300'
+                                        }`}>
+                                          {isMyChoice && '✓ '}{opt.text}
+                                        </span>
+                                        {(hasVoted || !loggedClientCode) && (
+                                          <span className={`text-xs font-bold ${
+                                            isMyChoice ? 'text-indigo-300' : 'text-slate-500'
+                                          }`}>
+                                            {pct}%
+                                          </span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                                <p className="text-[10px] text-slate-500 text-right">
+                                  {totalVotes} voto{totalVotes !== 1 ? 's' : ''}
+                                  {!loggedClientCode && ' · Faça login para votar'}
+                                  {hasVoted && ' · Você já votou'}
+                                </p>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     ))
@@ -926,6 +1006,17 @@ export default function App() {
       });
     }
 
+    let finalPollOptions = null;
+    if (isPollEnabled) {
+      const validOptions = pollOptionsInput.filter(opt => opt.trim() !== '');
+      if (validOptions.length >= 2) {
+        finalPollOptions = validOptions.map(opt => ({
+          id: Math.random().toString(36).substring(2, 9),
+          text: opt.trim()
+        }));
+      }
+    }
+
     await supabase.from('announcements').insert([{
       category: annCategory,
       name: isServiceDown ? 'Serviço de Streaming' : annName,
@@ -933,7 +1024,8 @@ export default function App() {
       message: annMessage,
       expiry_date: annExpiry,
       media_url: mediaUrl,
-      media_type: mediaType
+      media_type: mediaType,
+      poll_options: finalPollOptions
     }]);
 
     setAnnName('');
@@ -941,6 +1033,8 @@ export default function App() {
     setAnnExpiry('');
     setAnnMedia(null);
     setAnnMediaName('');
+    setIsPollEnabled(false);
+    setPollOptionsInput(['', '']);
   };
 
   const handleDuplicateAnnouncement = (ann: Announcement) => {
@@ -957,6 +1051,18 @@ export default function App() {
 
   const handleResolveAnnouncement = async (id: string) => {
     await supabase.from('announcements').update({ status: 'Problema Resolvido' }).eq('id', id);
+  };
+
+  const handleVote = async (announcementId: string, optionId: string) => {
+    const voterCode = loggedClientCode;
+    if (!voterCode) return;
+    const alreadyVoted = pollVotes.some(v => v.announcement_id === announcementId && v.client_code === voterCode);
+    if (alreadyVoted) return;
+    await supabase.from('poll_votes').insert([{
+      announcement_id: announcementId,
+      option_id: optionId,
+      client_code: voterCode
+    }]);
   };
 
   const handleAddClient = async (e: React.FormEvent) => {
@@ -1090,7 +1196,7 @@ export default function App() {
                                       value={annCategory} onChange={(e) => setAnnCategory(e.target.value)}
                                       className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
                                     >
-                                      <option>Canal</option><option>Filme</option><option>Série</option><option>Serviço de Streaming</option>
+                                      <option>Canal</option><option>Filme</option><option>Série</option><option>Serviço de Streaming</option><option>Enquete / Evento</option>
                                     </select>
                                   </div>
                                   <div className="space-y-1">
@@ -1172,6 +1278,64 @@ export default function App() {
                                     )}
                                   </div>
                                 </div>
+                                
+                                <div className="pt-2">
+                                  <label className="flex items-center gap-2 cursor-pointer group">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={isPollEnabled} 
+                                      onChange={(e) => setIsPollEnabled(e.target.checked)} 
+                                      className="accent-indigo-500 w-4 h-4 cursor-pointer"
+                                    />
+                                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
+                                      Adicionar Enquete de Votação
+                                    </span>
+                                  </label>
+                                </div>
+
+                                {isPollEnabled && (
+                                  <div className="space-y-3 bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/20">
+                                    <div className="flex justify-between items-center">
+                                      <label className="text-xs text-indigo-300 font-bold uppercase">Opções da Enquete</label>
+                                      <button 
+                                        type="button" 
+                                        onClick={() => setPollOptionsInput([...pollOptionsInput, ''])}
+                                        className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
+                                      >
+                                        + Adicionar Opção
+                                      </button>
+                                    </div>
+                                    {pollOptionsInput.map((opt, index) => (
+                                      <div key={index} className="flex gap-2">
+                                        <input 
+                                          type="text" 
+                                          placeholder={`Opção ${index + 1}`}
+                                          value={opt}
+                                          onChange={(e) => {
+                                            const newOpts = [...pollOptionsInput];
+                                            newOpts[index] = e.target.value;
+                                            setPollOptionsInput(newOpts);
+                                          }}
+                                          className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
+                                        />
+                                        {pollOptionsInput.length > 2 && (
+                                          <button 
+                                            type="button" 
+                                            onClick={() => {
+                                              const newOpts = [...pollOptionsInput];
+                                              newOpts.splice(index, 1);
+                                              setPollOptionsInput(newOpts);
+                                            }}
+                                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors"
+                                          >
+                                            ✕
+                                          </button>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
                                 <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors">
                                   Publicar Informe
                                 </button>
@@ -1255,6 +1419,29 @@ export default function App() {
                                             )}
                                           </div>
                                         )}
+
+                                        {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
+                                          const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
+                                          const totalVotes = annVotes.length;
+                                          return (
+                                            <div className="mt-2 space-y-1.5 bg-indigo-900/10 p-3 rounded-xl border border-indigo-500/15">
+                                              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 mb-1">📊 Enquete · {totalVotes} voto{totalVotes !== 1 ? 's' : ''}</p>
+                                              {ann.pollOptions.map((opt: PollOption) => {
+                                                const optVotes = annVotes.filter(v => v.option_id === opt.id).length;
+                                                const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
+                                                return (
+                                                  <div key={opt.id} className="flex items-center gap-2">
+                                                    <div className="flex-1 bg-slate-800/50 rounded-lg h-7 relative overflow-hidden">
+                                                      <div className="absolute inset-0 bg-indigo-500/20 rounded-lg transition-all duration-500" style={{ width: `${pct}%` }} />
+                                                      <span className="absolute inset-0 flex items-center px-2 text-[11px] text-slate-300 font-medium">{opt.text}</span>
+                                                    </div>
+                                                    <span className="text-[11px] text-indigo-300 font-bold w-10 text-right">{pct}%</span>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          );
+                                        })()}
 
                                         <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">
                                           <span className="text-[10px] text-slate-600 uppercase font-bold">Expira em:</span>

@@ -8,7 +8,17 @@ CREATE TABLE IF NOT EXISTS announcements (
   expiry_date TIMESTAMP WITH TIME ZONE NOT NULL,
   media_url TEXT,
   media_type TEXT,
+  poll_options JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS poll_votes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  announcement_id UUID REFERENCES announcements(id) ON DELETE CASCADE,
+  option_id TEXT NOT NULL,
+  client_code TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(announcement_id, client_code)
 );
 
 CREATE TABLE IF NOT EXISTS movie_updates (
@@ -62,6 +72,7 @@ ALTER TABLE movie_updates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE series_updates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE poll_votes ENABLE ROW LEVEL SECURITY;
 
 -- Políticas Públicas (Todos podem ler e escrever para facilitar o uso do painel sem autenticação complexa por enquanto)
 CREATE POLICY "Public Access" ON announcements FOR ALL USING (true) WITH CHECK (true);
@@ -69,6 +80,7 @@ CREATE POLICY "Public Access" ON movie_updates FOR ALL USING (true) WITH CHECK (
 CREATE POLICY "Public Access" ON series_updates FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access" ON clients FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Access" ON user_reports FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Access" ON poll_votes FOR ALL USING (true) WITH CHECK (true);
 
 -- Ativar o Realtime para as tabelas
 alter publication supabase_realtime add table announcements;
@@ -76,3 +88,4 @@ alter publication supabase_realtime add table movie_updates;
 alter publication supabase_realtime add table series_updates;
 alter publication supabase_realtime add table clients;
 alter publication supabase_realtime add table user_reports;
+alter publication supabase_realtime add table poll_votes;

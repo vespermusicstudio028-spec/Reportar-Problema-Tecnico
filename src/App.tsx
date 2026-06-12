@@ -85,6 +85,19 @@ interface PollVote {
   client_code: string;
 }
 
+interface AnnouncementReaction {
+  id: string;
+  announcement_id: string;
+  client_code: string;
+  emoji: string;
+}
+
+interface AnnouncementView {
+  id: string;
+  announcement_id: string;
+  client_code: string;
+}
+
 interface Announcement {
   id: string;
   category: string;
@@ -95,6 +108,7 @@ interface Announcement {
   mediaUrl?: string;
   mediaType?: 'image' | 'video' | null;
   pollOptions?: PollOption[] | null;
+  createdAt?: string;
 }
 
 export default function App() {
@@ -107,6 +121,8 @@ export default function App() {
   // Announcements
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [pollVotes, setPollVotes] = useState<PollVote[]>([]);
+  const [annReactions, setAnnReactions] = useState<AnnouncementReaction[]>([]);
+  const [annViews, setAnnViews] = useState<AnnouncementView[]>([]);
 
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
@@ -115,11 +131,17 @@ export default function App() {
       if (ann) setAnnouncements(ann.map((a: any) => ({
         id: a.id, category: a.category, name: a.name, status: a.status, 
         message: a.message, expiryDate: a.expiry_date, mediaUrl: a.media_url, mediaType: a.media_type,
-        pollOptions: a.poll_options
+        pollOptions: a.poll_options, createdAt: a.created_at
       })));
 
       const { data: votes } = await supabase.from('poll_votes').select('*');
       if (votes) setPollVotes(votes);
+
+      const { data: reactions } = await supabase.from('announcement_reactions').select('*');
+      if (reactions) setAnnReactions(reactions);
+
+      const { data: views } = await supabase.from('announcement_views').select('*');
+      if (views) setAnnViews(views);
 
       const { data: mov } = await supabase.from('movie_updates').select('*').order('created_at', { ascending: false });
       if (mov) setMovieUpdates(mov.map((m: any) => ({ id: m.id, title: m.title })));
@@ -147,6 +169,8 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchData)
       .subscribe();
 
     return () => {
@@ -449,6 +473,44 @@ export default function App() {
                               </div>
                             );
                           })()}
+
+                          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-3">
+                            <div className="flex flex-wrap gap-1.5">
+                              {['❤️', '👏', '🔥', '👌', '👍'].map(emoji => {
+                                const reactionsForEmoji = annReactions.filter(r => r.announcement_id === ann.id && r.emoji === emoji).length;
+                                const myReaction = loggedClientCode ? annReactions.some(r => r.announcement_id === ann.id && r.client_code === loggedClientCode && r.emoji === emoji) : false;
+                                return (
+                                  <button
+                                    key={emoji}
+                                    onClick={() => handleReaction(ann.id, emoji)}
+                                    disabled={!loggedClientCode}
+                                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                                      myReaction 
+                                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' 
+                                        : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-700/50 hover:text-slate-300'
+                                    } ${!loggedClientCode && 'opacity-70 cursor-not-allowed'}`}
+                                  >
+                                    <span className="text-[13px]">{emoji}</span>
+                                    {reactionsForEmoji > 0 && <span>{reactionsForEmoji}</span>}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] text-slate-500 ml-auto pl-2">
+                              {(() => {
+                                const totalViews = annViews.filter(v => v.announcement_id === ann.id).length;
+                                const formattedViews = totalViews >= 1000 ? (totalViews / 1000).toFixed(1) + 'K' : totalViews;
+                                const timeStr = ann.createdAt ? new Date(ann.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+                                return (
+                                  <>
+                                    <span>{formattedViews}</span>
+                                    <Eye size={12} className="mx-0.5" />
+                                    {timeStr && <span>{timeStr}</span>}
+                                  </>
+                                )
+                              })()}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -1066,6 +1128,38 @@ export default function App() {
       option_id: optionId,
       client_code: voterCode
     }]);
+  };
+
+  useEffect(() => {
+    if (!loggedClientCode || !isAnnouncementsOpen) return;
+    
+    const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
+    activeAnnouncements.forEach(async (ann) => {
+      const hasViewed = annViews.some(v => v.announcement_id === ann.id && v.client_code === loggedClientCode);
+      if (!hasViewed) {
+        // Optimistically update to avoid multiple calls while waiting for realtime
+        setAnnViews(prev => [...prev, { id: 'temp', announcement_id: ann.id, client_code: loggedClientCode }]);
+        await supabase.from('announcement_views').insert([{
+          announcement_id: ann.id,
+          client_code: loggedClientCode
+        }]);
+      }
+    });
+  }, [isAnnouncementsOpen, announcements, loggedClientCode, annViews]);
+
+  const handleReaction = async (announcementId: string, emoji: string) => {
+    if (!loggedClientCode) return;
+    const existingReaction = annReactions.find(r => r.announcement_id === announcementId && r.client_code === loggedClientCode && r.emoji === emoji);
+
+    if (existingReaction) {
+      await supabase.from('announcement_reactions').delete().eq('id', existingReaction.id);
+    } else {
+      await supabase.from('announcement_reactions').insert([{
+        announcement_id: announcementId,
+        client_code: loggedClientCode,
+        emoji
+      }]);
+    }
   };
 
   const handleAddClient = async (e: React.FormEvent) => {

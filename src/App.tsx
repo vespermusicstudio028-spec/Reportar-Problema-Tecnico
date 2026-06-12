@@ -430,8 +430,14 @@ export default function App() {
                                     <button
                                       key={opt.id}
                                       type="button"
-                                      disabled={hasVoted || !loggedClientCode}
-                                      onClick={() => handleVote(ann.id, opt.id)}
+                                      disabled={hasVoted}
+                                      onClick={() => {
+                                        if (!loggedClientCode) {
+                                          setShowCodeModal(true);
+                                          return;
+                                        }
+                                        handleVote(ann.id, opt.id);
+                                      }}
                                       className={`w-full text-left rounded-xl p-3 border transition-all relative overflow-hidden ${
                                         isMyChoice
                                           ? 'border-indigo-500/60 bg-indigo-500/15'
@@ -482,13 +488,18 @@ export default function App() {
                                 return (
                                   <button
                                     key={emoji}
-                                    onClick={() => handleReaction(ann.id, emoji)}
-                                    disabled={!loggedClientCode}
+                                    onClick={() => {
+                                      if (!loggedClientCode) {
+                                        setShowCodeModal(true);
+                                        return;
+                                      }
+                                      handleReaction(ann.id, emoji);
+                                    }}
                                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                                       myReaction 
                                         ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' 
                                         : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-700/50 hover:text-slate-300'
-                                    } ${!loggedClientCode && 'opacity-70 cursor-not-allowed'}`}
+                                    }`}
                                   >
                                     <span className="text-[13px]">{emoji}</span>
                                     {reactionsForEmoji > 0 && <span>{reactionsForEmoji}</span>}

@@ -1265,9 +1265,9 @@ export default function App() {
                                     />
                                     <button 
                                       type="button" 
-                                      onClick={() => setClientCode(Math.floor(100000 + Math.random() * 900000).toString())}
+                                      onClick={() => setClientCode(Array.from({length: 6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join(''))}
                                       className="px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors flex items-center justify-center border border-slate-700 hover:border-slate-600"
-                                      title="Gerar código aleatório de 6 dígitos"
+                                      title="Gerar código aleatório (letras e números)"
                                     >
                                       <RefreshCcw size={16} />
                                     </button>

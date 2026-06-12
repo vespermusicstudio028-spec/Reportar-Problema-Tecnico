@@ -26,7 +26,8 @@ import {
   Info,
   Copy,
   Eye,
-  EyeOff
+  EyeOff,
+  Pencil
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -103,10 +104,10 @@ export default function App() {
       })));
 
       const { data: mov } = await supabase.from('movie_updates').select('*').order('created_at', { ascending: false });
-      if (mov) setMovieUpdates(mov.map((m: any) => m.title));
+      if (mov) setMovieUpdates(mov.map((m: any) => ({ id: m.id, title: m.title })));
 
       const { data: ser } = await supabase.from('series_updates').select('*').order('created_at', { ascending: false });
-      if (ser) setSeriesUpdates(ser.map((s: any) => s.title));
+      if (ser) setSeriesUpdates(ser.map((s: any) => ({ id: s.id, title: s.title })));
 
       const { data: cli } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
       if (cli) setClients(cli.map((c: any) => ({
@@ -186,10 +187,12 @@ export default function App() {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
-
-  const [movieUpdates, setMovieUpdates] = useState<string[]>([]);
-  const [seriesUpdates, setSeriesUpdates] = useState<string[]>([]);
-
+  interface CatalogUpdate {
+    id: string;
+    title: string;
+  }
+  const [movieUpdates, setMovieUpdates] = useState<CatalogUpdate[]>([]);
+  const [seriesUpdates, setSeriesUpdates] = useState<CatalogUpdate[]>([]);
   const [newMovieTitle, setNewMovieTitle] = useState('');
   const [newSeriesTitle, setNewSeriesTitle] = useState('');
 
@@ -1410,6 +1413,24 @@ export default function App() {
                                     />
                                     <button type="submit" className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors">Add</button>
                                   </form>
+                                  <div className="max-h-48 overflow-y-auto space-y-2 mt-4 pr-2">
+                                    {movieUpdates.map(m => (
+                                      <div key={m.id} className="flex items-center gap-2 bg-[#0c0e12] border border-slate-800 p-2 rounded-lg">
+                                        <span className="flex-1 text-slate-300 text-sm truncate">{m.title}</span>
+                                        <button type="button" onClick={async () => {
+                                            const newTitle = window.prompt("Editar título do filme:", m.title);
+                                            if (newTitle && newTitle !== m.title) {
+                                                await supabase.from('movie_updates').update({ title: newTitle }).eq('id', m.id);
+                                            }
+                                        }} className="text-slate-500 hover:text-amber-400 p-1.5 transition-colors"><Pencil size={14}/></button>
+                                        <button type="button" onClick={async () => {
+                                            if (window.confirm('Tem certeza que deseja excluir?')) {
+                                              await supabase.from('movie_updates').delete().eq('id', m.id);
+                                            }
+                                        }} className="text-slate-500 hover:text-red-400 p-1.5 transition-colors"><Trash2 size={14}/></button>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                                 <div className="space-y-4">
                                   <h3 className="text-white font-medium text-sm flex items-center gap-2">
@@ -1429,6 +1450,24 @@ export default function App() {
                                     />
                                     <button type="submit" className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-colors">Add</button>
                                   </form>
+                                  <div className="max-h-48 overflow-y-auto space-y-2 mt-4 pr-2">
+                                    {seriesUpdates.map(s => (
+                                      <div key={s.id} className="flex items-center gap-2 bg-[#0c0e12] border border-slate-800 p-2 rounded-lg">
+                                        <span className="flex-1 text-slate-300 text-sm truncate">{s.title}</span>
+                                        <button type="button" onClick={async () => {
+                                            const newTitle = window.prompt("Editar título da série:", s.title);
+                                            if (newTitle && newTitle !== s.title) {
+                                                await supabase.from('series_updates').update({ title: newTitle }).eq('id', s.id);
+                                            }
+                                        }} className="text-slate-500 hover:text-purple-400 p-1.5 transition-colors"><Pencil size={14}/></button>
+                                        <button type="button" onClick={async () => {
+                                            if (window.confirm('Tem certeza que deseja excluir?')) {
+                                              await supabase.from('series_updates').delete().eq('id', s.id);
+                                            }
+                                        }} className="text-slate-500 hover:text-red-400 p-1.5 transition-colors"><Trash2 size={14}/></button>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               </div>
                            </div>
@@ -1608,8 +1647,8 @@ export default function App() {
   );
 
 
-  const getMoviesText = () => `*Atualizações de Filmes:*\n` + movieUpdates.map(m => `- ${m}`).join('\n');
-  const getSeriesText = () => `*Atualizações de Séries:*\n` + seriesUpdates.map(s => `- ${s}`).join('\n');
+  const getMoviesText = () => `*Atualizações de Filmes:*\n` + movieUpdates.map(m => `- ${m.title}`).join('\n');
+  const getSeriesText = () => `*Atualizações de Séries:*\n` + seriesUpdates.map(s => `- ${s.title}`).join('\n');
   const getAllText = () => getMoviesText() + '\n\n' + getSeriesText();
 
   const renderUpdatesModal = () => (
@@ -1663,8 +1702,8 @@ export default function App() {
                   </div>
                 </div>
                 <div className="space-y-2 text-left">
-                  {movieUpdates.length > 0 ? movieUpdates.map((item, i) => (
-                    <div key={i} className="bg-white border border-amber-100 p-3 rounded-lg text-slate-700 text-sm shadow-sm">{item}</div>
+                  {movieUpdates.length > 0 ? movieUpdates.map((item) => (
+                    <div key={item.id} className="bg-white border border-amber-100 p-3 rounded-lg text-slate-700 text-sm shadow-sm">{item.title}</div>
                   )) : (
                     <div className="text-amber-600/70 text-sm italic">Nenhum filme novo no momento.</div>
                   )}
@@ -1694,8 +1733,8 @@ export default function App() {
                   </div>
                 </div>
                 <div className="space-y-2 text-left">
-                  {seriesUpdates.length > 0 ? seriesUpdates.map((item, i) => (
-                    <div key={i} className="bg-white border border-purple-100 p-3 rounded-lg text-slate-700 text-sm shadow-sm">{item}</div>
+                  {seriesUpdates.length > 0 ? seriesUpdates.map((item) => (
+                    <div key={item.id} className="bg-white border border-purple-100 p-3 rounded-lg text-slate-700 text-sm shadow-sm">{item.title}</div>
                   )) : (
                     <div className="text-purple-600/70 text-sm italic">Nenhuma série nova no momento.</div>
                   )}

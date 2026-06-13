@@ -265,6 +265,73 @@ export default function App() {
   // Image Viewer State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // ——— Push Notifications ———
+  const VAPID_PUBLIC_KEY = 'BM9ySPx1kYmZJlNp9_qlkb66OTA8cuSqAL0g8YkC4AD6UcIJBI9YWZHypdOPlFc6miJtgmC591QtvAkLkouOD_s';
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+  const [isPushLoading, setIsPushLoading] = useState(false);
+
+  // Converte base64url para Uint8Array (necessário para VAPID)
+  const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  };
+
+  // Registra o dispositivo para receber push
+  const subscribeToPush = async (clientCode: string) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const existing = await registration.pushManager.getSubscription();
+      const sub = existing ?? await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+      const subJson = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      // Salva no Supabase (upsert pelo endpoint)
+      await supabase.from('push_subscriptions').upsert({
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth,
+        client_code: clientCode,
+      }, { onConflict: 'endpoint' });
+    } catch (err) {
+      console.warn('[push] Erro ao registrar subscription:', err);
+    }
+  };
+
+  // Pede permissão e registra subscription
+  const requestPushPermission = async () => {
+    if (!('Notification' in window)) return;
+    setIsPushLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission === 'granted') {
+        const code = loggedClientCode || 'admin';
+        await subscribeToPush(code);
+      }
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
+
+  // Verifica estado atual da permissão
+  useEffect(() => {
+    if ('Notification' in window) {
+      setPushPermission(Notification.permission);
+    }
+  }, []);
+
+  // Auto-registra quando o cliente faz login
+  useEffect(() => {
+    if (loggedClientCode && pushPermission === 'granted') {
+      subscribeToPush(loggedClientCode);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loggedClientCode]);
+
   const handleReset = () => {
     setContentType(null);
     setIssueType('');
@@ -1039,6 +1106,43 @@ export default function App() {
             </p>
           </div>
         </div>
+
+        {/* Bloco de Notificações Push */}
+        {'Notification' in window && (
+          <div className="p-6 bg-indigo-500/5 border border-indigo-500/15 rounded-2xl space-y-3">
+            <h4 className="text-white font-bold flex items-center gap-2">
+              <Bell size={18} className="text-indigo-400" /> Notificações Push
+            </h4>
+            {pushPermission === 'granted' ? (
+              <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div>
+                  <p className="text-emerald-300 font-semibold text-sm">Notificações ativadas!</p>
+                  <p className="text-emerald-500/70 text-xs">Você receberá avisos quando o admin publicar um novo informe.</p>
+                </div>
+              </div>
+            ) : pushPermission === 'denied' ? (
+              <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                <AlertTriangle size={16} className="text-red-400 shrink-0" />
+                <p className="text-red-300 text-xs">Notificações bloqueadas. Desbloqueie nas configurações do navegador.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Ative para receber alertas no seu celular/PC sempre que um novo informe ou evento for publicado — mesmo com o app fechado!
+                </p>
+                <button
+                  onClick={requestPushPermission}
+                  disabled={isPushLoading}
+                  className="w-full py-3 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isPushLoading ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
+                  {isPushLoading ? 'Ativando...' : '🔔 Ativar Notificações'}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );

@@ -477,7 +477,10 @@ export default function App() {
                                   src={ann.mediaUrl} 
                                   alt="Evidência" 
                                   className="w-full max-h-64 object-cover cursor-zoom-in hover:scale-110 transition-transform duration-500"
-                                  onClick={() => setSelectedImage(ann.mediaUrl)}
+                                  onClick={() => {
+                                    setSelectedImage(ann.mediaUrl);
+                                    handleRegisterView(ann.id, true);
+                                  }}
                                 />
                               ) : (
                                 <video src={ann.mediaUrl} className="w-full max-h-64 object-cover" controls />
@@ -1251,22 +1254,38 @@ export default function App() {
     }]);
   };
 
-  useEffect(() => {
-    const viewerCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
-    if (!viewerCode || !isAnnouncementsOpen) return;
-    
-    const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
-    activeAnnouncements.forEach(async (ann) => {
-      const hasViewed = annViews.some(v => v.announcement_id === ann.id && v.client_code === viewerCode);
-      if (!hasViewed) {
-        setAnnViews(prev => [...prev, { id: 'temp', announcement_id: ann.id, client_code: viewerCode }]);
-        await supabase.from('announcement_views').insert([{
-          announcement_id: ann.id,
-          client_code: viewerCode
-        }]);
+  const handleRegisterView = async (annId: string, forceIncrement = false) => {
+    let viewerCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
+    if (!viewerCode) {
+      let guestId = localStorage.getItem('guest_id');
+      if (!guestId) {
+        guestId = 'guest-' + Math.random().toString(36).substring(2, 10);
+        localStorage.setItem('guest_id', guestId);
       }
+      viewerCode = guestId;
+    }
+
+    if (forceIncrement) {
+      viewerCode = viewerCode + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    }
+
+    const hasViewed = annViews.some(v => v.announcement_id === annId && v.client_code === viewerCode);
+    if (!hasViewed) {
+      setAnnViews(prev => [...prev, { id: 'temp-' + Date.now(), announcement_id: annId, client_code: viewerCode }]);
+      await supabase.from('announcement_views').insert([{
+        announcement_id: annId,
+        client_code: viewerCode
+      }]);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAnnouncementsOpen) return;
+    const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
+    activeAnnouncements.forEach(ann => {
+      handleRegisterView(ann.id, true);
     });
-  }, [isAnnouncementsOpen, announcements, loggedClientCode, isAdminLogged, annViews]);
+  }, [isAnnouncementsOpen]);
 
   const handleReaction = async (announcementId: string, emoji: string) => {
     const voterCode = loggedClientCode || (isAdminLogged ? 'admin' : '');

@@ -2243,24 +2243,6 @@ export default function App() {
            <span className="text-base font-bold tracking-wider text-slate-300 uppercase shrink-0">Suporte Técnico</span>
         </div>
         
-        <nav className="space-y-2">
-          <button 
-            onClick={() => {
-              setActiveView('dashboard');
-              setContentType(null);
-            }} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${activeView === 'dashboard' ? 'bg-indigo-600/20 text-indigo-400 shadow-[inset_0_0_12px_rgba(79,70,229,0.1)] border border-indigo-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
-          >
-            <LayoutDashboard size={20} /> Dashboard
-          </button>
-          <button 
-            onClick={() => setActiveView('profile')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${activeView === 'profile' ? 'bg-indigo-600/20 text-indigo-400 shadow-[inset_0_0_12px_rgba(79,70,229,0.1)] border border-indigo-500/20' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'}`}
-          >
-            <User size={20} /> Perfil
-          </button>
-        </nav>
-        
         <div className="mt-auto p-4 bg-[#1a1d24]/80 backdrop-blur-md border border-white/5 rounded-2xl">
           <p className="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wider">Status do Servidor</p>
           <div className="flex items-center gap-2">
@@ -2292,12 +2274,30 @@ export default function App() {
             <button
               id="tour-access-code"
               type="button"
-              onClick={() => setShowCodeModal(true)}
+              onClick={() => {
+                if (loggedClientCode || isAdminLogged) {
+                  setActiveView(activeView === 'profile' ? 'dashboard' : 'profile');
+                } else {
+                  setShowCodeModal(true);
+                }
+              }}
               className="flex items-center gap-2 px-3 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 rounded-lg text-indigo-300 hover:text-indigo-200 font-bold transition-all h-9"
             >
-              <Key size={14} />
-              <span className="hidden sm:inline">Acessar com meu código</span>
-              <span className="sm:hidden">Código</span>
+              {(loggedClientCode || isAdminLogged) ? (
+                activeView === 'profile' ? <LayoutDashboard size={14} /> : <User size={14} />
+              ) : (
+                <Key size={14} />
+              )}
+              <span className="hidden sm:inline">
+                {(loggedClientCode || isAdminLogged)
+                  ? (activeView === 'profile' ? 'Início' : 'Meu Perfil')
+                  : 'Acessar com meu código'}
+              </span>
+              <span className="sm:hidden">
+                {(loggedClientCode || isAdminLogged)
+                  ? (activeView === 'profile' ? 'Início' : 'Perfil')
+                  : 'Código'}
+              </span>
             </button>
             <button 
               onClick={() => setShowLoginModal(true)}
@@ -2326,28 +2326,6 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0c0e12]/90 backdrop-blur-xl border-t border-slate-800 flex items-center justify-around p-2 pb-6">
-        <button 
-          onClick={() => {
-            setActiveView('dashboard');
-            setContentType(null);
-          }} 
-          className={`flex flex-col items-center gap-1 p-2 transition-all ${activeView === 'dashboard' ? 'text-indigo-400' : 'text-slate-500'}`}
-        >
-          <LayoutDashboard size={20} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Início</span>
-        </button>
-        <button 
-          onClick={() => setActiveView('profile')} 
-          className={`flex flex-col items-center gap-1 p-2 transition-all ${activeView === 'profile' ? 'text-indigo-400' : 'text-slate-500'}`}
-        >
-          <User size={20} />
-          <span className="text-[10px] font-bold uppercase tracking-wider">Perfil</span>
-        </button>
-      </nav>
-
       {renderCodeModal()}
       {renderUpdatesModal()}
       {renderLoginModal()}

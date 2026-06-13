@@ -377,10 +377,10 @@ export default function App() {
           <button 
             type="button"
             onClick={() => setIsAnnouncementsOpen(!isAnnouncementsOpen)}
-            className="w-full flex items-center justify-between text-white font-bold mb-2 p-3 bg-slate-800/50 hover:bg-slate-800/80 rounded-xl transition-colors border border-slate-700/50"
+            className={`w-full flex items-center justify-between text-white font-bold mb-2 p-3 bg-slate-800/50 hover:bg-slate-800/80 rounded-xl transition-colors border ${activeAnnouncements.length > 0 ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse' : 'border-slate-700/50'}`}
           >
             <div className="flex items-center gap-2">
-              <AlertTriangle className="text-amber-400" size={20} />
+              <AlertTriangle className={`${activeAnnouncements.length > 0 ? 'text-amber-400' : 'text-slate-400'}`} size={20} />
               Avisos Importantes {activeAnnouncements.length > 0 && <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full">{activeAnnouncements.length}</span>}
             </div>
             <ChevronDown size={20} className={`min-w-5 shrink-0 transition-transform ${isAnnouncementsOpen ? 'rotate-180' : ''}`} />
@@ -397,7 +397,7 @@ export default function App() {
                 <div className="space-y-3 pt-2">
                   {activeAnnouncements.length > 0 ? (
                     activeAnnouncements.map(ann => (
-                      <div key={ann.id} className={`${ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/20'} rounded-xl p-4 flex gap-4 items-start shadow-lg border`}>
+                      <div key={ann.id} className={`${ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)] animate-[pulse_3s_ease-in-out_infinite]'} rounded-xl p-4 flex gap-4 items-start shadow-lg border`}>
                         <div className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${ann.status === 'Removido' ? 'bg-red-500' : ann.status === 'Mudança' ? 'bg-amber-500' : ann.status === 'Problema Resolvido' ? 'bg-emerald-500' : 'bg-orange-500'}`} />
                         <div>
                           <h4 className={`font-bold leading-tight ${ann.status === 'Problema Resolvido' ? 'text-emerald-50' : 'text-amber-50'}`}>{ann.name} <span className={`font-normal text-xs ml-2 ${ann.status === 'Problema Resolvido' ? 'text-emerald-400/80' : 'text-amber-400/80'}`}>({ann.status})</span></h4>

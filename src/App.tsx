@@ -464,7 +464,7 @@ export default function App() {
                 <div className="space-y-3 pt-2">
                   {activeAnnouncements.length > 0 ? (
                     activeAnnouncements.map(ann => (
-                      <div key={ann.id} className={`${ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-amber-500/10 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)] animate-[pulse_3s_ease-in-out_infinite]'} rounded-xl p-4 flex gap-4 items-start shadow-lg border`}>
+                      <div key={ann.id} className={`${ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 border-emerald-500/20' : `bg-amber-500/10 border-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.15)] ${ann.category !== 'Enquete / Evento' ? 'animate-[pulse_3s_ease-in-out_infinite]' : ''}`} rounded-xl p-4 flex gap-4 items-start shadow-lg border`}>
                         <div className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${ann.status === 'Removido' ? 'bg-red-500' : ann.status === 'Mudança' ? 'bg-amber-500' : ann.status === 'Problema Resolvido' ? 'bg-emerald-500' : 'bg-orange-500'}`} />
                         <div>
                           <h4 className={`font-bold leading-tight ${ann.status === 'Problema Resolvido' ? 'text-emerald-50' : 'text-amber-50'}`}>{ann.name} <span className={`font-normal text-xs ml-2 ${ann.status === 'Problema Resolvido' ? 'text-emerald-400/80' : 'text-amber-400/80'}`}>({ann.status})</span></h4>

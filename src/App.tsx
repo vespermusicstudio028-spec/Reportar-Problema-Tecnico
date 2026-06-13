@@ -402,6 +402,7 @@ export default function App() {
                         <div>
                           <h4 className={`font-bold leading-tight ${ann.status === 'Problema Resolvido' ? 'text-emerald-50' : 'text-amber-50'}`}>{ann.name} <span className={`font-normal text-xs ml-2 ${ann.status === 'Problema Resolvido' ? 'text-emerald-400/80' : 'text-amber-400/80'}`}>({ann.status})</span></h4>
                           <p className={`text-sm mt-1 leading-snug ${ann.status === 'Problema Resolvido' ? 'text-emerald-200/80' : 'text-amber-200/80'}`}>{ann.message}</p>
+                          <p className={`text-[10px] mt-2 font-mono ${ann.status === 'Problema Resolvido' ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>Expira em: {new Date(ann.expiryDate).toLocaleString()}</p>
                           {ann.mediaUrl && (
                             <div className="mt-3 rounded-xl overflow-hidden border border-white/5 shadow-2xl relative group">
                               {ann.mediaType === 'image' ? (

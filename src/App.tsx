@@ -1103,7 +1103,7 @@ export default function App() {
       name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
       status: annStatus,
       message: annMessage,
-      expiry_date: annExpiry,
+      expiry_date: new Date(annExpiry).toISOString(),
       media_url: mediaUrl,
       media_type: mediaType,
       poll_options: finalPollOptions

@@ -479,7 +479,7 @@ export default function App() {
                                   className="w-full max-h-64 object-cover cursor-zoom-in hover:scale-110 transition-transform duration-500"
                                   onClick={() => {
                                     setSelectedImage(ann.mediaUrl);
-                                    handleRegisterView(ann.id, true);
+                                    handleRegisterView(ann.id);
                                   }}
                                 />
                               ) : (
@@ -1254,7 +1254,7 @@ export default function App() {
     }]);
   };
 
-  const handleRegisterView = async (annId: string, forceIncrement = false) => {
+  const handleRegisterView = async (annId: string) => {
     let viewerCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
     if (!viewerCode) {
       let guestId = localStorage.getItem('guest_id');
@@ -1263,10 +1263,6 @@ export default function App() {
         localStorage.setItem('guest_id', guestId);
       }
       viewerCode = guestId;
-    }
-
-    if (forceIncrement) {
-      viewerCode = viewerCode + '-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
     }
 
     const hasViewed = annViews.some(v => v.announcement_id === annId && v.client_code === viewerCode);
@@ -1283,8 +1279,9 @@ export default function App() {
     if (!isAnnouncementsOpen) return;
     const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
     activeAnnouncements.forEach(ann => {
-      handleRegisterView(ann.id, true);
+      handleRegisterView(ann.id);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAnnouncementsOpen]);
 
   const handleReaction = async (announcementId: string, emoji: string) => {

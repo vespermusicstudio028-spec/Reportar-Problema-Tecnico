@@ -1206,23 +1206,32 @@ export default function App() {
       }
     }
 
-    await supabase.from('announcements').insert([{
-      category: annCategory,
-      name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
-      status: annStatus,
-      message: annMessage,
-      expiry_date: new Date(annExpiry).toISOString(),
-      media_url: mediaUrl,
-      media_type: mediaType,
-      poll_options: finalPollOptions
-    }]);
+    try {
+      const { error } = await supabase.from('announcements').insert([{
+        category: annCategory,
+        name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
+        status: annStatus,
+        message: annMessage,
+        expiry_date: new Date(annExpiry).toISOString(),
+        media_url: mediaUrl,
+        media_type: mediaType,
+        poll_options: finalPollOptions
+      }]);
 
-    setAnnName('');
-    setAnnMessage('');
-    setAnnExpiry('');
-    setAnnMedia(null);
-    setAnnMediaName('');
-    setPollOptionsInput(['', '']);
+      if (error) {
+        alert('Erro ao publicar informe. O arquivo pode ser muito grande: ' + error.message);
+        return;
+      }
+
+      setAnnName('');
+      setAnnMessage('');
+      setAnnExpiry('');
+      setAnnMedia(null);
+      setAnnMediaName('');
+      setPollOptionsInput(['', '']);
+    } catch (err: any) {
+      alert('Erro inesperado ao publicar: ' + err.message);
+    }
   };
 
   const handleDuplicateAnnouncement = (ann: Announcement) => {
@@ -1516,31 +1525,53 @@ export default function App() {
                                 </div>
                                 <div className="space-y-1">
                                   <label className="text-xs text-slate-500 font-bold uppercase">Anexo (Opcional)</label>
-                                  <div className="flex items-center gap-2">
-                                    <label className="flex-1 flex items-center justify-center h-10 border border-dashed border-slate-700 bg-[#15181e] rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
-                                      <input 
-                                        type="file" 
-                                        accept="image/*,video/*"
-                                        className="hidden"
-                                        onChange={(e) => {
-                                          if (e.target.files && e.target.files[0]) {
-                                            setAnnMedia(e.target.files[0]);
-                                            setAnnMediaName(e.target.files[0].name);
-                                          }
-                                        }}
-                                      />
-                                      <span className="text-xs text-slate-500 truncate px-2">
-                                        {annMediaName || "Selecionar Foto ou Vídeo"}
-                                      </span>
-                                    </label>
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <label className="flex-1 flex items-center justify-center h-10 border border-dashed border-slate-700 bg-[#15181e] rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
+                                        <input 
+                                          type="file" 
+                                          accept="image/*,video/*"
+                                          className="hidden"
+                                          onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                                          onChange={(e) => {
+                                            if (e.target.files && e.target.files[0]) {
+                                              setAnnMedia(e.target.files[0]);
+                                              setAnnMediaName(e.target.files[0].name);
+                                            }
+                                          }}
+                                        />
+                                        <span className="text-xs text-slate-500 truncate px-2">
+                                          {annMediaName || "Selecionar Foto ou Vídeo"}
+                                        </span>
+                                      </label>
+                                      {annMedia && (
+                                        <button 
+                                          type="button" 
+                                          onClick={() => { setAnnMedia(null); setAnnMediaName(''); }}
+                                          className="p-2 text-red-500 hover:text-red-400"
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Preview da mídia selecionada */}
                                     {annMedia && (
-                                      <button 
-                                        type="button" 
-                                        onClick={() => { setAnnMedia(null); setAnnMediaName(''); }}
-                                        className="p-2 text-red-500 hover:text-red-400"
-                                      >
-                                        <Trash2 size={16} />
-                                      </button>
+                                      <div className="mt-1 rounded-xl overflow-hidden border border-slate-700/50 bg-black/40 relative">
+                                        {annMedia.type.startsWith('image/') ? (
+                                          <img 
+                                            src={URL.createObjectURL(annMedia)} 
+                                            alt="Preview" 
+                                            className="w-full max-h-48 object-contain"
+                                          />
+                                        ) : (
+                                          <video 
+                                            src={URL.createObjectURL(annMedia)} 
+                                            className="w-full max-h-48 object-contain" 
+                                            controls 
+                                          />
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 </div>

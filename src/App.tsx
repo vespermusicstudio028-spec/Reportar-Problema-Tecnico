@@ -1265,14 +1265,27 @@ export default function App() {
       viewerCode = guestId;
     }
 
-    const hasViewed = annViews.some(v => v.announcement_id === annId && v.client_code === viewerCode);
-    if (!hasViewed) {
-      setAnnViews(prev => [...prev, { id: 'temp-' + Date.now(), announcement_id: annId, client_code: viewerCode }]);
-      await supabase.from('announcement_views').insert([{
-        announcement_id: annId,
-        client_code: viewerCode
-      }]);
-    }
+    // Camada 1: verificação imediata via localStorage (evita race conditions com fetch async)
+    const localKey = `ann_viewed_${viewerCode}`;
+    const localViewed: string[] = JSON.parse(localStorage.getItem(localKey) || '[]');
+    if (localViewed.includes(annId)) return; // já visualizou, para aqui
+
+    // Marca como visto no localStorage imediatamente
+    localViewed.push(annId);
+    localStorage.setItem(localKey, JSON.stringify(localViewed));
+
+    // Camada 2: atualiza o estado local para refletir na UI
+    setAnnViews(prev => {
+      const already = prev.some(v => v.announcement_id === annId && v.client_code === viewerCode);
+      if (already) return prev;
+      return [...prev, { id: 'temp-' + Date.now(), announcement_id: annId, client_code: viewerCode }];
+    });
+
+    // Camada 3: upsert no banco com ignoreDuplicates (constraint UNIQUE no banco garante unicidade)
+    await supabase.from('announcement_views').upsert([{
+      announcement_id: annId,
+      client_code: viewerCode
+    }], { onConflict: 'announcement_id,client_code', ignoreDuplicates: true });
   };
 
   useEffect(() => {

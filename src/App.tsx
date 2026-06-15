@@ -386,19 +386,29 @@ export default function App() {
       try {
         const bearerToken = import.meta.env.VITE_TMDB_API_KEY;
         if (!bearerToken || bearerToken === 'sua_chave_aqui' || bearerToken === 'your_tmdb_api_key') {
+          console.warn('TMDB: Chave de API não configurada.');
           setSearchResults([]);
           setIsSearching(false);
           return;
         }
 
         const url = `https://api.themoviedb.org/3/search/${requestType}?language=pt-BR&query=${encodeURIComponent(searchQuery)}`;
+        console.log('TMDB: Buscando em', url);
         const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${bearerToken}`,
             'accept': 'application/json'
           }
         });
+
+        if (!response.ok) {
+          console.error('TMDB: Erro HTTP', response.status, await response.text());
+          setIsSearching(false);
+          return;
+        }
+
         const data = await response.json();
+        console.log('TMDB: Resultados recebidos:', data.results?.length);
         
         if (data.results) {
           const results = data.results.slice(0, 6).map((item: any) => ({

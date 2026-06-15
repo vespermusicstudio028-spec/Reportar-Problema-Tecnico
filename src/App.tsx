@@ -2352,27 +2352,31 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[60]"
         >
           <motion.div 
-            initial={{ scale: 0.95, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            exit={{ scale: 0.95, y: 20 }}
-            className="bg-[#1a1d2e] border border-white/10 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+            className="absolute inset-0 bg-[#0d0f18] flex flex-col overflow-hidden"
           >
-            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-900/50">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <PlusCircle className="text-indigo-400" /> Pedir Conteúdo
-              </h3>
+            {/* Header full-screen */}
+            <div className="flex items-center gap-4 px-4 py-4 border-b border-white/5 bg-slate-900/80 backdrop-blur-sm shrink-0">
               <button 
                 onClick={() => setShowRequestModal(false)}
-                className="p-2 text-slate-400 hover:text-white transition-colors rounded-xl hover:bg-white/5"
+                className="p-2 text-slate-400 hover:text-white transition-colors rounded-xl hover:bg-white/10"
               >
-                <X size={20} />
+                <ChevronRight className="rotate-180" size={22} />
               </button>
+              <div className="flex items-center gap-2">
+                <PlusCircle className="text-indigo-400" size={20} />
+                <h3 className="text-lg font-bold text-white">Pedir Conteúdo</h3>
+              </div>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="max-w-lg mx-auto px-4 py-6">
               <form onSubmit={handleSubmitContentRequest} className="space-y-6">
                 {/* Tipo de Conteúdo */}
                 <div className="flex gap-4">
@@ -2494,6 +2498,7 @@ export default function App() {
                   )}
                 </button>
               </form>
+              </div>
             </div>
           </motion.div>
         </motion.div>

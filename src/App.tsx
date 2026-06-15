@@ -28,10 +28,37 @@ import {
   Eye,
   EyeOff,
   Pencil,
-  X
+  X,
+  Search,
+  PlusCircle,
+  Clapperboard as SeriesIcon,
+  Film as MovieIcon
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
+
+interface TMDBResult {
+  id: number;
+  title?: string;
+  name?: string;
+  poster_path: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  media_type: 'movie' | 'tv';
+}
+
+interface ContentRequest {
+  id: string;
+  client_code: string;
+  type: string;
+  title: string;
+  tmdb_id?: string;
+  poster_url?: string;
+  season?: string;
+  episode?: string;
+  status: string;
+  created_at: string;
+}
 
 type ContentType = 'Canal' | 'Filme' | 'Série' | null;
 type ActiveView = 'dashboard' | 'history' | 'profile';
@@ -125,6 +152,18 @@ export default function App() {
   const [annReactions, setAnnReactions] = useState<AnnouncementReaction[]>([]);
   const [annViews, setAnnViews] = useState<AnnouncementView[]>([]);
 
+  // Content Requests
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestType, setRequestType] = useState<'movie' | 'tv'>('movie');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<TMDBResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [selectedTMDB, setSelectedTMDB] = useState<TMDBResult | null>(null);
+  const [requestSeason, setRequestSeason] = useState('');
+  const [requestEpisode, setRequestEpisode] = useState('');
+  const [contentRequests, setContentRequests] = useState<ContentRequest[]>([]);
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
     const fetchData = async () => {
@@ -159,6 +198,9 @@ export default function App() {
       if (rep) setUserReports(rep.map((r: any) => ({
         id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp
       })));
+
+      const { data: reqs } = await supabase.from('content_requests').select('*').order('created_at', { ascending: false });
+      if (reqs) setContentRequests(reqs);
     };
 
     fetchData();
@@ -172,6 +214,7 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
       .subscribe();
 
     return () => {
@@ -229,7 +272,7 @@ export default function App() {
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
-  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | null>(null);
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
@@ -331,6 +374,92 @@ export default function App() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedClientCode]);
+
+  // --- TMDB Search Logic ---
+  useEffect(() => {
+    const fetchTMDB = async () => {
+      if (searchQuery.trim().length < 2) {
+        setSearchResults([]);
+        return;
+      }
+      setIsSearching(true);
+      try {
+        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
+        if (!apiKey || apiKey === 'sua_chave_aqui' || apiKey === 'your_tmdb_api_key') {
+          // Fallback se não tiver API key
+          setSearchResults([]);
+          setIsSearching(false);
+          return;
+        }
+
+        const url = `https://api.themoviedb.org/3/search/${requestType}?api_key=${apiKey}&language=pt-BR&query=${encodeURIComponent(searchQuery)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.results) {
+          const results = data.results.slice(0, 5).map((item: any) => ({
+            ...item,
+            media_type: requestType
+          }));
+          setSearchResults(results);
+        }
+      } catch (err) {
+        console.error('TMDB Error:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounce = setTimeout(() => {
+      fetchTMDB();
+    }, 500);
+
+    return () => clearTimeout(debounce);
+  }, [searchQuery, requestType]);
+
+  const handleSubmitContentRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTMDB && searchQuery.trim() === '') return;
+    
+    const clientCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
+    if (!clientCode) {
+      setShowRequestModal(false);
+      setShowCodeModal(true);
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+    try {
+      const posterUrl = selectedTMDB?.poster_path 
+        ? `https://image.tmdb.org/t/p/w200${selectedTMDB.poster_path}` 
+        : null;
+
+      const title = selectedTMDB 
+        ? (selectedTMDB.title || selectedTMDB.name || searchQuery) 
+        : searchQuery;
+
+      await supabase.from('content_requests').insert([{
+        client_code: clientCode,
+        type: requestType === 'movie' ? 'Filme' : 'Série',
+        title,
+        tmdb_id: selectedTMDB?.id?.toString(),
+        poster_url: posterUrl,
+        season: requestType === 'tv' ? requestSeason : null,
+        episode: requestType === 'tv' ? requestEpisode : null,
+      }]);
+
+      setShowRequestModal(false);
+      setSearchQuery('');
+      setSelectedTMDB(null);
+      setRequestSeason('');
+      setRequestEpisode('');
+      alert('Pedido enviado com sucesso! Nossa equipe analisará em breve.');
+    } catch (err: any) {
+      alert('Erro ao enviar pedido: ' + err.message);
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
 
   const handleReset = () => {
     setContentType(null);
@@ -610,6 +739,33 @@ export default function App() {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
+
+        <div className="w-full max-w-lg mx-auto mb-6">
+          <button
+            onClick={() => {
+              if (!loggedClientCode && !isAdminLogged) {
+                setShowCodeModal(true);
+              } else {
+                setShowRequestModal(true);
+              }
+            }}
+            className="w-full relative overflow-hidden group rounded-2xl p-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 transition-all duration-300"
+          >
+            <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+            <div className="relative bg-slate-900/90 backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between group-hover:bg-transparent transition-colors duration-300">
+              <div className="flex items-center gap-4">
+                <div className="p-2.5 bg-white/10 rounded-xl group-hover:scale-110 transition-transform">
+                  <PlusCircle className="text-white w-6 h-6" />
+                </div>
+                <div className="text-left">
+                  <h3 className="text-white font-bold text-lg tracking-wide">Pedir Conteúdos</h3>
+                  <p className="text-white/70 text-sm font-medium">Filmes e Séries</p>
+                </div>
+              </div>
+              <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            </div>
+          </button>
         </div>
 
         <div id="tour-report" className="w-full max-w-lg mx-auto">
@@ -1996,6 +2152,101 @@ export default function App() {
                        )}
                      </AnimatePresence>
                    </div>
+
+                   {/* Accordion: Pedidos de Conteúdos */}
+                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'pedidos' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
+                     <button 
+                       onClick={() => setAdminTab(adminTab === 'pedidos' ? null : 'pedidos')}
+                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'pedidos' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>
+                           <Clapperboard size={20} />
+                         </div>
+                         <div>
+                           <span className="text-white font-bold block">Pedidos</span>
+                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Solicitações de filmes e séries</span>
+                         </div>
+                       </div>
+                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'pedidos' ? 'rotate-180 text-indigo-400' : ''}`} />
+                     </button>
+                     <AnimatePresence initial={false}>
+                       {adminTab === 'pedidos' && (
+                         <motion.div
+                           initial={{ height: 0, opacity: 0 }}
+                           animate={{ height: 'auto', opacity: 1 }}
+                           exit={{ height: 0, opacity: 0 }}
+                           transition={{ duration: 0.3, ease: 'easeInOut' }}
+                           className="overflow-hidden"
+                         >
+                           <div className="p-5 pt-0 space-y-4">
+                             {contentRequests.length > 0 ? (
+                               <div className="space-y-3">
+                                 {contentRequests.map((req) => {
+                                   const reqClient = clients.find(c => c.code === req.client_code);
+                                   return (
+                                     <div key={req.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex gap-4">
+                                       {req.poster_url ? (
+                                         <img src={req.poster_url} alt="Poster" className="w-16 h-24 object-cover rounded-md flex-shrink-0 shadow-lg" />
+                                       ) : (
+                                         <div className="w-16 h-24 bg-slate-800 rounded-md flex items-center justify-center flex-shrink-0">
+                                           {req.type === 'Filme' ? <MovieIcon size={24} className="text-slate-600"/> : <SeriesIcon size={24} className="text-slate-600"/>}
+                                         </div>
+                                       )}
+                                       <div className="flex-1 min-w-0">
+                                         <div className="flex justify-between items-start">
+                                           <div>
+                                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${req.type === 'Filme' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                                               {req.type}
+                                             </span>
+                                             <h4 className="text-white font-bold mt-1 text-sm">{req.title}</h4>
+                                             {(req.season || req.episode) && (
+                                               <p className="text-slate-400 text-xs mt-1">
+                                                 {req.season && `Temp: ${req.season} `} 
+                                                 {req.episode && `Ep: ${req.episode}`}
+                                               </p>
+                                             )}
+                                           </div>
+                                           <div className="text-right">
+                                             <div className="text-xs text-slate-500">Solicitado por:</div>
+                                             <div className="text-sm font-medium text-white">{reqClient?.name || req.client_code}</div>
+                                             {reqClient?.canvasLink && (
+                                               <a href={reqClient.canvasLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 underline block mt-1">
+                                                 Ver Canvas
+                                               </a>
+                                             )}
+                                           </div>
+                                         </div>
+                                         <div className="mt-3 text-xs text-slate-500 flex justify-between items-center">
+                                           <span>{new Date(req.created_at).toLocaleString()}</span>
+                                           <button
+                                             type="button"
+                                             onClick={async () => {
+                                               if (window.confirm('Marcar como atendido/remover?')) {
+                                                 await supabase.from('content_requests').delete().eq('id', req.id);
+                                               }
+                                             }}
+                                             className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors"
+                                           >
+                                             <Trash2 size={14} className="inline mr-1" /> Remover
+                                           </button>
+                                         </div>
+                                       </div>
+                                     </div>
+                                   );
+                                 })}
+                               </div>
+                             ) : (
+                               <div className="text-center py-6 border border-dashed border-slate-700/50 rounded-xl">
+                                 <Clapperboard className="w-12 h-12 text-slate-600 mx-auto mb-2 opacity-50" />
+                                 <p className="text-slate-400 text-sm">Nenhum pedido no momento.</p>
+                               </div>
+                             )}
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                   </div>
                  </div>
 
                  <button 
@@ -2068,6 +2319,162 @@ export default function App() {
                   </button>
                 </form>
             )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  const renderRequestModal = () => (
+    <AnimatePresence>
+      {showRequestModal && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        >
+          <motion.div 
+            initial={{ scale: 0.95, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.95, y: 20 }}
+            className="bg-[#1a1d2e] border border-white/10 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-slate-900/50">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <PlusCircle className="text-indigo-400" /> Pedir Conteúdo
+              </h3>
+              <button 
+                onClick={() => setShowRequestModal(false)}
+                className="p-2 text-slate-400 hover:text-white transition-colors rounded-xl hover:bg-white/5"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+              <form onSubmit={handleSubmitContentRequest} className="space-y-6">
+                {/* Tipo de Conteúdo */}
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setRequestType('movie')}
+                    className={`flex-1 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                      requestType === 'movie' 
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50' 
+                        : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                    }`}
+                  >
+                    <MovieIcon size={18} /> Filme
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRequestType('tv')}
+                    className={`flex-1 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
+                      requestType === 'tv' 
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50' 
+                        : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
+                    }`}
+                  >
+                    <SeriesIcon size={18} /> Série
+                  </button>
+                </div>
+
+                {/* Campo de Busca TMDB */}
+                <div className="space-y-2 relative">
+                  <label className="text-xs uppercase tracking-wider text-slate-400 font-bold">
+                    Nome do {requestType === 'movie' ? 'Filme' : 'Série'}
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                    <input 
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setSelectedTMDB(null); // Reset selection se o usuário voltar a digitar
+                      }}
+                      placeholder={`Digite para pesquisar o ${requestType === 'movie' ? 'filme' : 'série'}...`}
+                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 pl-10 pr-4 py-3 rounded-xl focus:border-indigo-500 outline-none"
+                      required
+                    />
+                    {isSearching && (
+                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 animate-spin" size={18} />
+                    )}
+                  </div>
+
+                  {/* Autocomplete Dropdown */}
+                  {searchResults.length > 0 && !selectedTMDB && (
+                    <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto custom-scrollbar">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTMDB(result);
+                            setSearchQuery(result.title || result.name || '');
+                            setSearchResults([]);
+                          }}
+                          className="w-full text-left p-3 hover:bg-slate-700/50 transition-colors flex items-center gap-3 border-b border-slate-700/50 last:border-0"
+                        >
+                          {result.poster_path ? (
+                            <img src={`https://image.tmdb.org/t/p/w92${result.poster_path}`} alt="Poster" className="w-10 h-14 object-cover rounded-md" />
+                          ) : (
+                            <div className="w-10 h-14 bg-slate-900 rounded-md flex items-center justify-center">
+                              <Search className="text-slate-600" size={16} />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-bold text-white text-sm">{result.title || result.name}</p>
+                            <p className="text-xs text-slate-400">
+                              {result.release_date ? result.release_date.split('-')[0] : result.first_air_date ? result.first_air_date.split('-')[0] : 'Data desconhecida'}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Informações Extras para Séries */}
+                {requestType === 'tv' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-wider text-slate-400 font-bold">Temporada (Opcional)</label>
+                      <input 
+                        type="text"
+                        value={requestSeason}
+                        onChange={(e) => setRequestSeason(e.target.value)}
+                        placeholder="Ex: 1, 2, Todas"
+                        className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-wider text-slate-400 font-bold">Episódio (Opcional)</label>
+                      <input 
+                        type="text"
+                        value={requestEpisode}
+                        onChange={(e) => setRequestEpisode(e.target.value)}
+                        placeholder="Ex: 5, Todos"
+                        className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl focus:border-indigo-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingRequest || (!selectedTMDB && searchQuery.trim() === '')}
+                  className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
+                >
+                  {isSubmittingRequest ? (
+                    <><Loader2 className="animate-spin" size={20} /> Enviando Pedido...</>
+                  ) : (
+                    <><CheckCircle2 size={20} /> Solicitar Conteúdo</>
+                  )}
+                </button>
+              </form>
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -2387,6 +2794,7 @@ export default function App() {
         </div>
       </main>
       {renderCodeModal()}
+      {renderRequestModal()}
       {renderUpdatesModal()}
       {renderLoginModal()}
 

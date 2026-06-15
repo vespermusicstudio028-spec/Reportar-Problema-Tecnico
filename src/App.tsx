@@ -741,33 +741,6 @@ export default function App() {
           </AnimatePresence>
         </div>
 
-        <div className="w-full max-w-lg mx-auto mb-6">
-          <button
-            onClick={() => {
-              if (!loggedClientCode && !isAdminLogged) {
-                setShowCodeModal(true);
-              } else {
-                setShowRequestModal(true);
-              }
-            }}
-            className="w-full relative overflow-hidden group rounded-2xl p-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 transition-all duration-300"
-          >
-            <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
-            <div className="relative bg-slate-900/90 backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between group-hover:bg-transparent transition-colors duration-300">
-              <div className="flex items-center gap-4">
-                <div className="p-2.5 bg-white/10 rounded-xl group-hover:scale-110 transition-transform">
-                  <PlusCircle className="text-white w-6 h-6" />
-                </div>
-                <div className="text-left">
-                  <h3 className="text-white font-bold text-lg tracking-wide">Pedir Conteúdos</h3>
-                  <p className="text-white/70 text-sm font-medium">Filmes e Séries</p>
-                </div>
-              </div>
-              <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
-            </div>
-          </button>
-        </div>
-
         <div id="tour-report" className="w-full max-w-lg mx-auto">
           <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
             <img src="/logo.png?v=2" alt="The Best IPTV" className="w-32 h-32 object-contain mb-4 drop-shadow-lg" />
@@ -776,6 +749,32 @@ export default function App() {
           </div>
           
           <div className="flex flex-col gap-4 w-full relative z-10">
+            <div className="w-full mb-2">
+              <button
+                onClick={() => {
+                  if (!loggedClientCode && !isAdminLogged) {
+                    setShowCodeModal(true);
+                  } else {
+                    setShowRequestModal(true);
+                  }
+                }}
+                className="w-full relative overflow-hidden group rounded-2xl p-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 transition-all duration-300"
+              >
+                <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+                <div className="relative bg-slate-900/90 backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between group-hover:bg-transparent transition-colors duration-300">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-white/10 rounded-xl group-hover:scale-110 transition-transform">
+                      <PlusCircle className="text-white w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="text-white font-bold text-lg tracking-wide">Pedir Conteúdos</h3>
+                      <p className="text-white/70 text-sm font-medium">Filmes e Séries</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                </div>
+              </button>
+            </div>
 
         {[
           { id: 'Canal', icon: <Tv size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
@@ -2164,7 +2163,14 @@ export default function App() {
                            <Clapperboard size={20} />
                          </div>
                          <div>
-                           <span className="text-white font-bold block">Pedidos</span>
+                           <span className="text-white font-bold flex items-center gap-2">
+                             Pedidos
+                             {contentRequests.length > 0 && (
+                               <span className="bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-indigo-500/20">
+                                 {contentRequests.length}
+                               </span>
+                             )}
+                           </span>
                            <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Solicitações de filmes e séries</span>
                          </div>
                        </div>

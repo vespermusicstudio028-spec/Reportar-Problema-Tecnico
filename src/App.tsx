@@ -461,7 +461,7 @@ export default function App() {
         ? (selectedTMDB.title || selectedTMDB.name || searchQuery) 
         : searchQuery;
 
-      await supabase.from('content_requests').insert([{
+      const { error } = await supabase.from('content_requests').insert([{
         client_code: clientCode,
         type: requestType === 'movie' ? 'Filme' : 'Série',
         title,
@@ -471,6 +471,11 @@ export default function App() {
         episode: requestType === 'tv' ? requestEpisode : null,
       }]);
 
+      if (error) {
+        console.error('Erro detalhado do Supabase:', error);
+        throw new Error(error.message || JSON.stringify(error));
+      }
+
       setShowRequestModal(false);
       setSearchQuery('');
       setSelectedTMDB(null);
@@ -478,7 +483,8 @@ export default function App() {
       setRequestEpisode('');
       alert('Pedido enviado com sucesso! Nossa equipe analisará em breve.');
     } catch (err: any) {
-      alert('Erro ao enviar pedido: ' + err.message);
+      alert('Erro ao enviar pedido: ' + (err.message || 'Erro desconhecido. Verifique o console.'));
+      console.error(err);
     } finally {
       setIsSubmittingRequest(false);
     }

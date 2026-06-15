@@ -384,20 +384,24 @@ export default function App() {
       }
       setIsSearching(true);
       try {
-        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-        if (!apiKey || apiKey === 'sua_chave_aqui' || apiKey === 'your_tmdb_api_key') {
-          // Fallback se não tiver API key
+        const bearerToken = import.meta.env.VITE_TMDB_API_KEY;
+        if (!bearerToken || bearerToken === 'sua_chave_aqui' || bearerToken === 'your_tmdb_api_key') {
           setSearchResults([]);
           setIsSearching(false);
           return;
         }
 
-        const url = `https://api.themoviedb.org/3/search/${requestType}?api_key=${apiKey}&language=pt-BR&query=${encodeURIComponent(searchQuery)}`;
-        const response = await fetch(url);
+        const url = `https://api.themoviedb.org/3/search/${requestType}?language=pt-BR&query=${encodeURIComponent(searchQuery)}`;
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${bearerToken}`,
+            'accept': 'application/json'
+          }
+        });
         const data = await response.json();
         
         if (data.results) {
-          const results = data.results.slice(0, 5).map((item: any) => ({
+          const results = data.results.slice(0, 6).map((item: any) => ({
             ...item,
             media_type: requestType
           }));

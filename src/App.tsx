@@ -200,7 +200,11 @@ export default function App() {
       })));
 
       const { data: reqs } = await supabase.from('content_requests').select('*').order('created_at', { ascending: false });
-      if (reqs) setContentRequests(reqs);
+      if (reqs) {
+        setContentRequests(reqs);
+        const count = Math.max(0, reqs.length - lastSeenRequestsCount);
+        setNewRequestsCount(count);
+      }
     };
 
     fetchData();
@@ -211,6 +215,7 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series_updates' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchData)
@@ -248,6 +253,10 @@ export default function App() {
 
   // Auth states
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [newRequestsCount, setNewRequestsCount] = useState(0);
+  const [lastSeenRequestsCount, setLastSeenRequestsCount] = useState(() => {
+    return parseInt(localStorage.getItem('admin_last_seen_requests') || '0', 10);
+  });
   const [isAdminLogged, setIsAdminLogged] = useState(() => {
     return localStorage.getItem('iptv_admin_logged') === 'true';
   });
@@ -2169,7 +2178,16 @@ export default function App() {
                    {/* Accordion: Pedidos de Conteúdos */}
                    <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'pedidos' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
                      <button 
-                       onClick={() => setAdminTab(adminTab === 'pedidos' ? null : 'pedidos')}
+                       onClick={() => {
+                         if (adminTab !== 'pedidos') {
+                           setLastSeenRequestsCount(contentRequests.length);
+                           localStorage.setItem('admin_last_seen_requests', contentRequests.length.toString());
+                           setNewRequestsCount(0);
+                           setAdminTab('pedidos');
+                         } else {
+                           setAdminTab(null);
+                         }
+                       }}
                        className="w-full flex items-center justify-between p-5 text-left transition-colors"
                      >
                        <div className="flex items-center gap-3">
@@ -2793,9 +2811,12 @@ export default function App() {
             </button>
             <button 
               onClick={() => setShowLoginModal(true)}
-              className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors"
+              className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors relative"
             >
                <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
+               {(isAdminLogged && newRequestsCount > 0) && (
+                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
+               )}
             </button>
           </div>
         </header>

@@ -33,7 +33,8 @@ import {
   PlusCircle,
   Clapperboard as SeriesIcon,
   Film as MovieIcon,
-  XCircle
+  XCircle,
+  Lock
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -810,37 +811,47 @@ export default function App() {
           
           <div className="flex flex-col gap-4 w-full relative z-10">
             <div className="w-full mb-2">
-              <button
-                onClick={() => {
-                  if (!loggedClientCode && !isAdminLogged) {
-                    setShowCodeModal(true);
-                  } else {
-                    if (!isAdminLogged && loggedClientCode) {
-                      const quota = getClientQuota(loggedClientCode);
-                      if (quota.used >= 2) {
-                        setQuotaAlert('limit');
-                        return;
+              {(() => {
+                const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
+                return (
+                  <button
+                    onClick={() => {
+                      if (!loggedClientCode && !isAdminLogged) {
+                        setShowCodeModal(true);
+                      } else {
+                        if (isQuotaReached) {
+                          setQuotaAlert('limit');
+                          return;
+                        }
+                        setShowRequestModal(true);
                       }
-                    }
-                    setShowRequestModal(true);
-                  }
-                }}
-                className="w-full relative overflow-hidden group rounded-2xl p-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40 transition-all duration-300"
-              >
-                <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
-                <div className="relative bg-slate-900/90 backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between group-hover:bg-transparent transition-colors duration-300">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2.5 bg-white/10 rounded-xl group-hover:scale-110 transition-transform">
-                      <PlusCircle className="text-white w-6 h-6" />
+                    }}
+                    className={`w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 ${
+                      isQuotaReached 
+                        ? 'bg-slate-700/50' 
+                        : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40'
+                    }`}
+                  >
+                    <div className={`absolute inset-0 ${isQuotaReached ? 'bg-transparent' : 'bg-white/20 group-hover:bg-white/0'} transition-colors duration-300`} />
+                    <div className={`relative ${isQuotaReached ? 'bg-slate-900/95' : 'bg-slate-900/90 group-hover:bg-transparent'} backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300`}>
+                      <div className="flex items-center gap-4">
+                        <div className={`p-2.5 rounded-xl transition-transform ${isQuotaReached ? 'bg-slate-800/80' : 'bg-white/10 group-hover:scale-110'}`}>
+                          {isQuotaReached ? <Lock className="text-slate-500 w-6 h-6" /> : <PlusCircle className="text-white w-6 h-6" />}
+                        </div>
+                        <div className="text-left">
+                          <h3 className={`font-bold text-lg tracking-wide ${isQuotaReached ? 'text-slate-400' : 'text-white'}`}>
+                            {isQuotaReached ? 'Pedidos Bloqueados' : 'Pedir Conteúdos'}
+                          </h3>
+                          <p className={`text-sm font-medium ${isQuotaReached ? 'text-slate-500' : 'text-white/70'}`}>
+                            {isQuotaReached ? 'Aguarde 7 dias' : 'Filmes e Séries'}
+                          </p>
+                        </div>
+                      </div>
+                      {!isQuotaReached && <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />}
                     </div>
-                    <div className="text-left">
-                      <h3 className="text-white font-bold text-lg tracking-wide">Pedir Conteúdos</h3>
-                      <p className="text-white/70 text-sm font-medium">Filmes e Séries</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                </div>
-              </button>
+                  </button>
+                );
+              })()}
             </div>
 
         {[

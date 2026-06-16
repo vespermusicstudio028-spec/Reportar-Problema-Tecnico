@@ -2263,17 +2263,29 @@ export default function App() {
                                          </div>
                                          <div className="mt-3 text-xs text-slate-500 flex justify-between items-center">
                                            <span>{new Date(req.created_at).toLocaleString()}</span>
-                                           <button
-                                             type="button"
-                                             onClick={async () => {
-                                               if (window.confirm('Marcar como atendido/remover?')) {
-                                                 await supabase.from('content_requests').delete().eq('id', req.id);
-                                               }
-                                             }}
-                                             className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors"
-                                           >
-                                             <Trash2 size={14} className="inline mr-1" /> Remover
-                                           </button>
+                                           <div className="flex items-center gap-1">
+                                             <a
+                                               href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                                                 `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 Filme/Série: ${req.title}${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
+                                               )}`}
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               className="text-emerald-400 hover:text-emerald-300 font-bold px-2 py-1 rounded-md hover:bg-emerald-500/10 transition-colors flex items-center"
+                                             >
+                                               <MessageCircle size={14} className="inline mr-1" /> Enviar
+                                             </a>
+                                             <button
+                                               type="button"
+                                               onClick={async () => {
+                                                 if (window.confirm('Marcar como atendido/remover?')) {
+                                                   await supabase.from('content_requests').delete().eq('id', req.id);
+                                                 }
+                                               }}
+                                               className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors"
+                                             >
+                                               <Trash2 size={14} className="inline mr-1" /> Remover
+                                             </button>
+                                           </div>
                                          </div>
                                        </div>
                                      </div>

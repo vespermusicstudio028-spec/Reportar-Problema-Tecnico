@@ -299,6 +299,9 @@ export default function App() {
   // Clients & Code Modal State
   const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
+  const [showForgotCodeModal, setShowForgotCodeModal] = useState(false);
+  const [forgotCodePhone, setForgotCodePhone] = useState('');
+  const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
   interface CatalogUpdate {
@@ -1609,6 +1612,61 @@ export default function App() {
     }
   };
 
+  const handleRecoverCode = async () => {
+    if (!forgotCodePhone.trim()) {
+      alert('Por favor, digite o seu telefone.');
+      return;
+    }
+    
+    setIsRecoveringCode(true);
+    try {
+      const { data: clientsData, error: searchError } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('phone', forgotCodePhone);
+
+      if (searchError) throw searchError;
+
+      if (!clientsData || clientsData.length === 0) {
+        alert('Nenhum cliente encontrado com este número de telefone.');
+        setIsRecoveringCode(false);
+        return;
+      }
+
+      const client = clientsData[0];
+      
+      const newCode = Array.from({length: 6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join('');
+
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({ code: newCode })
+        .eq('id', client.id);
+
+      if (updateError) throw updateError;
+
+      await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'recuperacao_codigo_sms',
+          client_id: client.id,
+          name: client.name,
+          phone: client.phone,
+          new_code: newCode,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      alert('Seu novo código foi gerado e enviado por SMS!');
+      setShowForgotCodeModal(false);
+      setForgotCodePhone('');
+    } catch (err: any) {
+      alert('Erro ao recuperar código: ' + (err.message || 'Erro desconhecido.'));
+    } finally {
+      setIsRecoveringCode(false);
+    }
+  };
+
   const handleDeleteClient = async (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
       await supabase.from('clients').delete().eq('id', id);
@@ -2781,6 +2839,70 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderForgotCodeModal = () => (
+    <AnimatePresence>
+      {showForgotCodeModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowForgotCodeModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[#0c0e12] border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+            
+            <button 
+              onClick={() => setShowForgotCodeModal(false)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="p-8">
+              <div className="flex justify-center mb-6">
+                <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center">
+                  <Lock className="text-indigo-400 w-8 h-8" />
+                </div>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-center text-white mb-2">Recuperar Código</h2>
+              <p className="text-slate-400 text-center text-sm mb-8">
+                Digite o seu número de Telefone ou WhatsApp para enviarmos um novo código de acesso por SMS.
+              </p>
+              
+              <div className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={forgotCodePhone}
+                    onChange={(e) => setForgotCodePhone(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-800 text-white px-4 py-3.5 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-center text-lg"
+                    placeholder="(00) 00000-0000"
+                  />
+                </div>
+                
+                <button
+                  onClick={handleRecoverCode}
+                  disabled={isRecoveringCode}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isRecoveringCode ? 'Enviando SMS...' : 'Enviar por SMS'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderCodeModal = () => (
     <AnimatePresence>
       {showCodeModal && (
@@ -2850,6 +2972,19 @@ export default function App() {
               >
                 Acessar Painel <ChevronRight size={18} />
               </button>
+              
+              <div className="mt-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCodeModal(false);
+                    setShowForgotCodeModal(true);
+                  }}
+                  className="text-sm font-medium text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
+                >
+                  Esqueci meu código
+                </button>
+              </div>
             </form>
 
             <div className="mt-8 pt-6 border-t border-slate-800/50 space-y-4">
@@ -3098,6 +3233,7 @@ export default function App() {
       </main>
       {renderClientEditModal()}
       {renderQuotaModal()}
+      {renderForgotCodeModal()}
       {renderCodeModal()}
       {renderRequestModal()}
       {renderUpdatesModal()}

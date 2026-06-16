@@ -2266,7 +2266,7 @@ export default function App() {
                                            <div className="flex items-center gap-1">
                                              <a
                                                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                                 `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 Filme/Série: ${req.title}${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
+                                                 `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 Filme/Série: ${req.title}\n📌 Ano do conteúdo: ${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
                                                )}`}
                                                target="_blank"
                                                rel="noopener noreferrer"

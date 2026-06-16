@@ -32,7 +32,8 @@ import {
   Search,
   PlusCircle,
   Clapperboard as SeriesIcon,
-  Film as MovieIcon
+  Film as MovieIcon,
+  XCircle
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -164,6 +165,19 @@ export default function App() {
   const [requestEpisode, setRequestEpisode] = useState('');
   const [contentRequests, setContentRequests] = useState<ContentRequest[]>([]);
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+  const [quotaAlert, setQuotaAlert] = useState<'warning' | 'limit' | null>(null);
+
+  const getClientQuota = (clientCode: string) => {
+    const now = new Date();
+    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const requests = contentRequests.filter(req => 
+      req.client_code === clientCode && new Date(req.created_at) >= last7Days
+    );
+    return {
+      used: requests.length,
+      remaining: Math.max(0, 2 - requests.length)
+    };
+  };
 
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
@@ -486,7 +500,19 @@ export default function App() {
       setSelectedTMDB(null);
       setRequestSeason('');
       setRequestEpisode('');
-      alert('Pedido enviado com sucesso! Nossa equipe analisará em breve.');
+      if (!isAdminLogged && loggedClientCode) {
+        const quota = getClientQuota(loggedClientCode);
+        const newUsed = quota.used + 1; // Including the one just sent
+        if (newUsed === 1) {
+          setQuotaAlert('warning');
+        } else if (newUsed >= 2) {
+          setQuotaAlert('limit');
+        } else {
+          alert('Pedido enviado com sucesso! Nossa equipe analisará em breve.');
+        }
+      } else {
+        alert('Pedido enviado com sucesso! Nossa equipe analisará em breve.');
+      }
     } catch (err: any) {
       alert('Erro ao enviar pedido: ' + (err.message || 'Erro desconhecido. Verifique o console.'));
       console.error(err);
@@ -789,6 +815,13 @@ export default function App() {
                   if (!loggedClientCode && !isAdminLogged) {
                     setShowCodeModal(true);
                   } else {
+                    if (!isAdminLogged && loggedClientCode) {
+                      const quota = getClientQuota(loggedClientCode);
+                      if (quota.used >= 2) {
+                        setQuotaAlert('limit');
+                        return;
+                      }
+                    }
                     setShowRequestModal(true);
                   }
                 }}
@@ -2547,6 +2580,67 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderQuotaModal = () => (
+    <AnimatePresence>
+      {quotaAlert && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+          onClick={() => setQuotaAlert(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl relative"
+            onClick={e => e.stopPropagation()}
+          >
+            {quotaAlert === 'warning' ? (
+              <div className="p-6">
+                <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+                  <AlertTriangle className="w-8 h-8 text-amber-500" />
+                </div>
+                <h2 className="text-xl font-bold text-white text-center mb-4">Aviso Importante - The Best IPTV</h2>
+                <div className="space-y-4 text-sm text-slate-300 text-center">
+                  <p>Você possui apenas <strong className="text-white">1 solicitação de conteúdo restante</strong> nesta semana.</p>
+                  <p>🎬 Aproveite para escolher o filme ou série que deseja adicionar ao catálogo.</p>
+                  <p>Após utilizar esta solicitação, será necessário aguardar a liberação de novos pedidos na próxima semana.</p>
+                  <p className="font-bold text-amber-400">Obrigado por utilizar a The Best IPTV! 🚀</p>
+                </div>
+                <button
+                  onClick={() => setQuotaAlert(null)}
+                  className="mt-8 w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 rounded-xl transition-colors"
+                >
+                  Entendi
+                </button>
+              </div>
+            ) : (
+              <div className="p-6">
+                <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+                  <XCircle className="w-8 h-8 text-red-500" />
+                </div>
+                <h2 className="text-xl font-bold text-white text-center mb-4">Limite de Solicitações Atingido</h2>
+                <div className="space-y-4 text-sm text-slate-300 text-center">
+                  <p>Você já utilizou suas <strong className="text-white">2 solicitações de conteúdo</strong> desta semana.</p>
+                  <p>🗓️ Aguarde <strong className="text-white">7 dias</strong> para realizar novos pedidos de filmes ou séries.</p>
+                  <p className="font-bold text-red-400">Obrigado pela compreensão! 🍿🚀</p>
+                </div>
+                <button
+                  onClick={() => setQuotaAlert(null)}
+                  className="mt-8 w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 rounded-xl transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderCodeModal = () => (
     <AnimatePresence>
       {showCodeModal && (
@@ -2862,6 +2956,7 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
+      {renderQuotaModal()}
       {renderCodeModal()}
       {renderRequestModal()}
       {renderUpdatesModal()}

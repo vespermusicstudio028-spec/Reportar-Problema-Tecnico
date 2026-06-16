@@ -207,7 +207,7 @@ export default function App() {
 
       const { data: cli } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
       if (cli) setClients(cli.map((c: any) => ({
-        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, addedAt: c.added_at
+        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone, addedAt: c.added_at
       })));
 
       const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
@@ -326,9 +326,12 @@ export default function App() {
     name: string;
     code: string;
     canvasLink: string;
+    email?: string;
+    phone?: string;
     addedAt: string;
   }
   const [clients, setClients] = useState<Client[]>([]);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
 
   // Image Viewer State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -337,6 +340,7 @@ export default function App() {
   const VAPID_PUBLIC_KEY = 'BM9ySPx1kYmZJlNp9_qlkb66OTA8cuSqAL0g8YkC4AD6UcIJBI9YWZHypdOPlFc6miJtgmC591QtvAkLkouOD_s';
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [isPushLoading, setIsPushLoading] = useState(false);
+
 
   // Converte base64url para Uint8Array (necessário para VAPID)
   const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
@@ -1585,6 +1589,26 @@ export default function App() {
     setClientLink('https://testetestettt.my.canva.site/sr-carlos');
   };
 
+  const handleSaveClient = async (updatedClient: Client) => {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({
+          name: updatedClient.name,
+          code: updatedClient.code,
+          canvas_link: updatedClient.canvasLink,
+          email: updatedClient.email,
+          phone: updatedClient.phone,
+        })
+        .eq('id', updatedClient.id);
+
+      if (error) throw error;
+      setEditingClient(null);
+    } catch (err: any) {
+      alert('Erro ao salvar cliente: ' + (err.message || 'Erro desconhecido.'));
+    }
+  };
+
   const handleDeleteClient = async (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
       await supabase.from('clients').delete().eq('id', id);
@@ -2052,15 +2076,26 @@ export default function App() {
                                 ) : (
                                   <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
                                     {clients.map(client => (
-                                      <div key={client.id} className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 flex justify-between items-center gap-4">
+                                      <div 
+                                        key={client.id} 
+                                        onClick={() => setEditingClient(client)}
+                                        className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 hover:bg-slate-800/50 cursor-pointer transition-colors flex justify-between items-center gap-4 group"
+                                      >
                                         <div className="overflow-hidden">
-                                          <p className="text-white font-bold text-sm truncate">{client.name}</p>
+                                          <p className="text-white font-bold text-sm truncate group-hover:text-indigo-400 transition-colors">{client.name}</p>
                                           <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">Código: {client.code}</span>
+                                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono group-hover:bg-slate-700 transition-colors">Código: {client.code}</span>
                                           </div>
                                         </div>
                                         <div className="flex items-center shrink-0">
-                                          <button type="button" onClick={() => handleDeleteClient(client.id)} className="text-slate-500 hover:text-red-400 p-2 transition-colors flex items-center justify-center">
+                                          <button 
+                                            type="button" 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDeleteClient(client.id);
+                                            }} 
+                                            className="text-slate-500 hover:text-red-400 p-2 transition-colors flex items-center justify-center"
+                                          >
                                             <Trash2 size={18} />
                                           </button>
                                         </div>
@@ -2591,6 +2626,100 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderClientEditModal = () => {
+    if (!editingClient) return null;
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
+          onClick={() => setEditingClient(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            className="bg-[#0c0e12] border border-slate-700 w-full max-w-lg rounded-2xl p-6 relative shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setEditingClient(null)}
+              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <h2 className="text-xl font-bold text-white mb-6">Informações do Cliente</h2>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleSaveClient(editingClient);
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Nome</label>
+                <input
+                  type="text"
+                  required
+                  value={editingClient.name}
+                  onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Código de Acesso</label>
+                <input
+                  type="text"
+                  required
+                  value={editingClient.code}
+                  onChange={(e) => setEditingClient({ ...editingClient, code: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">E-mail</label>
+                <input
+                  type="email"
+                  value={editingClient.email || ''}
+                  onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
+                  placeholder="cliente@email.com"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Telefone / WhatsApp</label>
+                <input
+                  type="text"
+                  value={editingClient.phone || ''}
+                  onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
+                  placeholder="(00) 00000-0000"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1">Link do Canva</label>
+                <input
+                  type="url"
+                  required
+                  value={editingClient.canvasLink}
+                  onChange={(e) => setEditingClient({ ...editingClient, canvasLink: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                />
+              </div>
+              
+              <button
+                type="submit"
+                className="w-full py-3 mt-6 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center"
+              >
+                Salvar Alterações
+              </button>
+            </form>
+          </motion.div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
+
   const renderQuotaModal = () => (
     <AnimatePresence>
       {quotaAlert && (
@@ -2967,6 +3096,7 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
+      {renderClientEditModal()}
       {renderQuotaModal()}
       {renderCodeModal()}
       {renderRequestModal()}

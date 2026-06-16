@@ -58,6 +58,7 @@ interface ContentRequest {
   episode?: string;
   status: string;
   created_at: string;
+  year?: string;
 }
 
 type ContentType = 'Canal' | 'Filme' | 'Série' | null;
@@ -461,6 +462,9 @@ export default function App() {
         ? (selectedTMDB.title || selectedTMDB.name || searchQuery) 
         : searchQuery;
 
+      const releaseDate = selectedTMDB?.release_date || selectedTMDB?.first_air_date;
+      const year = releaseDate ? releaseDate.substring(0, 4) : '';
+
       const { error } = await supabase.from('content_requests').insert([{
         client_code: clientCode,
         type: requestType === 'movie' ? 'Filme' : 'Série',
@@ -469,6 +473,7 @@ export default function App() {
         poster_url: posterUrl,
         season: requestType === 'tv' ? requestSeason : null,
         episode: requestType === 'tv' ? requestEpisode : null,
+        year: year,
       }]);
 
       if (error) {
@@ -2266,7 +2271,7 @@ export default function App() {
                                            <div className="flex items-center gap-1">
                                              <a
                                                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                                 `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 Filme/Série: ${req.title}\n📌 Ano do conteúdo: ${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
+                                                 `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 ${req.type}: ${req.title}\n📌 Ano do conteúdo: ${req.year || ''}${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
                                                )}`}
                                                target="_blank"
                                                rel="noopener noreferrer"

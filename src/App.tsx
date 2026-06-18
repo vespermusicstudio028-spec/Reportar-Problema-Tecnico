@@ -208,7 +208,7 @@ export default function App() {
 
       const { data: cli } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
       if (cli) setClients(cli.map((c: any) => ({
-        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone, addedAt: c.added_at
+        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone, addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
       })));
 
       const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
@@ -341,6 +341,7 @@ export default function App() {
     email?: string;
     phone?: string;
     addedAt: string;
+    lastRecoveryAt?: string;
   }
   const [clients, setClients] = useState<Client[]>([]);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -1649,11 +1650,27 @@ export default function App() {
 
       const client = clientsData[0];
       
+      // Check 60 days limit
+      if (client.last_recovery_at) {
+        const lastRecoveryDate = new Date(client.last_recovery_at);
+        const now = new Date();
+        const diffTime = Math.abs(now.getTime() - lastRecoveryDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 60) {
+          const formattedDate = lastRecoveryDate.toLocaleDateString('pt-BR');
+          throw new Error(`Você só pode solicitar um novo código a cada 60 dias. Sua última solicitação foi em ${formattedDate}. Por favor, aguarde mais ${60 - diffDays} dias.`);
+        }
+      }
+
       const newCode = Array.from({length: 6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join('');
 
       const { error: updateError } = await supabase
         .from('clients')
-        .update({ code: newCode })
+        .update({ 
+          code: newCode,
+          last_recovery_at: new Date().toISOString()
+        })
         .eq('id', client.id);
 
       if (updateError) throw updateError;

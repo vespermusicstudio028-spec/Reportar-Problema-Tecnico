@@ -211,9 +211,13 @@ export default function App() {
       })));
 
       const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
-      if (rep) setUserReports(rep.map((r: any) => ({
-        id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp
-      })));
+      if (rep) {
+        setUserReports(rep.map((r: any) => ({
+          id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp
+        })));
+        const reportCount = Math.max(0, rep.length - lastSeenReportsCount);
+        setNewReportsCount(reportCount);
+      }
 
       const { data: reqs } = await supabase.from('content_requests').select('*').order('created_at', { ascending: false });
       if (reqs) {
@@ -273,6 +277,10 @@ export default function App() {
   const [lastSeenRequestsCount, setLastSeenRequestsCount] = useState(() => {
     return parseInt(localStorage.getItem('admin_last_seen_requests') || '0', 10);
   });
+  const [newReportsCount, setNewReportsCount] = useState(0);
+  const [lastSeenReportsCount, setLastSeenReportsCount] = useState(() => {
+    return parseInt(localStorage.getItem('admin_last_seen_reports') || '0', 10);
+  });
   const [isAdminLogged, setIsAdminLogged] = useState(() => {
     return localStorage.getItem('iptv_admin_logged') === 'true';
   });
@@ -297,7 +305,7 @@ export default function App() {
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
-  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | null>(null);
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showForgotCodeModal, setShowForgotCodeModal] = useState(false);
   const [forgotCodePhone, setForgotCodePhone] = useState('');
@@ -2447,6 +2455,130 @@ export default function App() {
                        )}
                      </AnimatePresence>
                    </div>
+
+                   {/* Accordion: Suporte */}
+                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'suporte' ? 'bg-white/5 border-red-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
+                     <button 
+                       onClick={() => {
+                         if (adminTab !== 'suporte') {
+                           setLastSeenReportsCount(userReports.length);
+                           localStorage.setItem('admin_last_seen_reports', userReports.length.toString());
+                           setNewReportsCount(0);
+                           setAdminTab('suporte');
+                         } else {
+                           setAdminTab(null);
+                         }
+                       }}
+                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'suporte' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-slate-800 text-slate-400'}`}>
+                           <AlertTriangle size={20} />
+                         </div>
+                         <div>
+                           <span className="text-white font-bold flex items-center gap-2">
+                             🛠️ Suporte
+                             {newReportsCount > 0 && (
+                               <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-red-500/20">
+                                 {newReportsCount} novo{newReportsCount > 1 ? 's' : ''}
+                               </span>
+                             )}
+                             {userReports.length > 0 && (
+                               <span className="bg-slate-700 text-slate-300 text-[10px] px-2 py-0.5 rounded-full">
+                                 {userReports.length}
+                               </span>
+                             )}
+                           </span>
+                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Problemas reportados pelos clientes</span>
+                         </div>
+                       </div>
+                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'suporte' ? 'rotate-180 text-red-400' : ''}`} />
+                     </button>
+                     <AnimatePresence initial={false}>
+                       {adminTab === 'suporte' && (
+                         <motion.div
+                           initial={{ height: 0, opacity: 0 }}
+                           animate={{ height: 'auto', opacity: 1 }}
+                           exit={{ height: 0, opacity: 0 }}
+                           transition={{ duration: 0.3, ease: 'easeInOut' }}
+                           className="overflow-hidden"
+                         >
+                           <div className="p-5 pt-0 space-y-4">
+                             {userReports.length > 0 ? (
+                               <div className="space-y-3">
+                                 {userReports.map((report) => {
+                                   const reportClient = clients.find(c => c.code === report.name) || null;
+                                   return (
+                                     <div key={report.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden group hover:border-slate-700 transition-all">
+                                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+                                         <div className="flex items-center gap-2 flex-wrap">
+                                           <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${
+                                             report.type === 'Canal' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                             report.type === 'Filme' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                             'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                           }`}>
+                                             {report.type}
+                                           </span>
+                                           <span className="text-white font-bold text-sm">{report.name}</span>
+                                         </div>
+                                         <span className="text-[10px] text-slate-600 font-mono shrink-0">
+                                           {new Date(report.timestamp).toLocaleString('pt-BR')}
+                                         </span>
+                                       </div>
+
+                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                         <div className="space-y-1">
+                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Problema</p>
+                                           <p className="text-sm text-slate-300 flex items-center gap-2">
+                                             <AlertTriangle size={14} className="text-amber-500" /> {report.issue}
+                                           </p>
+                                         </div>
+                                         <div className="space-y-1">
+                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Dispositivo</p>
+                                           <p className="text-sm text-slate-300 flex items-center gap-2">
+                                             <Tv size={14} className="text-indigo-400" /> {report.device}
+                                           </p>
+                                         </div>
+                                       </div>
+
+                                       {report.description && (
+                                         <div className="pt-2 border-t border-slate-800/50 mb-3">
+                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Descrição</p>
+                                           <p className="text-sm text-slate-400 leading-relaxed italic">"{report.description}"</p>
+                                         </div>
+                                       )}
+
+                                       <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-800/50">
+                                         <button
+                                           type="button"
+                                           onClick={async () => {
+                                             if (window.confirm('Marcar como resolvido/remover este reporte?')) {
+                                               await supabase.from('user_reports').delete().eq('id', report.id);
+                                             }
+                                           }}
+                                           className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors text-xs flex items-center gap-1"
+                                         >
+                                           <Trash2 size={14} /> Remover
+                                         </button>
+                                       </div>
+
+                                       <div className="absolute top-0 left-0 w-1 h-full bg-red-600/20 group-hover:bg-red-600 transition-all" />
+                                     </div>
+                                   );
+                                 })}
+                               </div>
+                             ) : (
+                               <div className="text-center py-6 border border-dashed border-slate-700/50 rounded-xl">
+                                 <AlertTriangle className="w-12 h-12 text-slate-600 mx-auto mb-2 opacity-50" />
+                                 <p className="text-slate-400 text-sm">Nenhum problema reportado no momento. 🎉</p>
+                               </div>
+                             )}
+                           </div>
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                   </div>
+
                  </div>
 
                  <button 
@@ -3208,7 +3340,7 @@ export default function App() {
               className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors relative"
             >
                <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
-               {(isAdminLogged && newRequestsCount > 0) && (
+               {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0)) && (
                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
                )}
             </button>

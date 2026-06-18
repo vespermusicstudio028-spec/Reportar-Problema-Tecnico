@@ -74,6 +74,7 @@ interface UserReport {
   device: string;
   description: string;
   timestamp: string;
+  client_code?: string;
 }
 
 const BACKGROUNDS = [
@@ -213,7 +214,7 @@ export default function App() {
       const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
       if (rep) {
         setUserReports(rep.map((r: any) => ({
-          id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp
+          id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp, client_code: r.client_code
         })));
         const reportCount = Math.max(0, rep.length - lastSeenReportsCount);
         setNewReportsCount(reportCount);
@@ -583,7 +584,8 @@ export default function App() {
           name: data.nome || '',
           issue: data.tipoProblema || '',
           device: data.dispositivo || '',
-          description: data.descricao || ''
+          description: data.descricao || '',
+          client_code: loggedClientCode || (isAdminLogged ? 'admin' : 'desconhecido')
         }]);
 
         const response = await fetch(WEBHOOK_URL, {
@@ -878,6 +880,10 @@ export default function App() {
             key={item.id}
             type="button"
             onClick={() => {
+              if (!loggedClientCode && !isAdminLogged) {
+                setShowCodeModal(true);
+                return;
+              }
               setContentType(item.id as ContentType);
               setIssueType('');
               setDevice('');
@@ -2507,7 +2513,7 @@ export default function App() {
                              {userReports.length > 0 ? (
                                <div className="space-y-3">
                                  {userReports.map((report) => {
-                                   const reportClient = clients.find(c => c.code === report.name) || null;
+                                   const reportClient = clients.find(c => c.code === report.client_code) || null;
                                    return (
                                      <div key={report.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden group hover:border-slate-700 transition-all">
                                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
@@ -2521,9 +2527,13 @@ export default function App() {
                                            </span>
                                            <span className="text-white font-bold text-sm">{report.name}</span>
                                          </div>
-                                         <span className="text-[10px] text-slate-600 font-mono shrink-0">
-                                           {new Date(report.timestamp).toLocaleString('pt-BR')}
-                                         </span>
+                                         <div className="text-right shrink-0">
+                                            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">Reportado por:</div>
+                                            <div className="text-sm font-bold text-white">{reportClient?.name || report.client_code || 'Desconhecido'}</div>
+                                            <div className="text-[10px] text-slate-600 font-mono mt-1">
+                                              {new Date(report.timestamp).toLocaleString('pt-BR')}
+                                            </div>
+                                         </div>
                                        </div>
 
                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">

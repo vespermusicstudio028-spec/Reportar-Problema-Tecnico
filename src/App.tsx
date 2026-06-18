@@ -1644,18 +1644,20 @@ export default function App() {
 
       if (updateError) throw updateError;
 
-      await fetch(WEBHOOK_URL, {
+      // Enviar requisição para o backend Serverless (Vercel)
+      const response = await fetch('/api/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'recuperacao_codigo_sms',
-          client_id: client.id,
-          name: client.name,
-          phone: client.phone,
-          new_code: newCode,
-          timestamp: new Date().toISOString()
+          to: client.phone,
+          code: newCode,
+          name: client.name
         })
       });
+
+      if (!response.ok) {
+        throw new Error('Falha ao enviar SMS. O código foi gerado mas o SMS não chegou.');
+      }
 
       alert('Seu novo código foi gerado e enviado por SMS!');
       setShowForgotCodeModal(false);

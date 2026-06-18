@@ -28,40 +28,10 @@ import {
   Eye,
   EyeOff,
   Pencil,
-  X,
-  Search,
-  PlusCircle,
-  Clapperboard as SeriesIcon,
-  Film as MovieIcon,
-  XCircle,
-  Lock
+  X
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
-
-interface TMDBResult {
-  id: number;
-  title?: string;
-  name?: string;
-  poster_path: string | null;
-  release_date?: string;
-  first_air_date?: string;
-  media_type: 'movie' | 'tv';
-}
-
-interface ContentRequest {
-  id: string;
-  client_code: string;
-  type: string;
-  title: string;
-  tmdb_id?: string;
-  poster_url?: string;
-  season?: string;
-  episode?: string;
-  status: string;
-  created_at: string;
-  year?: string;
-}
 
 type ContentType = 'Canal' | 'Filme' | 'Série' | null;
 type ActiveView = 'dashboard' | 'history' | 'profile';
@@ -74,7 +44,6 @@ interface UserReport {
   device: string;
   description: string;
   timestamp: string;
-  client_code?: string;
 }
 
 const BACKGROUNDS = [
@@ -156,31 +125,6 @@ export default function App() {
   const [annReactions, setAnnReactions] = useState<AnnouncementReaction[]>([]);
   const [annViews, setAnnViews] = useState<AnnouncementView[]>([]);
 
-  // Content Requests
-  const [showRequestModal, setShowRequestModal] = useState(false);
-  const [requestType, setRequestType] = useState<'movie' | 'tv'>('movie');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<TMDBResult[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [selectedTMDB, setSelectedTMDB] = useState<TMDBResult | null>(null);
-  const [requestSeason, setRequestSeason] = useState('');
-  const [requestEpisode, setRequestEpisode] = useState('');
-  const [contentRequests, setContentRequests] = useState<ContentRequest[]>([]);
-  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
-  const [quotaAlert, setQuotaAlert] = useState<'warning' | 'limit' | null>(null);
-
-  const getClientQuota = (clientCode: string) => {
-    const now = new Date();
-    const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const requests = contentRequests.filter(req => 
-      req.client_code === clientCode && new Date(req.created_at) >= last7Days
-    );
-    return {
-      used: requests.length,
-      remaining: Math.max(0, 2 - requests.length)
-    };
-  };
-
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
     const fetchData = async () => {
@@ -208,24 +152,13 @@ export default function App() {
 
       const { data: cli } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
       if (cli) setClients(cli.map((c: any) => ({
-        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone, addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
+        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, addedAt: c.added_at
       })));
 
       const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
-      if (rep) {
-        setUserReports(rep.map((r: any) => ({
-          id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp, client_code: r.client_code
-        })));
-        const reportCount = Math.max(0, rep.length - lastSeenReportsCount);
-        setNewReportsCount(reportCount);
-      }
-
-      const { data: reqs } = await supabase.from('content_requests').select('*').order('created_at', { ascending: false });
-      if (reqs) {
-        setContentRequests(reqs);
-        const count = Math.max(0, reqs.length - lastSeenRequestsCount);
-        setNewRequestsCount(count);
-      }
+      if (rep) setUserReports(rep.map((r: any) => ({
+        id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp
+      })));
     };
 
     fetchData();
@@ -236,11 +169,9 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series_updates' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
       .subscribe();
 
     return () => {
@@ -274,14 +205,6 @@ export default function App() {
 
   // Auth states
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [newRequestsCount, setNewRequestsCount] = useState(0);
-  const [lastSeenRequestsCount, setLastSeenRequestsCount] = useState(() => {
-    return parseInt(localStorage.getItem('admin_last_seen_requests') || '0', 10);
-  });
-  const [newReportsCount, setNewReportsCount] = useState(0);
-  const [lastSeenReportsCount, setLastSeenReportsCount] = useState(() => {
-    return parseInt(localStorage.getItem('admin_last_seen_reports') || '0', 10);
-  });
   const [isAdminLogged, setIsAdminLogged] = useState(() => {
     return localStorage.getItem('iptv_admin_logged') === 'true';
   });
@@ -306,11 +229,8 @@ export default function App() {
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
-  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | null>(null);
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
-  const [showForgotCodeModal, setShowForgotCodeModal] = useState(false);
-  const [forgotCodePhone, setForgotCodePhone] = useState('');
-  const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
   interface CatalogUpdate {
@@ -338,13 +258,9 @@ export default function App() {
     name: string;
     code: string;
     canvasLink: string;
-    email?: string;
-    phone?: string;
     addedAt: string;
-    lastRecoveryAt?: string;
   }
   const [clients, setClients] = useState<Client[]>([]);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
 
   // Image Viewer State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -353,7 +269,6 @@ export default function App() {
   const VAPID_PUBLIC_KEY = 'BM9ySPx1kYmZJlNp9_qlkb66OTA8cuSqAL0g8YkC4AD6UcIJBI9YWZHypdOPlFc6miJtgmC591QtvAkLkouOD_s';
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const [isPushLoading, setIsPushLoading] = useState(false);
-
 
   // Converte base64url para Uint8Array (necessário para VAPID)
   const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
@@ -417,128 +332,6 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedClientCode]);
 
-  // --- TMDB Search Logic ---
-  useEffect(() => {
-    const fetchTMDB = async () => {
-      if (searchQuery.trim().length < 2) {
-        setSearchResults([]);
-        return;
-      }
-      setIsSearching(true);
-      try {
-        const bearerToken = import.meta.env.VITE_TMDB_API_KEY;
-        if (!bearerToken || bearerToken === 'sua_chave_aqui' || bearerToken === 'your_tmdb_api_key') {
-          console.warn('TMDB: Chave de API não configurada.');
-          setSearchResults([]);
-          setIsSearching(false);
-          return;
-        }
-
-        const url = `https://api.themoviedb.org/3/search/${requestType}?language=pt-BR&query=${encodeURIComponent(searchQuery)}`;
-        console.log('TMDB: Buscando em', url);
-        const response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${bearerToken}`,
-            'accept': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          console.error('TMDB: Erro HTTP', response.status, await response.text());
-          setIsSearching(false);
-          return;
-        }
-
-        const data = await response.json();
-        console.log('TMDB: Resultados recebidos:', data.results?.length);
-        
-        if (data.results) {
-          const results = data.results.slice(0, 6).map((item: any) => ({
-            ...item,
-            media_type: requestType
-          }));
-          setSearchResults(results);
-        }
-      } catch (err) {
-        console.error('TMDB Error:', err);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    const debounce = setTimeout(() => {
-      fetchTMDB();
-    }, 500);
-
-    return () => clearTimeout(debounce);
-  }, [searchQuery, requestType]);
-
-  const handleSubmitContentRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedTMDB && searchQuery.trim() === '') return;
-    
-    const clientCode = loggedClientCode || (isAdminLogged ? 'admin' : '');
-    if (!clientCode) {
-      setShowRequestModal(false);
-      setShowCodeModal(true);
-      return;
-    }
-
-    setIsSubmittingRequest(true);
-    try {
-      const posterUrl = selectedTMDB?.poster_path 
-        ? `https://image.tmdb.org/t/p/w200${selectedTMDB.poster_path}` 
-        : null;
-
-      const title = selectedTMDB 
-        ? (selectedTMDB.title || selectedTMDB.name || searchQuery) 
-        : searchQuery;
-
-      const releaseDate = selectedTMDB?.release_date || selectedTMDB?.first_air_date;
-      const year = releaseDate ? releaseDate.substring(0, 4) : '';
-
-      const { error } = await supabase.from('content_requests').insert([{
-        client_code: clientCode,
-        type: requestType === 'movie' ? 'Filme' : 'Série',
-        title,
-        tmdb_id: selectedTMDB?.id?.toString(),
-        poster_url: posterUrl,
-        season: requestType === 'tv' ? requestSeason : null,
-        episode: requestType === 'tv' ? requestEpisode : null,
-        year: year,
-      }]);
-
-      if (error) {
-        console.error('Erro detalhado do Supabase:', error);
-        throw new Error(error.message || JSON.stringify(error));
-      }
-
-      setShowRequestModal(false);
-      setSearchQuery('');
-      setSelectedTMDB(null);
-      setRequestSeason('');
-      setRequestEpisode('');
-      if (!isAdminLogged && loggedClientCode) {
-        const quota = getClientQuota(loggedClientCode);
-        const newUsed = quota.used + 1; // Including the one just sent
-        if (newUsed === 1) {
-          setQuotaAlert('warning');
-        } else if (newUsed >= 2) {
-          setQuotaAlert('limit');
-        } else {
-          alert('Pedido enviado com sucesso! Nossa equipe analisará em breve.');
-        }
-      } else {
-        alert('Pedido enviado com sucesso! Nossa equipe analisará em breve.');
-      }
-    } catch (err: any) {
-      alert('Erro ao enviar pedido: ' + (err.message || 'Erro desconhecido. Verifique o console.'));
-      console.error(err);
-    } finally {
-      setIsSubmittingRequest(false);
-    }
-  };
-
   const handleReset = () => {
     setContentType(null);
     setIssueType('');
@@ -585,8 +378,7 @@ export default function App() {
           name: data.nome || '',
           issue: data.tipoProblema || '',
           device: data.dispositivo || '',
-          description: data.descricao || '',
-          client_code: loggedClientCode || (isAdminLogged ? 'admin' : 'desconhecido')
+          description: data.descricao || ''
         }]);
 
         const response = await fetch(WEBHOOK_URL, {
@@ -821,80 +613,33 @@ export default function App() {
         </div>
 
         <div id="tour-report" className="w-full max-w-lg mx-auto">
-          <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
-            <img src="/logo.png?v=2" alt="The Best IPTV" className="w-32 h-32 object-contain mb-4 drop-shadow-lg" />
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
-            <p className="text-slate-300 font-medium text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
+          <div className="text-center space-y-1 md:space-y-2 mb-4 md:mb-8 mt-0 md:mt-4 relative z-10 flex flex-col items-center">
+            <img src="/logo.png?v=2" alt="The Best IPTV" className="w-20 h-20 md:w-32 md:h-32 object-contain mb-2 md:mb-4 drop-shadow-lg" />
+            <h2 className="text-xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
+            <p className="text-slate-300 font-medium text-xs md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
           </div>
           
-          <div className="flex flex-col gap-4 w-full relative z-10">
-            <div className="w-full mb-2">
-              {(() => {
-                const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
-                return (
-                  <button
-                    onClick={() => {
-                      if (!loggedClientCode && !isAdminLogged) {
-                        setShowCodeModal(true);
-                      } else {
-                        if (isQuotaReached) {
-                          setQuotaAlert('limit');
-                          return;
-                        }
-                        setShowRequestModal(true);
-                      }
-                    }}
-                    className={`w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 ${
-                      isQuotaReached 
-                        ? 'bg-slate-700/50' 
-                        : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40'
-                    }`}
-                  >
-                    <div className={`absolute inset-0 ${isQuotaReached ? 'bg-transparent' : 'bg-white/20 group-hover:bg-white/0'} transition-colors duration-300`} />
-                    <div className={`relative ${isQuotaReached ? 'bg-slate-900/95' : 'bg-slate-900/90 group-hover:bg-transparent'} backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300`}>
-                      <div className="flex items-center gap-4">
-                        <div className={`p-2.5 rounded-xl transition-transform ${isQuotaReached ? 'bg-slate-800/80' : 'bg-white/10 group-hover:scale-110'}`}>
-                          {isQuotaReached ? <Lock className="text-slate-500 w-6 h-6" /> : <PlusCircle className="text-white w-6 h-6" />}
-                        </div>
-                        <div className="text-left">
-                          <h3 className={`font-bold text-lg tracking-wide ${isQuotaReached ? 'text-slate-400' : 'text-white'}`}>
-                            {isQuotaReached ? 'Pedidos Bloqueados' : 'Pedir Conteúdos'}
-                          </h3>
-                          <p className={`text-sm font-medium ${isQuotaReached ? 'text-slate-500' : 'text-white/70'}`}>
-                            {isQuotaReached ? 'Aguarde 7 dias' : 'Filmes e Séries'}
-                          </p>
-                        </div>
-                      </div>
-                      {!isQuotaReached && <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />}
-                    </div>
-                  </button>
-                );
-              })()}
-            </div>
+          <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
 
         {[
-          { id: 'Canal', icon: <Tv size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
-          { id: 'Filme', icon: <Film size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
-          { id: 'Série', icon: <Clapperboard size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
+          { id: 'Canal', icon: <Tv size={28} className="w-6 h-6 md:w-7 md:h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
+          { id: 'Filme', icon: <Film size={28} className="w-6 h-6 md:w-7 md:h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
+          { id: 'Série', icon: <Clapperboard size={28} className="w-6 h-6 md:w-7 md:h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
         ].map((item) => (
           <button
             key={item.id}
             type="button"
             onClick={() => {
-              if (!loggedClientCode && !isAdminLogged) {
-                setShowCodeModal(true);
-                return;
-              }
               setContentType(item.id as ContentType);
               setIssueType('');
               setDevice('');
             }}
-            className="flex items-center w-full p-5 md:p-6 gap-6 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 rounded-[1.5rem] transition-all group shadow-xl shadow-black/30"
+            className="flex items-center w-full p-4 md:p-6 gap-4 md:gap-6 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 rounded-[1.25rem] md:rounded-[1.5rem] transition-all group shadow-xl shadow-black/30"
           >
             <div className="flex items-center justify-center p-3 sm:p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl group-hover:bg-indigo-500 group-hover:border-indigo-400 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
               {item.icon}
             </div>
-            <span className="font-bold text-white text-xl md:text-2xl tracking-wide">{item.label}</span>
+            <span className="font-bold text-white text-lg md:text-2xl tracking-wide">{item.label}</span>
           </button>
         ))}
         </div>
@@ -1607,99 +1352,6 @@ export default function App() {
     setClientLink('https://testetestettt.my.canva.site/sr-carlos');
   };
 
-  const handleSaveClient = async (updatedClient: Client) => {
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .update({
-          name: updatedClient.name,
-          code: updatedClient.code,
-          canvas_link: updatedClient.canvasLink,
-          email: updatedClient.email,
-          phone: updatedClient.phone,
-        })
-        .eq('id', updatedClient.id);
-
-      if (error) throw error;
-      setEditingClient(null);
-    } catch (err: any) {
-      alert('Erro ao salvar cliente: ' + (err.message || 'Erro desconhecido.'));
-    }
-  };
-
-  const handleRecoverCode = async () => {
-    if (!forgotCodePhone.trim()) {
-      alert('Por favor, digite o seu telefone.');
-      return;
-    }
-    
-    setIsRecoveringCode(true);
-    try {
-      const { data: clientsData, error: searchError } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('phone', forgotCodePhone);
-
-      if (searchError) throw searchError;
-
-      if (!clientsData || clientsData.length === 0) {
-        alert('Nenhum cliente encontrado com este número de telefone.');
-        setIsRecoveringCode(false);
-        return;
-      }
-
-      const client = clientsData[0];
-      
-      // Check 60 days limit
-      if (client.last_recovery_at) {
-        const lastRecoveryDate = new Date(client.last_recovery_at);
-        const now = new Date();
-        const diffTime = Math.abs(now.getTime() - lastRecoveryDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays < 60) {
-          const formattedDate = lastRecoveryDate.toLocaleDateString('pt-BR');
-          throw new Error(`Você só pode solicitar um novo código a cada 60 dias. Sua última solicitação foi em ${formattedDate}. Por favor, aguarde mais ${60 - diffDays} dias.`);
-        }
-      }
-
-      const newCode = Array.from({length: 6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join('');
-
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update({ 
-          code: newCode,
-          last_recovery_at: new Date().toISOString()
-        })
-        .eq('id', client.id);
-
-      if (updateError) throw updateError;
-
-      // Enviar requisição para o backend Serverless (Vercel)
-      const response = await fetch('/api/send-sms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          to: client.phone,
-          code: newCode,
-          name: client.name
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Falha ao enviar SMS. O código foi gerado mas o SMS não chegou.');
-      }
-
-      alert('Seu novo código foi gerado e enviado por SMS!');
-      setShowForgotCodeModal(false);
-      setForgotCodePhone('');
-    } catch (err: any) {
-      alert('Erro ao recuperar código: ' + (err.message || 'Erro desconhecido.'));
-    } finally {
-      setIsRecoveringCode(false);
-    }
-  };
-
   const handleDeleteClient = async (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
       await supabase.from('clients').delete().eq('id', id);
@@ -2167,26 +1819,15 @@ export default function App() {
                                 ) : (
                                   <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
                                     {clients.map(client => (
-                                      <div 
-                                        key={client.id} 
-                                        onClick={() => setEditingClient(client)}
-                                        className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 hover:bg-slate-800/50 cursor-pointer transition-colors flex justify-between items-center gap-4 group"
-                                      >
+                                      <div key={client.id} className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 flex justify-between items-center gap-4">
                                         <div className="overflow-hidden">
-                                          <p className="text-white font-bold text-sm truncate group-hover:text-indigo-400 transition-colors">{client.name}</p>
+                                          <p className="text-white font-bold text-sm truncate">{client.name}</p>
                                           <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono group-hover:bg-slate-700 transition-colors">Código: {client.code}</span>
+                                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono">Código: {client.code}</span>
                                           </div>
                                         </div>
                                         <div className="flex items-center shrink-0">
-                                          <button 
-                                            type="button" 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDeleteClient(client.id);
-                                            }} 
-                                            className="text-slate-500 hover:text-red-400 p-2 transition-colors flex items-center justify-center"
-                                          >
+                                          <button type="button" onClick={() => handleDeleteClient(client.id)} className="text-slate-500 hover:text-red-400 p-2 transition-colors flex items-center justify-center">
                                             <Trash2 size={18} />
                                           </button>
                                         </div>
@@ -2355,257 +1996,6 @@ export default function App() {
                        )}
                      </AnimatePresence>
                    </div>
-
-                   {/* Accordion: Pedidos de Conteúdos */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'pedidos' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
-                       onClick={() => {
-                         if (adminTab !== 'pedidos') {
-                           setLastSeenRequestsCount(contentRequests.length);
-                           localStorage.setItem('admin_last_seen_requests', contentRequests.length.toString());
-                           setNewRequestsCount(0);
-                           setAdminTab('pedidos');
-                         } else {
-                           setAdminTab(null);
-                         }
-                       }}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'pedidos' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <Clapperboard size={20} />
-                         </div>
-                         <div>
-                           <span className="text-white font-bold flex items-center gap-2">
-                             Pedidos
-                             {contentRequests.length > 0 && (
-                               <span className="bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-indigo-500/20">
-                                 {contentRequests.length}
-                               </span>
-                             )}
-                           </span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Solicitações de filmes e séries</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'pedidos' ? 'rotate-180 text-indigo-400' : ''}`} />
-                     </button>
-                     <AnimatePresence initial={false}>
-                       {adminTab === 'pedidos' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                           className="overflow-hidden"
-                         >
-                           <div className="p-5 pt-0 space-y-4">
-                             {contentRequests.length > 0 ? (
-                               <div className="space-y-3">
-                                 {contentRequests.map((req) => {
-                                   const reqClient = clients.find(c => c.code === req.client_code);
-                                   return (
-                                     <div key={req.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex gap-4">
-                                       {req.poster_url ? (
-                                         <img src={req.poster_url} alt="Poster" className="w-16 h-24 object-cover rounded-md flex-shrink-0 shadow-lg" />
-                                       ) : (
-                                         <div className="w-16 h-24 bg-slate-800 rounded-md flex items-center justify-center flex-shrink-0">
-                                           {req.type === 'Filme' ? <MovieIcon size={24} className="text-slate-600"/> : <SeriesIcon size={24} className="text-slate-600"/>}
-                                         </div>
-                                       )}
-                                       <div className="flex-1 min-w-0">
-                                         <div className="flex justify-between items-start">
-                                           <div>
-                                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${req.type === 'Filme' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                                               {req.type}
-                                             </span>
-                                             <h4 className="text-white font-bold mt-1 text-sm">{req.title}</h4>
-                                             {(req.season || req.episode) && (
-                                               <p className="text-slate-400 text-xs mt-1">
-                                                 {req.season && `Temp: ${req.season} `} 
-                                                 {req.episode && `Ep: ${req.episode}`}
-                                               </p>
-                                             )}
-                                           </div>
-                                           <div className="text-right">
-                                             <div className="text-xs text-slate-500">Solicitado por:</div>
-                                             <div className="text-sm font-medium text-white">{reqClient?.name || req.client_code}</div>
-                                             {reqClient?.canvasLink && (
-                                               <a href={reqClient.canvasLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 underline block mt-1">
-                                                 Ver Canvas
-                                               </a>
-                                             )}
-                                           </div>
-                                         </div>
-                                         <div className="mt-3 text-xs text-slate-500 flex justify-between items-center">
-                                           <span>{new Date(req.created_at).toLocaleString()}</span>
-                                           <div className="flex items-center gap-1">
-                                             <a
-                                               href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                                 `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 ${req.type}: ${req.title}\n📌 Ano do conteúdo: ${req.year || ''}${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
-                                               )}`}
-                                               target="_blank"
-                                               rel="noopener noreferrer"
-                                               className="text-emerald-400 hover:text-emerald-300 font-bold px-2 py-1 rounded-md hover:bg-emerald-500/10 transition-colors flex items-center"
-                                             >
-                                               <MessageCircle size={14} className="inline mr-1" /> Enviar
-                                             </a>
-                                             <button
-                                               type="button"
-                                               onClick={async () => {
-                                                 if (window.confirm('Marcar como atendido/remover?')) {
-                                                   await supabase.from('content_requests').delete().eq('id', req.id);
-                                                 }
-                                               }}
-                                               className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors"
-                                             >
-                                               <Trash2 size={14} className="inline mr-1" /> Remover
-                                             </button>
-                                           </div>
-                                         </div>
-                                       </div>
-                                     </div>
-                                   );
-                                 })}
-                               </div>
-                             ) : (
-                               <div className="text-center py-6 border border-dashed border-slate-700/50 rounded-xl">
-                                 <Clapperboard className="w-12 h-12 text-slate-600 mx-auto mb-2 opacity-50" />
-                                 <p className="text-slate-400 text-sm">Nenhum pedido no momento.</p>
-                               </div>
-                             )}
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
-
-                   {/* Accordion: Suporte */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'suporte' ? 'bg-white/5 border-red-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
-                       onClick={() => {
-                         if (adminTab !== 'suporte') {
-                           setLastSeenReportsCount(userReports.length);
-                           localStorage.setItem('admin_last_seen_reports', userReports.length.toString());
-                           setNewReportsCount(0);
-                           setAdminTab('suporte');
-                         } else {
-                           setAdminTab(null);
-                         }
-                       }}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'suporte' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <AlertTriangle size={20} />
-                         </div>
-                         <div>
-                           <span className="text-white font-bold flex items-center gap-2">
-                             🛠️ Suporte
-                             {newReportsCount > 0 && (
-                               <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-red-500/20">
-                                 {newReportsCount} novo{newReportsCount > 1 ? 's' : ''}
-                               </span>
-                             )}
-                             {userReports.length > 0 && (
-                               <span className="bg-slate-700 text-slate-300 text-[10px] px-2 py-0.5 rounded-full">
-                                 {userReports.length}
-                               </span>
-                             )}
-                           </span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Problemas reportados pelos clientes</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'suporte' ? 'rotate-180 text-red-400' : ''}`} />
-                     </button>
-                     <AnimatePresence initial={false}>
-                       {adminTab === 'suporte' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                           className="overflow-hidden"
-                         >
-                           <div className="p-5 pt-0 space-y-4">
-                             {userReports.length > 0 ? (
-                               <div className="space-y-3">
-                                 {userReports.map((report) => {
-                                   const reportClient = clients.find(c => c.code === report.client_code) || null;
-                                   return (
-                                     <div key={report.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden group hover:border-slate-700 transition-all">
-                                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
-                                         <div className="flex items-center gap-2 flex-wrap">
-                                           <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                                             report.type === 'Canal' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                             report.type === 'Filme' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                             'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                           }`}>
-                                             {report.type}
-                                           </span>
-                                           <span className="text-white font-bold text-sm">{report.name}</span>
-                                         </div>
-                                         <div className="text-right shrink-0">
-                                            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">Reportado por:</div>
-                                            <div className="text-sm font-bold text-white">{reportClient?.name || report.client_code || 'Desconhecido'}</div>
-                                            <div className="text-[10px] text-slate-600 font-mono mt-1">
-                                              {new Date(report.timestamp).toLocaleString('pt-BR')}
-                                            </div>
-                                         </div>
-                                       </div>
-
-                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                                         <div className="space-y-1">
-                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Problema</p>
-                                           <p className="text-sm text-slate-300 flex items-center gap-2">
-                                             <AlertTriangle size={14} className="text-amber-500" /> {report.issue}
-                                           </p>
-                                         </div>
-                                         <div className="space-y-1">
-                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Dispositivo</p>
-                                           <p className="text-sm text-slate-300 flex items-center gap-2">
-                                             <Tv size={14} className="text-indigo-400" /> {report.device}
-                                           </p>
-                                         </div>
-                                       </div>
-
-                                       {report.description && (
-                                         <div className="pt-2 border-t border-slate-800/50 mb-3">
-                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Descrição</p>
-                                           <p className="text-sm text-slate-400 leading-relaxed italic">"{report.description}"</p>
-                                         </div>
-                                       )}
-
-                                       <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-800/50">
-                                         <button
-                                           type="button"
-                                           onClick={async () => {
-                                             if (window.confirm('Marcar como resolvido/remover este reporte?')) {
-                                               await supabase.from('user_reports').delete().eq('id', report.id);
-                                             }
-                                           }}
-                                           className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors text-xs flex items-center gap-1"
-                                         >
-                                           <Trash2 size={14} /> Remover
-                                         </button>
-                                       </div>
-
-                                       <div className="absolute top-0 left-0 w-1 h-full bg-red-600/20 group-hover:bg-red-600 transition-all" />
-                                     </div>
-                                   );
-                                 })}
-                               </div>
-                             ) : (
-                               <div className="text-center py-6 border border-dashed border-slate-700/50 rounded-xl">
-                                 <AlertTriangle className="w-12 h-12 text-slate-600 mx-auto mb-2 opacity-50" />
-                                 <p className="text-slate-400 text-sm">Nenhum problema reportado no momento. 🎉</p>
-                               </div>
-                             )}
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
-
                  </div>
 
                  <button 
@@ -2684,386 +2074,6 @@ export default function App() {
     </AnimatePresence>
   );
 
-  const renderRequestModal = () => (
-    <AnimatePresence>
-      {showRequestModal && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[60]"
-        >
-          <motion.div 
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 280 }}
-            className="absolute inset-0 bg-[#0d0f18] flex flex-col overflow-hidden"
-          >
-            {/* Header full-screen */}
-            <div className="flex items-center gap-4 px-4 py-4 border-b border-white/5 bg-slate-900/80 backdrop-blur-sm shrink-0">
-              <button 
-                onClick={() => setShowRequestModal(false)}
-                className="p-2 text-slate-400 hover:text-white transition-colors rounded-xl hover:bg-white/10"
-              >
-                <ChevronRight className="rotate-180" size={22} />
-              </button>
-              <div className="flex items-center gap-2">
-                <PlusCircle className="text-indigo-400" size={20} />
-                <h3 className="text-lg font-bold text-white">Pedir Conteúdo</h3>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
-              <div className="max-w-lg mx-auto px-4 py-6">
-              <form onSubmit={handleSubmitContentRequest} className="space-y-6">
-                {/* Tipo de Conteúdo */}
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setRequestType('movie')}
-                    className={`flex-1 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
-                      requestType === 'movie' 
-                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50' 
-                        : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
-                    }`}
-                  >
-                    <MovieIcon size={18} /> Filme
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRequestType('tv')}
-                    className={`flex-1 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${
-                      requestType === 'tv' 
-                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/50' 
-                        : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-800'
-                    }`}
-                  >
-                    <SeriesIcon size={18} /> Série
-                  </button>
-                </div>
-
-                {/* Campo de Busca TMDB */}
-                <div className="space-y-2 relative">
-                  <label className="text-xs uppercase tracking-wider text-slate-400 font-bold">
-                    Nome do {requestType === 'movie' ? 'Filme' : 'Série'}
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input 
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setSelectedTMDB(null); // Reset selection se o usuário voltar a digitar
-                      }}
-                      placeholder={`Digite para pesquisar o ${requestType === 'movie' ? 'filme' : 'série'}...`}
-                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 pl-10 pr-4 py-3 rounded-xl focus:border-indigo-500 outline-none"
-                      required
-                    />
-                    {isSearching && (
-                      <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 animate-spin" size={18} />
-                    )}
-                  </div>
-
-                  {/* Autocomplete Dropdown */}
-                  {searchResults.length > 0 && !selectedTMDB && (
-                    <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-64 overflow-y-auto custom-scrollbar">
-                      {searchResults.map((result) => (
-                        <button
-                          key={result.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedTMDB(result);
-                            setSearchQuery(result.title || result.name || '');
-                            setSearchResults([]);
-                          }}
-                          className="w-full text-left p-3 hover:bg-slate-700/50 transition-colors flex items-center gap-3 border-b border-slate-700/50 last:border-0"
-                        >
-                          {result.poster_path ? (
-                            <img src={`https://image.tmdb.org/t/p/w92${result.poster_path}`} alt="Poster" className="w-10 h-14 object-cover rounded-md" />
-                          ) : (
-                            <div className="w-10 h-14 bg-slate-900 rounded-md flex items-center justify-center">
-                              <Search className="text-slate-600" size={16} />
-                            </div>
-                          )}
-                          <div>
-                            <p className="font-bold text-white text-sm">{result.title || result.name}</p>
-                            <p className="text-xs text-slate-400">
-                              {result.release_date ? result.release_date.split('-')[0] : result.first_air_date ? result.first_air_date.split('-')[0] : 'Data desconhecida'}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Informações Extras para Séries */}
-                {requestType === 'tv' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wider text-slate-400 font-bold">Temporada (Opcional)</label>
-                      <input 
-                        type="text"
-                        value={requestSeason}
-                        onChange={(e) => setRequestSeason(e.target.value)}
-                        placeholder="Ex: 1, 2, Todas"
-                        className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl focus:border-indigo-500 outline-none"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wider text-slate-400 font-bold">Episódio (Opcional)</label>
-                      <input 
-                        type="text"
-                        value={requestEpisode}
-                        onChange={(e) => setRequestEpisode(e.target.value)}
-                        placeholder="Ex: 5, Todos"
-                        className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl focus:border-indigo-500 outline-none"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={isSubmittingRequest || (!selectedTMDB && searchQuery.trim() === '')}
-                  className="w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50"
-                >
-                  {isSubmittingRequest ? (
-                    <><Loader2 className="animate-spin" size={20} /> Enviando Pedido...</>
-                  ) : (
-                    <><CheckCircle2 size={20} /> Solicitar Conteúdo</>
-                  )}
-                </button>
-              </form>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  const renderClientEditModal = () => {
-    if (!editingClient) return null;
-
-    return (
-      <AnimatePresence>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
-          onClick={() => setEditingClient(null)}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[#0c0e12] border border-slate-700 w-full max-w-lg rounded-2xl p-6 relative shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setEditingClient(null)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors"
-            >
-              <X size={20} />
-            </button>
-            <h2 className="text-xl font-bold text-white mb-6">Informações do Cliente</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleSaveClient(editingClient);
-            }} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Nome</label>
-                <input
-                  type="text"
-                  required
-                  value={editingClient.name}
-                  onChange={(e) => setEditingClient({ ...editingClient, name: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Código de Acesso</label>
-                <input
-                  type="text"
-                  required
-                  value={editingClient.code}
-                  onChange={(e) => setEditingClient({ ...editingClient, code: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">E-mail</label>
-                <input
-                  type="email"
-                  value={editingClient.email || ''}
-                  onChange={(e) => setEditingClient({ ...editingClient, email: e.target.value })}
-                  placeholder="cliente@email.com"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Telefone / WhatsApp</label>
-                <input
-                  type="text"
-                  value={editingClient.phone || ''}
-                  onChange={(e) => setEditingClient({ ...editingClient, phone: e.target.value })}
-                  placeholder="(00) 00000-0000"
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Link do Canva</label>
-                <input
-                  type="url"
-                  required
-                  value={editingClient.canvasLink}
-                  onChange={(e) => setEditingClient({ ...editingClient, canvasLink: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-              
-              <button
-                type="submit"
-                className="w-full py-3 mt-6 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center"
-              >
-                Salvar Alterações
-              </button>
-            </form>
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
-    );
-  };
-
-  const renderQuotaModal = () => (
-    <AnimatePresence>
-      {quotaAlert && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          onClick={() => setQuotaAlert(null)}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl relative"
-            onClick={e => e.stopPropagation()}
-          >
-            {quotaAlert === 'warning' ? (
-              <div className="p-6">
-                <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                  <AlertTriangle className="w-8 h-8 text-amber-500" />
-                </div>
-                <h2 className="text-xl font-bold text-white text-center mb-4">Aviso Importante - The Best IPTV</h2>
-                <div className="space-y-4 text-sm text-slate-300 text-center">
-                  <p>Você possui apenas <strong className="text-white">1 solicitação de conteúdo restante</strong> nesta semana.</p>
-                  <p>🎬 Aproveite para escolher o filme ou série que deseja adicionar ao catálogo.</p>
-                  <p>Após utilizar esta solicitação, será necessário aguardar a liberação de novos pedidos na próxima semana.</p>
-                  <p className="font-bold text-amber-400">Obrigado por utilizar a The Best IPTV! 🚀</p>
-                </div>
-                <button
-                  onClick={() => setQuotaAlert(null)}
-                  className="mt-8 w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 rounded-xl transition-colors"
-                >
-                  Entendi
-                </button>
-              </div>
-            ) : (
-              <div className="p-6">
-                <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                  <XCircle className="w-8 h-8 text-red-500" />
-                </div>
-                <h2 className="text-xl font-bold text-white text-center mb-4">Limite de Solicitações Atingido</h2>
-                <div className="space-y-4 text-sm text-slate-300 text-center">
-                  <p>Você já utilizou suas <strong className="text-white">2 solicitações de conteúdo</strong> desta semana.</p>
-                  <p>🗓️ Aguarde <strong className="text-white">7 dias</strong> para realizar novos pedidos de filmes ou séries.</p>
-                  <p className="font-bold text-red-400">Obrigado pela compreensão! 🍿🚀</p>
-                </div>
-                <button
-                  onClick={() => setQuotaAlert(null)}
-                  className="mt-8 w-full bg-slate-800 hover:bg-slate-700 text-white font-medium py-3 rounded-xl transition-colors"
-                >
-                  Fechar
-                </button>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
-  const renderForgotCodeModal = () => (
-    <AnimatePresence>
-      {showForgotCodeModal && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          onClick={() => setShowForgotCodeModal(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[#0c0e12] border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl relative"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
-            
-            <button 
-              onClick={() => setShowForgotCodeModal(false)}
-              className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
-            >
-              <X size={20} />
-            </button>
-            
-            <div className="p-8">
-              <div className="flex justify-center mb-6">
-                <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center">
-                  <Lock className="text-indigo-400 w-8 h-8" />
-                </div>
-              </div>
-              
-              <h2 className="text-2xl font-bold text-center text-white mb-2">Recuperar Código</h2>
-              <p className="text-slate-400 text-center text-sm mb-8">
-                Digite o seu número de Telefone ou WhatsApp para enviarmos um novo código de acesso por SMS.
-              </p>
-              
-              <div className="space-y-4">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={forgotCodePhone}
-                    onChange={(e) => setForgotCodePhone(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-800 text-white px-4 py-3.5 rounded-xl outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-center text-lg"
-                    placeholder="(00) 00000-0000"
-                  />
-                </div>
-                
-                <button
-                  onClick={handleRecoverCode}
-                  disabled={isRecoveringCode}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isRecoveringCode ? 'Enviando SMS...' : 'Enviar por SMS'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-
   const renderCodeModal = () => (
     <AnimatePresence>
       {showCodeModal && (
@@ -3133,19 +2143,6 @@ export default function App() {
               >
                 Acessar Painel <ChevronRight size={18} />
               </button>
-              
-              <div className="mt-4 text-center">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCodeModal(false);
-                    setShowForgotCodeModal(true);
-                  }}
-                  className="text-sm font-medium text-slate-400 hover:text-indigo-400 transition-colors cursor-pointer"
-                >
-                  Esqueci meu código
-                </button>
-              </div>
             </form>
 
             <div className="mt-8 pt-6 border-t border-slate-800/50 space-y-4">
@@ -3316,7 +2313,7 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col p-4 md:p-8 pb-24 md:pb-8 overflow-hidden relative">
+      <main className="flex-1 flex flex-col p-4 md:p-8 pb-4 md:pb-8 overflow-hidden relative">
         <header className="flex justify-between items-start md:items-center mb-6 shrink-0 pt-2 md:pt-0">
           <div className="flex items-center gap-3 md:gap-4">
              <div className="md:hidden flex items-center justify-center drop-shadow-md mr-1">
@@ -3364,12 +2361,9 @@ export default function App() {
             </button>
             <button 
               onClick={() => setShowLoginModal(true)}
-              className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors relative"
+              className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors"
             >
                <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
-               {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0)) && (
-                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
-               )}
             </button>
           </div>
         </header>
@@ -3392,11 +2386,7 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
-      {renderClientEditModal()}
-      {renderQuotaModal()}
-      {renderForgotCodeModal()}
       {renderCodeModal()}
-      {renderRequestModal()}
       {renderUpdatesModal()}
       {renderLoginModal()}
 

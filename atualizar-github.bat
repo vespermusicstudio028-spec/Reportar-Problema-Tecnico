@@ -24,7 +24,6 @@ git branch -M main
 git remote add origin https://github.com/vespermusicstudio028-spec/Reportar-Problema-Tecnico.git 2>nul
 
 :: Envia os arquivos para o GitHub
-git pull origin main --rebase
 git push -u origin main
 
 echo.

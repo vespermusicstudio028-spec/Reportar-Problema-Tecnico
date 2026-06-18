@@ -613,18 +613,18 @@ export default function App() {
         </div>
 
         <div id="tour-report" className="w-full max-w-lg mx-auto">
-          <div className="text-center space-y-1 md:space-y-2 mb-4 md:mb-8 mt-0 md:mt-4 relative z-10 flex flex-col items-center">
-            <img src="/logo.png?v=2" alt="The Best IPTV" className="w-20 h-20 md:w-32 md:h-32 object-contain mb-2 md:mb-4 drop-shadow-lg" />
-            <h2 className="text-xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
-            <p className="text-slate-300 font-medium text-xs md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
+          <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
+            <img src="/logo.png?v=2" alt="The Best IPTV" className="w-32 h-32 object-contain mb-4 drop-shadow-lg" />
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
+            <p className="text-slate-300 font-medium text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
           </div>
           
-          <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
+          <div className="flex flex-col gap-4 w-full relative z-10">
 
         {[
-          { id: 'Canal', icon: <Tv size={28} className="w-6 h-6 md:w-7 md:h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
-          { id: 'Filme', icon: <Film size={28} className="w-6 h-6 md:w-7 md:h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
-          { id: 'Série', icon: <Clapperboard size={28} className="w-6 h-6 md:w-7 md:h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
+          { id: 'Canal', icon: <Tv size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
+          { id: 'Filme', icon: <Film size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
+          { id: 'Série', icon: <Clapperboard size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
         ].map((item) => (
           <button
             key={item.id}
@@ -634,12 +634,12 @@ export default function App() {
               setIssueType('');
               setDevice('');
             }}
-            className="flex items-center w-full p-4 md:p-6 gap-4 md:gap-6 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 rounded-[1.25rem] md:rounded-[1.5rem] transition-all group shadow-xl shadow-black/30"
+            className="flex items-center w-full p-5 md:p-6 gap-6 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 rounded-[1.5rem] transition-all group shadow-xl shadow-black/30"
           >
             <div className="flex items-center justify-center p-3 sm:p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl group-hover:bg-indigo-500 group-hover:border-indigo-400 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
               {item.icon}
             </div>
-            <span className="font-bold text-white text-lg md:text-2xl tracking-wide">{item.label}</span>
+            <span className="font-bold text-white text-xl md:text-2xl tracking-wide">{item.label}</span>
           </button>
         ))}
         </div>
@@ -2313,7 +2313,7 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col p-4 md:p-8 pb-4 md:pb-8 overflow-hidden relative">
+      <main className="flex-1 flex flex-col p-4 md:p-8 pb-24 md:pb-8 overflow-hidden relative">
         <header className="flex justify-between items-start md:items-center mb-6 shrink-0 pt-2 md:pt-0">
           <div className="flex items-center gap-3 md:gap-4">
              <div className="md:hidden flex items-center justify-center drop-shadow-md mr-1">

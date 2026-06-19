@@ -34,7 +34,8 @@ import {
   Clapperboard as SeriesIcon,
   Film as MovieIcon,
   XCircle,
-  Lock
+  Lock,
+  Gift
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -145,6 +146,7 @@ interface Announcement {
 
 export default function App() {
   const [contentType, setContentType] = useState<ContentType>(null);
+  const [showTrialDevices, setShowTrialDevices] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   
   // User Reports History
@@ -641,6 +643,58 @@ export default function App() {
     const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
     const currentCode = loggedClientCode || (isAdminLogged ? 'admin' : null);
 
+    if (showTrialDevices) {
+      const trialDevices = [
+        'TV Android (Play Store)',
+        'Smart TV',
+        'Celular',
+        'TV Box',
+        'Computador',
+        'Mi Stick Tv'
+      ];
+
+      return (
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+        >
+          <div className="w-full max-w-lg mx-auto">
+            <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md uppercase">QUAL É O SEU DISPOSITIVO PRINCIPAL ?</h2>
+            </div>
+            
+            <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
+              {trialDevices.map((device, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *${device}*`;
+                    const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
+                    window.open(waUrl, '_blank');
+                    setShowTrialDevices(false);
+                  }}
+                  className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
+                >
+                  <span className="font-bold text-white text-lg tracking-wide">{device}</span>
+                </button>
+              ))}
+
+              <button
+                type="button"
+                onClick={() => setShowTrialDevices(false)}
+                className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
+              >
+                VOLTAR
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      );
+    }
+
     return (
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -829,6 +883,29 @@ export default function App() {
           
           <div className="flex flex-col gap-4 w-full relative z-10">
             <div className="w-full mb-2">
+              <button
+                onClick={() => setShowTrialDevices(true)}
+                className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40 mb-4"
+              >
+                <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+                <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
+                      <Gift className="text-white w-6 h-6" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-bold text-lg tracking-wide text-white">
+                        Fazer um teste grátis de 3h
+                      </h3>
+                      <p className="text-sm font-medium text-white/70">
+                        Selecione seu dispositivo
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                </div>
+              </button>
+
               {(() => {
                 const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
                 return (

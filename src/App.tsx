@@ -3586,63 +3586,35 @@ export default function App() {
               </button>
             </div>
             
-            {/* Desktop Teste Grátis */}
+            {/* Teste Grátis (Desktop e Mobile) */}
             {activeView === 'dashboard' && !trialState && !contentType && (
-              <div className="hidden md:block w-full max-w-[420px]">
+              <div className="block w-full max-w-[420px] min-w-[200px]">
                 <button
                   onClick={() => setTrialState('devices')}
                   className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40"
                 >
                   <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
-                  <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
-                        <Gift className="text-white w-6 h-6" />
+                  <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-3 md:px-6 py-3 md:py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                    <div className="flex items-center gap-2 md:gap-4">
+                      <div className="p-2 md:p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
+                        <Gift className="text-white w-5 h-5 md:w-6 md:h-6" />
                       </div>
                       <div className="text-left">
-                        <h3 className="font-bold text-[15px] tracking-wide text-white">
+                        <h3 className="font-bold text-[12px] md:text-[15px] tracking-wide text-white leading-tight">
                           Fazer um teste grátis de 3h
                         </h3>
-                        <p className="text-xs font-medium text-white/70">
+                        <p className="text-[10px] md:text-xs font-medium text-white/70">
                           Selecione seu dispositivo
                         </p>
                       </div>
                     </div>
-                    <ChevronRight size={18} className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                    <ChevronRight size={16} className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all ml-1" />
                   </div>
                 </button>
               </div>
             )}
           </div>
         </header>
-        
-        {/* Mobile Teste Grátis */}
-        {activeView === 'dashboard' && !trialState && !contentType && (
-          <div className="w-full mb-4 md:hidden">
-            <button
-              onClick={() => setTrialState('devices')}
-              className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40"
-            >
-              <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
-              <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-5 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
-                    <Gift className="text-white w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="font-bold text-[15px] tracking-wide text-white leading-tight">
-                      Fazer um teste grátis de 3h
-                    </h3>
-                    <p className="text-[11px] font-medium text-white/70">
-                      Selecione seu dispositivo
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
-              </div>
-            </button>
-          </div>
-        )}
 
         <div className="flex-1 flex flex-col min-h-0 bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-4 sm:p-6 md:p-8 overflow-hidden relative shadow-2xl shadow-black/50">
           <AnimatePresence mode="wait">

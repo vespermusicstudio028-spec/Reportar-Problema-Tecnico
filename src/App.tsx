@@ -148,7 +148,15 @@ export default function App() {
   const [contentType, setContentType] = useState<ContentType>(null);
   const [trialState, setTrialState] = useState<'devices' | 'android' | 'smartv' | 'celular' | 'lg' | 'samsung' | 'roku' | 'outromodelo' | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
+  const [isTrialEnabled, setIsTrialEnabled] = useState(() => {
+    const saved = localStorage.getItem('tbi_trial_enabled');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+
+  useEffect(() => {
+    localStorage.setItem('tbi_trial_enabled', String(isTrialEnabled));
+  }, [isTrialEnabled]);
   
   // User Reports History
   const [userReports, setUserReports] = useState<UserReport[]>([]);
@@ -2230,8 +2238,19 @@ export default function App() {
                      <LayoutDashboard size={24} className="text-indigo-400" />
                    </div>
                    <div className="flex-1">
-                     <h2 className="text-xl font-bold text-white tracking-tight">Painel Admin</h2>
-                     <p className="text-emerald-400 text-sm">Autenticado com sucesso</p>
+                     <div className="flex items-center gap-6">
+                        <h2 className="text-xl font-bold text-white tracking-tight">Painel Admin</h2>
+                        <div className="flex items-center gap-2 bg-[#0c0e12] px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Teste Grátis</span>
+                          <button
+                            onClick={() => setIsTrialEnabled(!isTrialEnabled)}
+                            className={`relative w-9 h-5 rounded-full transition-colors duration-300 focus:outline-none ${isTrialEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                          >
+                            <div className={`absolute top-[2px] left-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${isTrialEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-emerald-400 text-sm mt-0.5">Autenticado com sucesso</p>
                    </div>
                  </div>
 
@@ -3849,7 +3868,7 @@ export default function App() {
             </div>
             
             {/* Teste Grátis (Desktop e Mobile) */}
-            {activeView === 'dashboard' && !trialState && !contentType && (
+            {activeView === 'dashboard' && !trialState && !contentType && isTrialEnabled && (
               <div className="block w-full max-w-[420px] min-w-[200px]">
                 <button
                   onClick={() => setTrialState('devices')}
@@ -3934,3 +3953,4 @@ export default function App() {
     </div>
   );
 }
+

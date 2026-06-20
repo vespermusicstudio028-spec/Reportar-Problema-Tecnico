@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './lib/supabase';
+import { TrialConfig, defaultTrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from './types/trial';
+import { TrialAdminPanel } from './components/TrialAdminPanel';
+import { TrialFlowRenderer } from './components/TrialFlowRenderer';
 import { 
   RefreshCcw,
   Tv, 
@@ -146,8 +149,9 @@ interface Announcement {
 
 export default function App() {
   const [contentType, setContentType] = useState<ContentType>(null);
-  const [trialState, setTrialState] = useState<'devices' | 'android' | 'smartv' | 'celular' | 'lg' | 'samsung' | 'roku' | 'outromodelo' | null>(null);
+  const [trialState, setTrialState] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
+  const [trialConfig, setTrialConfig] = useState<TrialConfig>(defaultTrialConfig);
   const [isTrialEnabled, setIsTrialEnabled] = useState(() => {
     const saved = localStorage.getItem('tbi_trial_enabled');
     return saved !== null ? saved === 'true' : true;
@@ -192,9 +196,23 @@ export default function App() {
     };
   };
 
+  const saveTrialConfig = async (newConfig: TrialConfig) => {
+    setTrialConfig(newConfig);
+    await supabase.from('app_settings').upsert({ id: 'trial_config', config_data: newConfig });
+  };
+
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
     const fetchData = async () => {
+      try {
+        const { data: settings } = await supabase.from('app_settings').select('config_data').eq('id', 'trial_config').single();
+        if (settings && settings.config_data && settings.config_data.devices) {
+          setTrialConfig(settings.config_data as TrialConfig);
+        }
+      } catch (e) {
+        console.error("Error fetching trial config", e);
+      }
+
       const { data: ann } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
       if (ann) setAnnouncements(ann.map((a: any) => ({
         id: a.id, category: a.category, name: a.name, status: a.status, 
@@ -653,474 +671,7 @@ export default function App() {
     const currentCode = loggedClientCode || (isAdminLogged ? 'admin' : null);
 
     if (trialState) {
-      if (trialState === 'android') {
-        return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-          >
-            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">TV Android</h2>
-              
-              <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
-                <p className="font-medium">
-                  <strong className="text-white">Baixe agora o aplicativo do nosso STREAMING</strong> e comece a desfrutar de uma experiência de TV mais completa e emocionante!
-                </p>
-                
-                <p>Baixe agora o aplicativo!</p>
-                
-                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-6">
-                  <p className="text-indigo-300 mb-2 font-medium italic">Clique no link abaixo para assistir o vídeo de como fazer o download:</p>
-                  <a 
-                    href="https://abre.ai/newhybridtcl" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-white font-bold underline hover:text-indigo-400 break-all"
-                  >
-                    https://abre.ai/newhybridtcl
-                  </a>
-                </div>
-
-                <p>
-                  <strong className="text-white">Aproveite nossos recursos:</strong> Mais de <span className="font-bold text-indigo-400">[2.700]</span> canais de TV ao vivo, filmes e séries em HD, programação esportiva ao vivo e muito mais!
-                </p>
-                
-                <p className="font-medium text-white pt-2 border-t border-slate-700/50 mt-4">
-                  Se tiver alguma dúvida, entre em contato conosco!
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setTrialState('devices')}
-                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
-              >
-                VOLTAR
-              </button>
-            </div>
-          </motion.div>
-        );
-      }
-
-      if (trialState === 'celular') {
-        return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-          >
-            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider flex items-center justify-center gap-2">
-                CELULAR 📳
-              </h2>
-              
-              <div className="space-y-6 text-slate-300 text-sm md:text-base text-center">
-                <p className="text-lg font-bold text-white">
-                  Baixe agora o nosso aplicativo!
-                </p>
-                
-                <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl">
-                  <p className="text-indigo-300 mb-3 font-medium italic text-left">Faça o download agora:</p>
-                  <p className="mb-2 text-lg text-left">
-                    Link direto: <a href="https://abrela.me/newhybrid" target="_blank" rel="noopener noreferrer" className="font-black text-white underline hover:text-indigo-400 break-all">abrela.me/newhybrid</a>
-                  </p>
-                  <p className="text-lg text-white text-left">Cod downloader: <span className="font-bold text-indigo-300 tracking-wider">4466913</span></p>
-                </div>
-
-                <div className="space-y-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAppDescription(!showAppDescription)}
-                    className="w-full py-3 bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-xl text-white font-bold transition-all flex items-center justify-center gap-2"
-                  >
-                    Descrição do Aplicativo
-                    <ChevronDown size={18} className={`transition-transform duration-300 ${showAppDescription ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  <AnimatePresence>
-                    {showAppDescription && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-700/50 text-left text-sm space-y-3">
-                          <p className="font-bold text-amber-400 text-center">📢 ATUALIZAÇÃO IMPORTANTE - New Hybrid P2P 1.6.0 📢</p>
-                          <p className="text-center font-bold text-white">New Hybrid<br/><span className="font-normal text-indigo-300">update para todos direto pelo app</span></p>
-                          
-                          <ul className="list-disc pl-5 space-y-1 text-slate-300">
-                            <li>Corrigido atualização canais ao vivo na barra de programação</li>
-                            <li>Corrigido ao sair da tela cheia o canal parava para alguns dispositivos</li>
-                            <li>Corrigido o problema de encerramento forçado</li>
-                            <li>Aplicativo quando encerrado agora volta para mesmo canal assistido quando aberto novamente</li>
-                          </ul>
-
-                          <p className="text-slate-400 italic text-center pt-2 border-t border-slate-700/50">Seguimos sempre para entregar o melhor app p2p do mercado a todos, Obrigado pela confiança de todos.</p>
-                          
-                          <div className="space-y-1 pt-2">
-                            <p>🔐 Melhorias de segurança</p>
-                            <p>📱 Compatibilidade com celulares Xiaomi</p>
-                            <p>📺 Correção de canais com tela preta</p>
-                            <p>⚡️ Melhora na performance de carregamento de canais e app</p>
-                            <p>📑 Botão 'Atualizar Conteúdo' para canais</p>
-                          </div>
-
-                          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg mt-3">
-                            <p className="font-bold text-amber-400 mb-1">⚠️ IMPORTANTE:</p>
-                            <p className="text-amber-200/80 text-xs leading-relaxed">
-                              É essencial que todos atualizem, pois versões antigas irão parar de funcionar em breve. A atualização aparecerá automaticamente no seu aplicativo, basta clicar em "Atualizar".
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <p className="text-sm bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
-                  <strong className="text-emerald-400 block mb-1">Segurança garantida:</strong> Nosso aplicativo é seguro e confiável.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setTrialState('devices')}
-                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
-              >
-                VOLTAR
-              </button>
-            </div>
-          </motion.div>
-        );
-      }
-
-      if (trialState === 'smartv') {
-        const smartTvBrands = [
-          { id: 'F', name: 'LG' },
-          { id: 'G', name: 'SAMSUNG' },
-          { id: 'H', name: 'ROKU' },
-          { id: 'i', name: 'OUTRO MODELO' }
-        ];
-
-        return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-          >
-            <div className="w-full max-w-lg mx-auto">
-              <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
-                <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-md uppercase mb-2">SMARTV</h2>
-                <h3 className="text-lg md:text-xl font-bold tracking-tight text-indigo-300 drop-shadow-md uppercase">QUAL SERIA SUA SMARTV?</h3>
-              </div>
-              
-              <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
-                {smartTvBrands.map((brand) => (
-                  <button
-                    key={brand.id}
-                    type="button"
-                    onClick={() => {
-                      if (brand.name === 'LG') {
-                        setTrialState('lg');
-                      } else if (brand.name === 'SAMSUNG') {
-                        setTrialState('samsung');
-                      } else if (brand.name === 'ROKU') {
-                        setTrialState('roku');
-                      } else if (brand.name === 'OUTRO MODELO') {
-                        setTrialState('outromodelo');
-                      } else {
-                        const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *Smart TV - ${brand.name}*`;
-                        const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
-                        window.open(waUrl, '_blank');
-                        setTrialState(null);
-                      }
-                    }}
-                    className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
-                  >
-                    <span className="font-bold text-white text-lg tracking-wide">{brand.name}</span>
-                  </button>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={() => setTrialState('devices')}
-                  className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
-                >
-                  VOLTAR
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        );
-      }
-
-      if (trialState === 'lg') {
-        return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-          >
-            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">SMARTV LG</h2>
-              
-              <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
-                <p className="font-medium">
-                  <strong className="text-white">Baixe agora o aplicativo do nosso STREAMING</strong> e comece a desfrutar de uma experiência de TV mais completa e emocionante!
-                </p>
-                
-                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-6">
-                  <p className="text-indigo-300 mb-2 font-medium italic">Clique aqui no link abaixo:</p>
-                  <a 
-                    href="https://abre.ai/lgvuplayer" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-white font-bold underline hover:text-indigo-400 break-all text-lg"
-                  >
-                    abre.ai/lgvuplayer
-                  </a>
-                </div>
-
-                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-200 text-center font-bold">
-                  🚨 ESSE APLICATIVO TEM UMA MANUTENÇÃO DE CUSTO NO VALOR DE R$19,00 <span className="text-red-400">ANUAL</span> 🚨
-                </div>
-
-                <p>
-                  <strong className="text-white">Aproveite nossos recursos:</strong> Mais de <span className="font-bold text-indigo-400">[2.700]</span> canais de TV ao vivo, filmes e séries em HD, programação esportiva ao vivo e muito mais!
-                </p>
-                
-                <p className="font-medium text-white pt-2 border-t border-slate-700/50 mt-4 text-center">
-                  Se tiver alguma dúvida, entre em contato conosco!
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setTrialState('smartv')}
-                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
-              >
-                VOLTAR
-              </button>
-            </div>
-          </motion.div>
-        );
-      }
-
-      if (trialState === 'samsung') {
-        return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-          >
-            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">SMARTV SAMSUNG</h2>
-              
-              <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
-                <p className="font-medium">
-                  <strong className="text-white">Baixe agora o aplicativo do nosso STREAMING</strong> e comece a desfrutar de uma experiência de TV mais completa e emocionante!
-                </p>
-                
-                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-6">
-                  <p className="text-indigo-300 mb-2 font-medium italic">Clique aqui no link abaixo:</p>
-                  <a 
-                    href="https://abre.ai/samsungvuplayer" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-white font-bold underline hover:text-indigo-400 break-all text-lg"
-                  >
-                    abre.ai/samsungvuplayer
-                  </a>
-                </div>
-
-                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-200 text-center font-bold">
-                  🚨 ESSE APLICATIVO TEM UMA MANUTENÇÃO DE CUSTO NO VALOR DE R$19,00 <span className="text-red-400">ANUAL</span> 🚨
-                </div>
-
-                <p>
-                  <strong className="text-white">Aproveite nossos recursos:</strong> Mais de <span className="font-bold text-indigo-400">[2.700]</span> canais de TV ao vivo, filmes e séries em HD, programação esportiva ao vivo e muito mais!
-                </p>
-                
-                <p className="font-medium text-white pt-2 border-t border-slate-700/50 mt-4 text-center">
-                  Se tiver alguma dúvida, entre em contato conosco!
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setTrialState('smartv')}
-                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
-              >
-                VOLTAR
-              </button>
-            </div>
-          </motion.div>
-        );
-      }
-
-      if (trialState === 'roku') {
-        return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-          >
-            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">SMARTV COM SISTEMA ROKU</h2>
-              
-              <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
-                <p className="font-medium">
-                  <strong className="text-white">Baixe agora o aplicativo do nosso STREAMING</strong> e comece a desfrutar de uma experiência de TV mais completa e emocionante!
-                </p>
-                
-                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-6">
-                  <p className="text-indigo-300 mb-2 font-medium italic">Clique aqui no link abaixo:</p>
-                  <a 
-                    href="https://abre.ai/rokuvuplayer" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-white font-bold underline hover:text-indigo-400 break-all text-lg"
-                  >
-                    abre.ai/rokuvuplayer
-                  </a>
-                </div>
-
-                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-200 text-center font-bold">
-                  🚨 ESSE APLICATIVO TEM UMA MANUTENÇÃO DE CUSTO NO VALOR DE R$19,00 <span className="text-red-400">ANUAL</span> 🚨
-                </div>
-
-                <p>
-                  <strong className="text-white">Aproveite nossos recursos:</strong> Mais de <span className="font-bold text-indigo-400">[2.700]</span> canais de TV ao vivo, filmes e séries em HD, programação esportiva ao vivo e muito mais!
-                </p>
-                
-                <p className="font-medium text-white pt-2 border-t border-slate-700/50 mt-4 text-center">
-                  Se tiver alguma dúvida, entre em contato conosco!
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setTrialState('smartv')}
-                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
-              >
-                VOLTAR
-              </button>
-            </div>
-          </motion.div>
-        );
-      }
-
-      if (trialState === 'outromodelo') {
-        return (
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-          >
-            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
-              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">OUTRO MODELO DE TV</h2>
-              
-              <div className="space-y-6 text-slate-300 text-sm md:text-base leading-relaxed text-center">
-                <p className="text-red-300 font-bold bg-red-500/10 p-4 rounded-xl border border-red-500/20">
-                  Não é possível instalar o aplicativo diretamente em OUTRO modelo de TV.
-                </p>
-
-                <p className="font-medium text-white">
-                  Mas não se preocupe! Você pode usar um dispositivo <span className="text-indigo-400 font-bold">TV Box</span> para acessar nossos conteúdos.
-                </p>
-                
-                <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl my-6 flex flex-col items-center">
-                  <p className="text-indigo-300 mb-3 font-medium italic">Clique no link abaixo para adquirir um de nossos dispositivos TV Box:</p>
-                  <a 
-                    href="https://abre.ai/comprarboxtbii" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-block px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-colors break-all"
-                  >
-                    https://abre.ai/comprarboxtbii
-                  </a>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setTrialState('smartv')}
-                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
-              >
-                VOLTAR
-              </button>
-            </div>
-          </motion.div>
-        );
-      }
-
-      // Default: 'devices'
-      const trialDevices = [
-        'TV Android (Play Store)',
-        'Smart TV',
-        'Celular',
-        'TV Box',
-        'Computador',
-        'Mi Stick Tv'
-      ];
-
-      return (
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-        >
-          <div className="w-full max-w-lg mx-auto">
-            <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
-              <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md uppercase">QUAL É O SEU DISPOSITIVO PRINCIPAL ?</h2>
-            </div>
-            
-            <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
-              {trialDevices.map((device, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    if (device === 'TV Android (Play Store)') {
-                      setTrialState('android');
-                    } else if (device === 'Smart TV') {
-                      setTrialState('smartv');
-                    } else if (device === 'Celular') {
-                      setTrialState('celular');
-                    } else {
-                      const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *${device}*`;
-                      const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
-                      window.open(waUrl, '_blank');
-                      setTrialState(null);
-                    }
-                  }}
-                  className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
-                >
-                  <span className="font-bold text-white text-lg tracking-wide">{device}</span>
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => setTrialState(null)}
-                className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
-              >
-                VOLTAR
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      );
+      return <TrialFlowRenderer config={trialConfig} onClose={() => setTrialState(null)} />;
     }
 
     return (
@@ -2255,6 +1806,38 @@ export default function App() {
                  </div>
 
                  <div className="space-y-3">
+                   {/* Accordion: CMS Teste Grátis */}
+                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'cms-trial' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
+                     <button 
+                       onClick={() => setAdminTab(adminTab === 'cms-trial' ? null : 'cms-trial')}
+                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
+                     >
+                       <div className="flex items-center gap-3">
+                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'cms-trial' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>
+                           <Tv size={20} />
+                         </div>
+                         <div>
+                           <span className="text-white font-bold block">Gerenciar Teste Grátis</span>
+                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Botões, textos e links</span>
+                         </div>
+                       </div>
+                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'cms-trial' ? 'rotate-180 text-indigo-400' : ''}`} />
+                     </button>
+                     
+                     <AnimatePresence>
+                       {adminTab === 'cms-trial' && (
+                         <motion.div
+                           initial={{ height: 0, opacity: 0 }}
+                           animate={{ height: 'auto', opacity: 1 }}
+                           exit={{ height: 0, opacity: 0 }}
+                           className="border-t border-slate-800/50 p-5 bg-[#0a0c10]"
+                         >
+                           <TrialAdminPanel config={trialConfig} onSave={saveTrialConfig} />
+                         </motion.div>
+                       )}
+                     </AnimatePresence>
+                   </div>
+
                    {/* Accordion: Informes */}
                    <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'informes' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
                      <button 

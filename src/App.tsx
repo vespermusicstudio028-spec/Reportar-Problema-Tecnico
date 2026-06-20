@@ -3537,77 +3537,108 @@ export default function App() {
              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">Reportar<br className="md:hidden" />Problema Técnico</h1>
           </div>
           
-          <div className="flex items-center gap-2 md:gap-3 text-sm text-slate-400">
-            <button
-              type="button"
-              onClick={() => setShowUpdatesModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 rounded-lg text-emerald-300 hover:text-emerald-200 font-bold transition-all h-9"
-            >
-              <Clapperboard size={15} />
-              <span className="hidden sm:inline">Atualizações</span>
-            </button>
-            <button
-              id="tour-access-code"
-              type="button"
-              onClick={() => {
-                if (loggedClientCode || isAdminLogged) {
-                  setActiveView(activeView === 'profile' ? 'dashboard' : 'profile');
-                } else {
-                  setShowCodeModal(true);
-                }
-              }}
-              className="flex items-center gap-2 px-3 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 rounded-lg text-indigo-300 hover:text-indigo-200 font-bold transition-all h-9"
-            >
-              {(loggedClientCode || isAdminLogged) ? (
-                activeView === 'profile' ? <LayoutDashboard size={14} /> : <User size={14} />
-              ) : (
-                <Key size={14} />
-              )}
-              <span className="hidden sm:inline">
-                {(loggedClientCode || isAdminLogged)
-                  ? (activeView === 'profile' ? 'Início' : 'Meu Perfil')
-                  : 'Acessar com meu código'}
-              </span>
-              <span className="sm:hidden">
-                {(loggedClientCode || isAdminLogged)
-                  ? (activeView === 'profile' ? 'Início' : 'Perfil')
-                  : 'Código'}
-              </span>
-            </button>
-            <button 
-              onClick={() => setShowLoginModal(true)}
-              className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors relative"
-            >
-               <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
-               {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0)) && (
-                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
-               )}
-            </button>
+          <div className="flex flex-col items-end gap-3 w-full md:w-auto mt-2 md:mt-0">
+            <div className="flex items-center gap-2 md:gap-3 text-sm text-slate-400 w-full md:w-auto justify-end">
+              <button
+                type="button"
+                onClick={() => setShowUpdatesModal(true)}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 rounded-lg text-emerald-300 hover:text-emerald-200 font-bold transition-all h-9"
+              >
+                <Clapperboard size={15} />
+                <span className="hidden sm:inline">Atualizações</span>
+              </button>
+              <button
+                id="tour-access-code"
+                type="button"
+                onClick={() => {
+                  if (loggedClientCode || isAdminLogged) {
+                    setActiveView(activeView === 'profile' ? 'dashboard' : 'profile');
+                  } else {
+                    setShowCodeModal(true);
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 rounded-lg text-indigo-300 hover:text-indigo-200 font-bold transition-all h-9"
+              >
+                {(loggedClientCode || isAdminLogged) ? (
+                  activeView === 'profile' ? <LayoutDashboard size={14} /> : <User size={14} />
+                ) : (
+                  <Key size={14} />
+                )}
+                <span className="hidden sm:inline">
+                  {(loggedClientCode || isAdminLogged)
+                    ? (activeView === 'profile' ? 'Início' : 'Meu Perfil')
+                    : 'Acessar com meu código'}
+                </span>
+                <span className="sm:hidden">
+                  {(loggedClientCode || isAdminLogged)
+                    ? (activeView === 'profile' ? 'Início' : 'Perfil')
+                    : 'Código'}
+                </span>
+              </button>
+              <button 
+                onClick={() => setShowLoginModal(true)}
+                className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors relative"
+              >
+                 <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
+                 {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0)) && (
+                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
+                 )}
+              </button>
+            </div>
+            
+            {/* Desktop Teste Grátis */}
+            {activeView === 'dashboard' && !trialState && !contentType && (
+              <div className="hidden md:block w-full max-w-[420px]">
+                <button
+                  onClick={() => setTrialState('devices')}
+                  className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40"
+                >
+                  <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+                  <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
+                        <Gift className="text-white w-6 h-6" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-[15px] tracking-wide text-white">
+                          Fazer um teste grátis de 3h
+                        </h3>
+                        <p className="text-xs font-medium text-white/70">
+                          Selecione seu dispositivo
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </header>
         
+        {/* Mobile Teste Grátis */}
         {activeView === 'dashboard' && !trialState && !contentType && (
-          <div className="w-full mb-4">
+          <div className="w-full mb-4 md:hidden">
             <button
               onClick={() => setTrialState('devices')}
               className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40"
             >
               <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
-              <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
-                <div className="flex items-center gap-4">
+              <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-5 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                <div className="flex items-center gap-3">
                   <div className="p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
-                    <Gift className="text-white w-6 h-6" />
+                    <Gift className="text-white w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <h3 className="font-bold text-lg tracking-wide text-white">
+                    <h3 className="font-bold text-[15px] tracking-wide text-white leading-tight">
                       Fazer um teste grátis de 3h
                     </h3>
-                    <p className="text-sm font-medium text-white/70">
+                    <p className="text-[11px] font-medium text-white/70">
                       Selecione seu dispositivo
                     </p>
                   </div>
                 </div>
-                <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                <ChevronRight size={16} className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
               </div>
             </button>
           </div>

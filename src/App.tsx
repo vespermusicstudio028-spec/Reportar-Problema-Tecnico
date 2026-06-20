@@ -146,7 +146,7 @@ interface Announcement {
 
 export default function App() {
   const [contentType, setContentType] = useState<ContentType>(null);
-  const [showTrialDevices, setShowTrialDevices] = useState(false);
+  const [trialState, setTrialState] = useState<'devices' | 'android' | 'smartv' | 'celular' | null>(null);
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   
   // User Reports History
@@ -643,7 +643,159 @@ export default function App() {
     const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
     const currentCode = loggedClientCode || (isAdminLogged ? 'admin' : null);
 
-    if (showTrialDevices) {
+    if (trialState) {
+      if (trialState === 'android') {
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+          >
+            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">TV Android</h2>
+              
+              <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
+                <p className="font-medium">
+                  <strong className="text-white">Baixe agora o aplicativo do nosso STREAMING</strong> e comece a desfrutar de uma experiência de TV mais completa e emocionante!
+                </p>
+                
+                <p>Baixe agora o aplicativo!</p>
+                
+                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-6">
+                  <p className="text-indigo-300 mb-2 font-medium italic">Clique no link abaixo para assistir o vídeo de como fazer o download:</p>
+                  <a 
+                    href="https://abre.ai/newhybridtcl" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-white font-bold underline hover:text-indigo-400 break-all"
+                  >
+                    https://abre.ai/newhybridtcl
+                  </a>
+                </div>
+
+                <p>
+                  <strong className="text-white">Aproveite nossos recursos:</strong> Mais de <span className="font-bold text-indigo-400">[2.700]</span> canais de TV ao vivo, filmes e séries em HD, programação esportiva ao vivo e muito mais!
+                </p>
+                
+                <p className="font-medium text-white pt-2 border-t border-slate-700/50 mt-4">
+                  Se tiver alguma dúvida, entre em contato conosco!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setTrialState('devices')}
+                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
+              >
+                VOLTAR
+              </button>
+            </div>
+          </motion.div>
+        );
+      }
+
+      if (trialState === 'celular') {
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+          >
+            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider flex items-center justify-center gap-2">
+                CELULAR 📳
+              </h2>
+              
+              <div className="space-y-6 text-slate-300 text-sm md:text-base text-center">
+                <p className="text-lg font-bold text-white">
+                  Baixe agora o nosso aplicativo!
+                </p>
+                
+                <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl">
+                  <p className="text-indigo-300 mb-2 italic">Faça o download agora:</p>
+                  <a 
+                    href="https://abre.ai/celutv" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-2xl font-black text-white underline hover:text-indigo-400"
+                  >
+                    abre.ai/celutv
+                  </a>
+                </div>
+
+                <p className="text-sm bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                  <strong className="text-emerald-400 block mb-1">Segurança garantida:</strong> Nosso aplicativo é seguro e confiável.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setTrialState('devices')}
+                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
+              >
+                VOLTAR
+              </button>
+            </div>
+          </motion.div>
+        );
+      }
+
+      if (trialState === 'smartv') {
+        const smartTvBrands = [
+          { id: 'F', name: 'LG' },
+          { id: 'G', name: 'SAMSUNG' },
+          { id: 'H', name: 'ROKU' },
+          { id: 'i', name: 'OUTRO MODELO' }
+        ];
+
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+          >
+            <div className="w-full max-w-lg mx-auto">
+              <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
+                <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-md uppercase mb-2">SMARTV</h2>
+                <h3 className="text-lg md:text-xl font-bold tracking-tight text-indigo-300 drop-shadow-md uppercase">QUAL SERIA SUA SMARTV?</h3>
+              </div>
+              
+              <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
+                {smartTvBrands.map((brand) => (
+                  <button
+                    key={brand.id}
+                    type="button"
+                    onClick={() => {
+                      const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *Smart TV - ${brand.name}*`;
+                      const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
+                      window.open(waUrl, '_blank');
+                      setTrialState(null);
+                    }}
+                    className="flex items-center justify-between w-full px-6 py-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
+                  >
+                    <span className="font-mono text-slate-500 group-hover:text-indigo-400 font-bold">( {brand.id} )</span>
+                    <span className="font-bold text-white text-lg tracking-wide">{brand.name}</span>
+                    <div className="w-6"></div> {/* Spacer for centering */}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setTrialState('devices')}
+                  className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
+                >
+                  VOLTAR
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        );
+      }
+
+      // Default: 'devices'
       const trialDevices = [
         'TV Android (Play Store)',
         'Smart TV',
@@ -671,10 +823,18 @@ export default function App() {
                   key={idx}
                   type="button"
                   onClick={() => {
-                    const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *${device}*`;
-                    const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
-                    window.open(waUrl, '_blank');
-                    setShowTrialDevices(false);
+                    if (device === 'TV Android (Play Store)') {
+                      setTrialState('android');
+                    } else if (device === 'Smart TV') {
+                      setTrialState('smartv');
+                    } else if (device === 'Celular') {
+                      setTrialState('celular');
+                    } else {
+                      const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *${device}*`;
+                      const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
+                      window.open(waUrl, '_blank');
+                      setTrialState(null);
+                    }
                   }}
                   className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
                 >
@@ -684,7 +844,7 @@ export default function App() {
 
               <button
                 type="button"
-                onClick={() => setShowTrialDevices(false)}
+                onClick={() => setTrialState(null)}
                 className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
               >
                 VOLTAR
@@ -884,7 +1044,7 @@ export default function App() {
           <div className="flex flex-col gap-4 w-full relative z-10">
             <div className="w-full mb-2">
               <button
-                onClick={() => setShowTrialDevices(true)}
+                onClick={() => setTrialState('devices')}
                 className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40 mb-4"
               >
                 <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />

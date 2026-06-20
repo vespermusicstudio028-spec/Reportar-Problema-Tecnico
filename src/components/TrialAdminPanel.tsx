@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock, TrialLink } from '../types/trial';
-import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight } from 'lucide-react';
+import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   config: TrialConfig;
@@ -87,8 +88,49 @@ export function TrialAdminPanel({ config, onSave }: Props) {
     onChange: (c: TrialContentBlock) => void;
   }) => {
     const c = content || {};
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const setField = (patch: Partial<TrialContentBlock>) => onChange({ ...c, ...patch });
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      if (!isImage && !isVideo) {
+        setUploadError('Selecione apenas imagens (jpg, png, gif) ou vídeos (mp4, mov).');
+        return;
+      }
+
+      setUploading(true);
+      setUploadError(null);
+
+      const ext = file.name.split('.').pop();
+      const path = `trial/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from('trial-media')
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (error) {
+        setUploadError(`Erro ao enviar: ${error.message}`);
+        setUploading(false);
+        return;
+      }
+
+      const { data } = supabase.storage.from('trial-media').getPublicUrl(path);
+      setField({
+        mediaUrl: data.publicUrl,
+        mediaType: isImage ? 'image' : 'video'
+      });
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const removeMedia = () => setField({ mediaUrl: undefined, mediaType: 'none' });
 
     return (
       <div className="space-y-5">
@@ -129,31 +171,67 @@ export function TrialAdminPanel({ config, onSave }: Props) {
           />
         </div>
 
-        {/* Mídia */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Tipo de Mídia</label>
-            <select
-              value={c.mediaType || 'none'}
-              onChange={e => setField({ mediaType: e.target.value as any })}
-              className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors"
-            >
-              <option value="none">Nenhuma</option>
-              <option value="image">🖼️ Imagem (Foto)</option>
-              <option value="video">🎬 Vídeo</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">URL da Mídia</label>
-            <input
-              type="text"
-              value={c.mediaUrl || ''}
-              onChange={e => setField({ mediaUrl: e.target.value })}
-              className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors"
-              placeholder="https://..."
-              disabled={!c.mediaType || c.mediaType === 'none'}
-            />
-          </div>
+        {/* Upload de Mídia */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Foto ou Vídeo</label>
+
+          {c.mediaUrl && c.mediaType && c.mediaType !== 'none' ? (
+            <div className="relative rounded-2xl overflow-hidden border border-slate-700 group">
+              {c.mediaType === 'image' ? (
+                <img src={c.mediaUrl} alt="Mídia" className="w-full max-h-48 object-cover" />
+              ) : (
+                <video src={c.mediaUrl} className="w-full max-h-48 object-cover" muted playsInline />
+              )}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                <button
+                  onClick={removeMedia}
+                  className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-400 text-white p-2 rounded-full transition-all shadow-lg"
+                  title="Remover mídia"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                {c.mediaType === 'image' ? <ImageIcon size={12} /> : <Video size={12} />}
+                {c.mediaType === 'image' ? 'Imagem' : 'Vídeo'} carregado
+              </div>
+            </div>
+          ) : (
+            <label className={`flex flex-col items-center justify-center gap-3 w-full min-h-[120px] border-2 border-dashed rounded-2xl cursor-pointer transition-all ${
+              uploading
+                ? 'border-indigo-500/50 bg-indigo-500/5'
+                : 'border-slate-700 hover:border-indigo-500/50 hover:bg-indigo-500/5'
+            }`}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={uploading}
+              />
+              {uploading ? (
+                <>
+                  <Loader2 size={28} className="text-indigo-400 animate-spin" />
+                  <span className="text-indigo-400 text-sm font-semibold">Enviando arquivo...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud size={28} className="text-slate-500" />
+                  <div className="text-center">
+                    <p className="text-slate-300 font-semibold text-sm">Clique para selecionar</p>
+                    <p className="text-slate-500 text-xs mt-0.5">Foto (JPG, PNG) ou Vídeo (MP4, MOV)</p>
+                  </div>
+                </>
+              )}
+            </label>
+          )}
+
+          {uploadError && (
+            <p className="text-red-400 text-xs mt-2 flex items-center gap-1">
+              <X size={12} /> {uploadError}
+            </p>
+          )}
         </div>
 
         {/* Alertas */}

@@ -146,7 +146,8 @@ interface Announcement {
 
 export default function App() {
   const [contentType, setContentType] = useState<ContentType>(null);
-  const [trialState, setTrialState] = useState<'devices' | 'android' | 'smartv' | 'celular' | null>(null);
+  const [trialState, setTrialState] = useState<'devices' | 'android' | 'smartv' | 'celular' | 'lg' | 'samsung' | 'roku' | 'outromodelo' | null>(null);
+  const [showAppDescription, setShowAppDescription] = useState(false);
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   
   // User Reports History
@@ -714,15 +715,62 @@ export default function App() {
                 </p>
                 
                 <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl">
-                  <p className="text-indigo-300 mb-2 italic">Faça o download agora:</p>
-                  <a 
-                    href="https://abre.ai/celutv" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-2xl font-black text-white underline hover:text-indigo-400"
+                  <p className="text-indigo-300 mb-3 font-medium italic text-left">Faça o download agora:</p>
+                  <p className="mb-2 text-lg text-left">
+                    Link direto: <a href="https://abrela.me/newhybrid" target="_blank" rel="noopener noreferrer" className="font-black text-white underline hover:text-indigo-400 break-all">abrela.me/newhybrid</a>
+                  </p>
+                  <p className="text-lg text-white text-left">Cod downloader: <span className="font-bold text-indigo-300 tracking-wider">4466913</span></p>
+                </div>
+
+                <div className="space-y-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAppDescription(!showAppDescription)}
+                    className="w-full py-3 bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-xl text-white font-bold transition-all flex items-center justify-center gap-2"
                   >
-                    abre.ai/celutv
-                  </a>
+                    Descrição do Aplicativo
+                    <ChevronDown size={18} className={`transition-transform duration-300 ${showAppDescription ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  <AnimatePresence>
+                    {showAppDescription && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="bg-slate-950/50 p-4 rounded-xl border border-slate-700/50 text-left text-sm space-y-3">
+                          <p className="font-bold text-amber-400 text-center">📢 ATUALIZAÇÃO IMPORTANTE - New Hybrid P2P 1.6.0 📢</p>
+                          <p className="text-center font-bold text-white">New Hybrid<br/><span className="font-normal text-indigo-300">update para todos direto pelo app</span></p>
+                          
+                          <ul className="list-disc pl-5 space-y-1 text-slate-300">
+                            <li>Corrigido atualização canais ao vivo na barra de programação</li>
+                            <li>Corrigido ao sair da tela cheia o canal parava para alguns dispositivos</li>
+                            <li>Corrigido o problema de encerramento forçado</li>
+                            <li>Aplicativo quando encerrado agora volta para mesmo canal assistido quando aberto novamente</li>
+                          </ul>
+
+                          <p className="text-slate-400 italic text-center pt-2 border-t border-slate-700/50">Seguimos sempre para entregar o melhor app p2p do mercado a todos, Obrigado pela confiança de todos.</p>
+                          
+                          <div className="space-y-1 pt-2">
+                            <p>🔐 Melhorias de segurança</p>
+                            <p>📱 Compatibilidade com celulares Xiaomi</p>
+                            <p>📺 Correção de canais com tela preta</p>
+                            <p>⚡️ Melhora na performance de carregamento de canais e app</p>
+                            <p>📑 Botão 'Atualizar Conteúdo' para canais</p>
+                          </div>
+
+                          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg mt-3">
+                            <p className="font-bold text-amber-400 mb-1">⚠️ IMPORTANTE:</p>
+                            <p className="text-amber-200/80 text-xs leading-relaxed">
+                              É essencial que todos atualizem, pois versões antigas irão parar de funcionar em breve. A atualização aparecerá automaticamente no seu aplicativo, basta clicar em "Atualizar".
+                            </p>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <p className="text-sm bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">

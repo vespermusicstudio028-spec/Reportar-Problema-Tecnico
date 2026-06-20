@@ -774,11 +774,9 @@ export default function App() {
                       window.open(waUrl, '_blank');
                       setTrialState(null);
                     }}
-                    className="flex items-center justify-between w-full px-6 py-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
+                    className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
                   >
-                    <span className="font-mono text-slate-500 group-hover:text-indigo-400 font-bold">( {brand.id} )</span>
                     <span className="font-bold text-white text-lg tracking-wide">{brand.name}</span>
-                    <div className="w-6"></div> {/* Spacer for centering */}
                   </button>
                 ))}
 

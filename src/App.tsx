@@ -769,10 +769,18 @@ export default function App() {
                     key={brand.id}
                     type="button"
                     onClick={() => {
-                      const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *Smart TV - ${brand.name}*`;
-                      const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
-                      window.open(waUrl, '_blank');
-                      setTrialState(null);
+                      if (brand.name === 'SAMSUNG') {
+                        setTrialState('samsung');
+                      } else if (brand.name === 'ROKU') {
+                        setTrialState('roku');
+                      } else if (brand.name === 'OUTRO MODELO') {
+                        setTrialState('outromodelo');
+                      } else {
+                        const waText = `*Teste Grátis 3h - The Best IPTV*\n\nGostaria de solicitar um teste.\nMeu dispositivo: *Smart TV - ${brand.name}*`;
+                        const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
+                        window.open(waUrl, '_blank');
+                        setTrialState(null);
+                      }
                     }}
                     className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
                   >
@@ -788,6 +796,157 @@ export default function App() {
                   VOLTAR
                 </button>
               </div>
+            </div>
+          </motion.div>
+        );
+      }
+
+      if (trialState === 'samsung') {
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+          >
+            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">SMARTV SAMSUNG</h2>
+              
+              <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
+                <p className="font-medium">
+                  <strong className="text-white">Baixe agora o aplicativo do nosso STREAMING</strong> e comece a desfrutar de uma experiência de TV mais completa e emocionante!
+                </p>
+                
+                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-6">
+                  <p className="text-indigo-300 mb-2 font-medium italic">Clique aqui no link abaixo:</p>
+                  <a 
+                    href="https://abre.ai/samsungvuplayer" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-white font-bold underline hover:text-indigo-400 break-all text-lg"
+                  >
+                    abre.ai/samsungvuplayer
+                  </a>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-200 text-center font-bold">
+                  🚨 ESSE APLICATIVO TEM UMA MANUTENÇÃO DE CUSTO NO VALOR DE R$19,00 <span className="text-red-400">ANUAL</span> 🚨
+                </div>
+
+                <p>
+                  <strong className="text-white">Aproveite nossos recursos:</strong> Mais de <span className="font-bold text-indigo-400">[2.700]</span> canais de TV ao vivo, filmes e séries em HD, programação esportiva ao vivo e muito mais!
+                </p>
+                
+                <p className="font-medium text-white pt-2 border-t border-slate-700/50 mt-4 text-center">
+                  Se tiver alguma dúvida, entre em contato conosco!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setTrialState('smartv')}
+                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
+              >
+                VOLTAR
+              </button>
+            </div>
+          </motion.div>
+        );
+      }
+
+      if (trialState === 'roku') {
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+          >
+            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">SMARTV COM SISTEMA ROKU</h2>
+              
+              <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
+                <p className="font-medium">
+                  <strong className="text-white">Baixe agora o aplicativo do nosso STREAMING</strong> e comece a desfrutar de uma experiência de TV mais completa e emocionante!
+                </p>
+                
+                <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-6">
+                  <p className="text-indigo-300 mb-2 font-medium italic">Clique aqui no link abaixo:</p>
+                  <a 
+                    href="https://abre.ai/rokuvuplayer" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-white font-bold underline hover:text-indigo-400 break-all text-lg"
+                  >
+                    abre.ai/rokuvuplayer
+                  </a>
+                </div>
+
+                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-200 text-center font-bold">
+                  🚨 ESSE APLICATIVO TEM UMA MANUTENÇÃO DE CUSTO NO VALOR DE R$19,00 <span className="text-red-400">ANUAL</span> 🚨
+                </div>
+
+                <p>
+                  <strong className="text-white">Aproveite nossos recursos:</strong> Mais de <span className="font-bold text-indigo-400">[2.700]</span> canais de TV ao vivo, filmes e séries em HD, programação esportiva ao vivo e muito mais!
+                </p>
+                
+                <p className="font-medium text-white pt-2 border-t border-slate-700/50 mt-4 text-center">
+                  Se tiver alguma dúvida, entre em contato conosco!
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setTrialState('smartv')}
+                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
+              >
+                VOLTAR
+              </button>
+            </div>
+          </motion.div>
+        );
+      }
+
+      if (trialState === 'outromodelo') {
+        return (
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+          >
+            <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
+              <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">OUTRO MODELO DE TV</h2>
+              
+              <div className="space-y-6 text-slate-300 text-sm md:text-base leading-relaxed text-center">
+                <p className="text-red-300 font-bold bg-red-500/10 p-4 rounded-xl border border-red-500/20">
+                  Não é possível instalar o aplicativo diretamente em OUTRO modelo de TV.
+                </p>
+
+                <p className="font-medium text-white">
+                  Mas não se preocupe! Você pode usar um dispositivo <span className="text-indigo-400 font-bold">TV Box</span> para acessar nossos conteúdos.
+                </p>
+                
+                <div className="bg-indigo-500/10 border border-indigo-500/20 p-5 rounded-xl my-6 flex flex-col items-center">
+                  <p className="text-indigo-300 mb-3 font-medium italic">Clique no link abaixo para adquirir um de nossos dispositivos TV Box:</p>
+                  <a 
+                    href="https://abre.ai/comprarboxtbii" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition-colors break-all"
+                  >
+                    https://abre.ai/comprarboxtbii
+                  </a>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setTrialState('smartv')}
+                className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
+              >
+                VOLTAR
+              </button>
             </div>
           </motion.div>
         );

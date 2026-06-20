@@ -1041,29 +1041,6 @@ export default function App() {
           
           <div className="flex flex-col gap-4 w-full relative z-10">
             <div className="w-full mb-2">
-              <button
-                onClick={() => setTrialState('devices')}
-                className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40 mb-4"
-              >
-                <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
-                <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
-                  <div className="flex items-center gap-4">
-                    <div className="p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
-                      <Gift className="text-white w-6 h-6" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-bold text-lg tracking-wide text-white">
-                        Fazer um teste grátis de 3h
-                      </h3>
-                      <p className="text-sm font-medium text-white/70">
-                        Selecione seu dispositivo
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                </div>
-              </button>
-
               {(() => {
                 const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
                 return (
@@ -3609,6 +3586,33 @@ export default function App() {
           </div>
         </header>
         
+        {activeView === 'dashboard' && !trialState && !contentType && (
+          <div className="w-full mb-4">
+            <button
+              onClick={() => setTrialState('devices')}
+              className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40"
+            >
+              <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+              <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
+                    <Gift className="text-white w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-bold text-lg tracking-wide text-white">
+                      Fazer um teste grátis de 3h
+                    </h3>
+                    <p className="text-sm font-medium text-white/70">
+                      Selecione seu dispositivo
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+              </div>
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 flex flex-col min-h-0 bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-4 sm:p-6 md:p-8 overflow-hidden relative shadow-2xl shadow-black/50">
           <AnimatePresence mode="wait">
             {activeView === 'dashboard' ? (

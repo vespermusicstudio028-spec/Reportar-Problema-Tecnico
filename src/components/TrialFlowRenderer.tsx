@@ -15,6 +15,30 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
   const selectedDevice = config.devices.find(d => d.id === selectedDeviceId);
   const selectedSubOption = selectedDevice?.subOptions?.find(s => s.id === selectedSubOptionId);
 
+  const getEmbedUrl = (url: string) => {
+    if (!url) return null;
+    
+    // Google Drive
+    if (url.includes('drive.google.com/file/d/')) {
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return { type: 'iframe', url: `https://drive.google.com/file/d/${match[1]}/preview` };
+      }
+    }
+    
+    // YouTube
+    if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+      const videoId = url.includes('youtube.com/watch') 
+        ? new URLSearchParams(url.split('?')[1]).get('v')
+        : url.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) {
+        return { type: 'iframe', url: `https://www.youtube.com/embed/${videoId}` };
+      }
+    }
+
+    return { type: 'video', url };
+  };
+
   const renderContentBlock = (content: TrialContentBlock, onBack: () => void, isChangelogOpen?: boolean, toggleChangelog?: () => void) => {
     return (
       <motion.div 
@@ -41,7 +65,25 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
             
             {content.mediaType === 'video' && content.mediaUrl && (
               <div className="w-full rounded-2xl overflow-hidden mb-6 shadow-lg shadow-black/50 border border-white/10">
-                <video src={content.mediaUrl} controls playsInline className="w-full h-auto object-cover rounded-xl" />
+                {(() => {
+                  const embed = getEmbedUrl(content.mediaUrl);
+                  if (!embed) return null;
+                  
+                  if (embed.type === 'iframe') {
+                    return (
+                      <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                        <iframe 
+                          src={embed.url} 
+                          className="absolute top-0 left-0 w-full h-full rounded-xl"
+                          allow="autoplay; encrypted-media; fullscreen"
+                          allowFullScreen
+                        />
+                      </div>
+                    );
+                  }
+
+                  return <video src={embed.url} controls playsInline className="w-full h-auto object-cover rounded-xl" />;
+                })()}
               </div>
             )}
 

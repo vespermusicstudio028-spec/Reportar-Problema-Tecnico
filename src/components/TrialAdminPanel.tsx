@@ -166,7 +166,32 @@ export function TrialAdminPanel({ config, onSave }: Props) {
             {c.mediaType === 'image' ? (
               <img src={c.mediaUrl} alt="Mídia" className="w-full max-h-48 object-cover" />
             ) : (
-              <video src={c.mediaUrl} className="w-full max-h-48 object-cover" controls playsInline />
+              (() => {
+                const url = c.mediaUrl || '';
+                let embedUrl = url;
+                let isIframe = false;
+                
+                if (url.includes('drive.google.com/file/d/')) {
+                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                  if (match && match[1]) {
+                    embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+                    isIframe = true;
+                  }
+                } else if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
+                  const videoId = url.includes('youtube.com/watch') 
+                    ? new URLSearchParams(url.split('?')[1]).get('v')
+                    : url.split('youtu.be/')[1]?.split('?')[0];
+                  if (videoId) {
+                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                    isIframe = true;
+                  }
+                }
+
+                if (isIframe) {
+                  return <iframe src={embedUrl} className="w-full h-48" allow="autoplay; encrypted-media; fullscreen" allowFullScreen />;
+                }
+                return <video src={url} className="w-full max-h-48 object-cover" controls playsInline />;
+              })()
             )}
             <div className="absolute top-2 right-2 flex items-center justify-center z-10">
               <button

@@ -195,7 +195,7 @@ export function TrialAdminPanel({ config, onSave }: Props) {
               {c.mediaType === 'image' ? (
                 <img src={c.mediaUrl} alt="Mídia" className="w-full max-h-48 object-cover" />
               ) : (
-                <video src={c.mediaUrl} className="w-full max-h-48 object-cover" muted playsInline />
+                <video src={c.mediaUrl} className="w-full max-h-48 object-cover" controls playsInline />
               )}
               <div className="absolute top-2 right-2 flex items-center justify-center z-10">
                 <button

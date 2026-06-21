@@ -41,7 +41,7 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
             
             {content.mediaType === 'video' && content.mediaUrl && (
               <div className="w-full rounded-2xl overflow-hidden mb-6 shadow-lg shadow-black/50 border border-white/10">
-                <video src={content.mediaUrl} controls autoPlay muted loop playsInline className="w-full h-auto object-cover" />
+                <video src={content.mediaUrl} controls playsInline className="w-full h-auto object-cover rounded-xl" />
               </div>
             )}
 

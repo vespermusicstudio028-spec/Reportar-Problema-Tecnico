@@ -197,13 +197,13 @@ export function TrialAdminPanel({ config, onSave }: Props) {
               ) : (
                 <video src={c.mediaUrl} className="w-full max-h-48 object-cover" muted playsInline />
               )}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+              <div className="absolute top-2 right-2 flex items-center justify-center z-10">
                 <button
                   onClick={removeMedia}
-                  className="opacity-0 group-hover:opacity-100 bg-red-500 hover:bg-red-400 text-white p-2 rounded-full transition-all shadow-lg"
-                  title="Remover mídia"
+                  className="bg-red-500 hover:bg-red-400 text-white p-2.5 rounded-full transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)] flex items-center gap-1"
+                  title="Excluir Mídia"
                 >
-                  <X size={18} />
+                  <Trash2 size={16} /> <span className="text-xs font-bold mr-1">Excluir Mídia</span>
                 </button>
               </div>
               <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">

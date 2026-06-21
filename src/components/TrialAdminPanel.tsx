@@ -130,7 +130,22 @@ export function TrialAdminPanel({ config, onSave }: Props) {
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const removeMedia = () => setField({ mediaUrl: undefined, mediaType: 'none' });
+    const removeMedia = async () => {
+      if (c.mediaUrl) {
+        try {
+          // Extrai o caminho do arquivo a partir da URL pública
+          // Ex URL: https://yasytydjkkbikwwmtmeu.supabase.co/storage/v1/object/public/trial-media/trial/12345.jpg
+          const urlParts = c.mediaUrl.split('/trial-media/');
+          if (urlParts.length > 1) {
+            const path = urlParts[1];
+            await supabase.storage.from('trial-media').remove([path]);
+          }
+        } catch (e) {
+          console.error("Erro ao excluir mídia do storage:", e);
+        }
+      }
+      setField({ mediaUrl: undefined, mediaType: 'none' });
+    };
 
     return (
       <div className="space-y-5">

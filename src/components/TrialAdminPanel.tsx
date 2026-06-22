@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock, TrialLink } from '../types/trial';
-import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2 } from 'lucide-react';
+import { Reorder } from 'motion/react';
+import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock, TrialLink, TrialMedia } from '../types/trial';
+import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2, Eye, EyeOff, Copy, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface Props {
@@ -79,6 +80,39 @@ export function TrialAdminPanel({ config, onSave }: Props) {
     updateDevice(devIdx, { ...device, subOptions: newSubs });
   };
 
+  const duplicateDevice = (index: number) => {
+    const newDevices = [...localConfig.devices];
+    const original = newDevices[index];
+    const clone: TrialDevice = JSON.parse(JSON.stringify(original));
+    clone.id = `dev_${Date.now()}`;
+    clone.name = `${clone.name} (Cópia)`;
+    newDevices.splice(index + 1, 0, clone);
+    setLocalConfig({ ...localConfig, devices: newDevices });
+  };
+
+  const toggleDeviceVisibility = (index: number) => {
+    const device = localConfig.devices[index];
+    updateDevice(index, { ...device, visible: device.visible === false ? true : false });
+  };
+
+  const duplicateSubOption = (devIdx: number, sIdx: number) => {
+    const device = localConfig.devices[devIdx];
+    const newSubs = [...(device.subOptions || [])];
+    const original = newSubs[sIdx];
+    const clone: TrialSubOption = JSON.parse(JSON.stringify(original));
+    clone.id = `sub_${Date.now()}`;
+    clone.name = `${clone.name} (Cópia)`;
+    newSubs.splice(sIdx + 1, 0, clone);
+    updateDevice(devIdx, { ...device, subOptions: newSubs });
+  };
+
+  const toggleSubOptionVisibility = (devIdx: number, sIdx: number) => {
+    const device = localConfig.devices[devIdx];
+    const newSubs = [...(device.subOptions || [])];
+    newSubs[sIdx] = { ...newSubs[sIdx], visible: newSubs[sIdx].visible === false ? true : false };
+    updateDevice(devIdx, { ...device, subOptions: newSubs });
+  };
+
   // ─── CONTENT EDITOR ─────────────────────────────────────────────────────────
   const ContentEditor = ({
     content,
@@ -134,76 +168,87 @@ export function TrialAdminPanel({ config, onSave }: Props) {
           />
         </div>
 
-        {/* Mídia */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Tipo de Mídia</label>
-            <select
-              value={c.mediaType || 'none'}
-              onChange={e => setField({ mediaType: e.target.value as any })}
-              className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors"
+        {/* Mídias (Carrossel) */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Mídias (Fotos/Vídeos do Carrossel)</label>
+          <div className="space-y-3">
+            {/* Lista de Mídias Atuais (combinando antigas e novas) */}
+            {(() => {
+              const items = c.mediaItems || [];
+              // Retrocompatibilidade se não houver mediaItems mas tiver mediaUrl
+              if (items.length === 0 && c.mediaUrl && c.mediaType && c.mediaType !== 'none') {
+                items.push({ id: 'legacy', url: c.mediaUrl, type: c.mediaType });
+              }
+
+              return items.map((media, idx) => (
+                <div key={media.id} className="bg-[#0c0e12] border border-slate-700 p-3 rounded-xl flex flex-col md:flex-row md:items-center gap-3">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={media.type}
+                        onChange={(e) => {
+                          const newItems = [...items];
+                          newItems[idx] = { ...media, type: e.target.value as any };
+                          setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' }); // Limpa o legacy
+                        }}
+                        className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-indigo-500 w-32"
+                      >
+                        <option value="image">🖼️ Imagem</option>
+                        <option value="video">🎬 Vídeo</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={media.url}
+                        onChange={(e) => {
+                          const newItems = [...items];
+                          newItems[idx] = { ...media, url: e.target.value };
+                          setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' }); // Limpa o legacy
+                        }}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-indigo-500"
+                        placeholder="URL (Google Drive, YouTube, Imagem...)"
+                      />
+                    </div>
+                    {/* Preview Rápido */}
+                    <div className="h-20 w-full rounded-lg overflow-hidden border border-slate-800 bg-slate-950/50 relative">
+                       {media.type === 'image' ? (
+                         <img src={media.url} className="w-full h-full object-cover" alt="preview" />
+                       ) : (
+                         <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">Prévia de Vídeo não disponível aqui</div>
+                       )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newItems = [...items];
+                      newItems.splice(idx, 1);
+                      setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' });
+                    }}
+                    className="w-10 h-10 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                    title="Remover Mídia"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ));
+            })()}
+
+            {/* Adicionar Mídia */}
+            <button
+              onClick={() => {
+                const items = c.mediaItems || [];
+                // Se houver legacy
+                if (items.length === 0 && c.mediaUrl && c.mediaType && c.mediaType !== 'none') {
+                  items.push({ id: 'legacy', url: c.mediaUrl, type: c.mediaType });
+                }
+                const newItems = [...items, { id: `med_${Date.now()}`, url: '', type: 'image' as const }];
+                setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' });
+              }}
+              className="w-full border-2 border-dashed border-slate-700 hover:border-indigo-500/50 text-slate-400 hover:text-indigo-400 p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-colors"
             >
-              <option value="none">Nenhuma</option>
-              <option value="image">🖼️ Imagem (Foto)</option>
-              <option value="video">🎬 Vídeo</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">URL da Mídia (Google Drive/Imagens)</label>
-            <input
-              type="text"
-              value={c.mediaUrl || ''}
-              onChange={e => setField({ mediaUrl: e.target.value })}
-              className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors"
-              placeholder="https://..."
-              disabled={!c.mediaType || c.mediaType === 'none'}
-            />
+              <Plus size={16} /> Adicionar Nova Mídia
+            </button>
           </div>
         </div>
-
-        {c.mediaUrl && c.mediaType && c.mediaType !== 'none' && (
-          <div className="relative rounded-2xl overflow-hidden border border-slate-700 group mt-4">
-            {c.mediaType === 'image' ? (
-              <img src={c.mediaUrl} alt="Mídia" className="w-full max-h-48 object-cover" />
-            ) : (
-              (() => {
-                const url = c.mediaUrl || '';
-                let embedUrl = url;
-                let isIframe = false;
-                
-                if (url.includes('drive.google.com/file/d/')) {
-                  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                  if (match && match[1]) {
-                    embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
-                    isIframe = true;
-                  }
-                } else if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
-                  const videoId = url.includes('youtube.com/watch') 
-                    ? new URLSearchParams(url.split('?')[1]).get('v')
-                    : url.split('youtu.be/')[1]?.split('?')[0];
-                  if (videoId) {
-                    embedUrl = `https://www.youtube.com/embed/${videoId}`;
-                    isIframe = true;
-                  }
-                }
-
-                if (isIframe) {
-                  return <iframe src={embedUrl} className="w-full h-48" allow="autoplay; encrypted-media; fullscreen" allowFullScreen />;
-                }
-                return <video src={url} className="w-full max-h-48 object-cover" controls playsInline />;
-              })()
-            )}
-            <div className="absolute top-2 right-2 flex items-center justify-center z-10">
-              <button
-                onClick={removeMedia}
-                className="bg-red-500 hover:bg-red-400 text-white p-2.5 rounded-full transition-all shadow-[0_0_15px_rgba(239,68,68,0.5)] flex items-center gap-1"
-                title="Excluir Mídia"
-              >
-                <Trash2 size={16} /> <span className="text-xs font-bold mr-1">Remover</span>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Alertas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -377,21 +422,104 @@ export function TrialAdminPanel({ config, onSave }: Props) {
     return (
       <div className="space-y-4">
         <Header />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+        {/* ALERTA GLOBAL */}
+        <div className="bg-[#0c0e12] border border-slate-800 p-5 rounded-2xl mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-white font-bold flex items-center gap-2">
+              <AlertTriangle className="text-amber-500" size={18} />
+              Aviso Global (Pop-up Inicial)
+            </h4>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={localConfig.globalAlert?.enabled || false}
+                onChange={e => setLocalConfig({ ...localConfig, globalAlert: { ...localConfig.globalAlert, enabled: e.target.checked } as any })}
+              />
+              <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
+          
+          {localConfig.globalAlert?.enabled && (
+            <div className="space-y-3 mt-4 border-t border-slate-800 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Título do Aviso</label>
+                  <input
+                    type="text"
+                    value={localConfig.globalAlert?.title || ''}
+                    onChange={e => setLocalConfig({ ...localConfig, globalAlert: { ...localConfig.globalAlert, title: e.target.value } as any })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                    placeholder="Ex: MANUTENÇÃO PROGRAMADA"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Cor/Tipo</label>
+                  <select
+                    value={localConfig.globalAlert?.type || 'warning'}
+                    onChange={e => setLocalConfig({ ...localConfig, globalAlert: { ...localConfig.globalAlert, type: e.target.value as any } as any })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-colors"
+                  >
+                    <option value="info">Azul (Informativo)</option>
+                    <option value="warning">Amarelo (Atenção)</option>
+                    <option value="danger">Vermelho (Urgente)</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Texto do Aviso</label>
+                <textarea
+                  value={localConfig.globalAlert?.text || ''}
+                  onChange={e => setLocalConfig({ ...localConfig, globalAlert: { ...localConfig.globalAlert, text: e.target.value } as any })}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-amber-500 transition-colors min-h-[80px]"
+                  placeholder="Ex: Nossos servidores entrarão em manutenção às 22h..."
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* LISTA DE DISPOSITIVOS DRAGGABLE */}
+        <h4 className="text-white font-bold flex items-center gap-2 px-1">Dispositivos Principais</h4>
+        <Reorder.Group 
+          axis="y" 
+          values={localConfig.devices} 
+          onReorder={(newOrder) => setLocalConfig({ ...localConfig, devices: newOrder })}
+          className="grid grid-cols-1 gap-3"
+        >
           {localConfig.devices.map((device, index) => (
-            <div
+            <Reorder.Item
               key={device.id}
-              className="bg-[#0c0e12] border border-slate-800 hover:border-slate-700 p-4 rounded-2xl transition-all flex items-center justify-between group"
+              value={device}
+              className={`bg-[#0c0e12] border ${device.visible === false ? 'border-dashed border-slate-700 opacity-60' : 'border-slate-800'} hover:border-indigo-500/50 p-4 rounded-2xl transition-all flex flex-col md:flex-row md:items-center justify-between group cursor-grab active:cursor-grabbing gap-3`}
             >
               <div>
-                <h4 className="text-white font-bold">{device.name}</h4>
+                <h4 className="text-white font-bold flex items-center gap-2">
+                  {device.name}
+                  {device.visible === false && <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full uppercase">Oculto</span>}
+                </h4>
                 <p className="text-slate-500 text-xs mt-0.5">
                   {device.type === 'content'
                     ? '📄 Conteúdo direto'
                     : `📂 ${device.subOptions?.length || 0} sub-opções`}
                 </p>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={() => toggleDeviceVisibility(index)}
+                  className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                  title={device.visible === false ? "Mostrar" : "Ocultar"}
+                >
+                  {device.visible === false ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+                <button
+                  onClick={() => duplicateDevice(index)}
+                  className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                  title="Duplicar"
+                >
+                  <Copy size={16} />
+                </button>
                 <button
                   onClick={() => { setDeviceIdx(index); setView('device'); }}
                   className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-indigo-400 hover:bg-indigo-600 hover:text-white transition-colors"
@@ -407,17 +535,17 @@ export function TrialAdminPanel({ config, onSave }: Props) {
                   <Trash2 size={16} />
                 </button>
               </div>
-            </div>
+            </Reorder.Item>
           ))}
+        </Reorder.Group>
 
-          <button
-            onClick={addDevice}
-            className="border-2 border-dashed border-slate-700 hover:border-indigo-500/50 p-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-indigo-400 min-h-[72px]"
-          >
-            <Plus size={20} />
-            <span className="font-bold">Adicionar Dispositivo</span>
-          </button>
-        </div>
+        <button
+          onClick={addDevice}
+          className="w-full border-2 border-dashed border-slate-700 hover:border-indigo-500/50 p-4 rounded-2xl transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-indigo-400 min-h-[72px]"
+        >
+          <Plus size={20} />
+          <span className="font-bold">Adicionar Dispositivo</span>
+        </button>
       </div>
     );
   }
@@ -481,35 +609,60 @@ export function TrialAdminPanel({ config, onSave }: Props) {
               <p className="text-slate-500 text-sm text-center py-6">Nenhuma sub-opção. Clique em "Adicionar".</p>
             )}
 
-            <div className="space-y-2">
+            <Reorder.Group 
+              axis="y" 
+              values={device.subOptions || []} 
+              onReorder={(newOrder) => updateDevice(deviceIdx, { ...device, subOptions: newOrder })}
+              className="space-y-2"
+            >
               {(device.subOptions || []).map((sub, idx) => (
-                <div
+                <Reorder.Item
                   key={sub.id}
-                  className="flex items-center justify-between bg-slate-900 p-3 rounded-xl border border-slate-800 hover:border-slate-700 transition-colors"
+                  value={sub}
+                  className={`flex flex-col md:flex-row md:items-center justify-between bg-slate-900 p-3 rounded-xl border ${sub.visible === false ? 'border-dashed border-slate-700 opacity-60' : 'border-slate-800'} hover:border-slate-700 transition-colors cursor-grab active:cursor-grabbing gap-3`}
                 >
                   <div>
-                    <p className="text-white font-bold">{sub.name}</p>
+                    <p className="text-white font-bold flex items-center gap-2">
+                      {sub.name}
+                      {sub.visible === false && <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full uppercase">Oculto</span>}
+                    </p>
                     <p className="text-slate-500 text-xs mt-0.5">
                       {sub.content?.title || 'Sem título'} · {sub.content?.links?.length || 0} link(s)
                     </p>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => toggleSubOptionVisibility(deviceIdx, idx)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                      title={sub.visible === false ? "Mostrar" : "Ocultar"}
+                    >
+                      {sub.visible === false ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                    <button
+                      onClick={() => duplicateSubOption(deviceIdx, idx)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                      title="Duplicar"
+                    >
+                      <Copy size={15} />
+                    </button>
                     <button
                       onClick={() => { setSubIdx(idx); setView('suboption'); }}
                       className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+                      title="Editar"
                     >
                       <Edit2 size={14} /> Editar
                     </button>
                     <button
                       onClick={() => deleteSubOption(deviceIdx, idx)}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                      title="Excluir"
                     >
                       <Trash2 size={15} />
                     </button>
                   </div>
-                </div>
+                </Reorder.Item>
               ))}
-            </div>
+            </Reorder.Group>
           </div>
         )}
       </div>

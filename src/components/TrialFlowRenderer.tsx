@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ChevronLeft, ChevronRight, X, AlertTriangle } from 'lucide-react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from '../types/trial';
 
 interface Props {
@@ -13,6 +14,8 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
   const [showAppDescription, setShowAppDescription] = useState(false);
   const [macCode, setMacCode] = useState('');
   const [deviceKey, setDeviceKey] = useState('');
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [alertDismissed, setAlertDismissed] = useState(false);
 
   const selectedDevice = config.devices.find(d => d.id === selectedDeviceId);
   const selectedSubOption = selectedDevice?.subOptions?.find(s => s.id === selectedSubOptionId);
@@ -59,35 +62,71 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
               <p className="font-bold text-lg text-white text-center mb-4">{content.subtitle}</p>
             )}
 
-            {content.mediaType === 'image' && content.mediaUrl && (
-              <div className="w-full rounded-2xl overflow-hidden mb-6 shadow-lg shadow-black/50 border border-white/10">
-                <img src={content.mediaUrl} alt="Mídia" className="w-full h-auto object-cover" />
-              </div>
-            )}
-            
-            {content.mediaType === 'video' && content.mediaUrl && (
-              <div className="w-full rounded-2xl overflow-hidden mb-6 shadow-lg shadow-black/50 border border-white/10">
-                {(() => {
-                  const embed = getEmbedUrl(content.mediaUrl);
-                  if (!embed) return null;
-                  
-                  if (embed.type === 'iframe') {
-                    return (
-                      <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                        <iframe 
-                          src={embed.url} 
-                          className="absolute top-0 left-0 w-full h-full rounded-xl"
-                          allow="autoplay; encrypted-media; fullscreen"
-                          allowFullScreen
-                        />
-                      </div>
-                    );
-                  }
+            {/* Carrossel de Mídias */}
+            {(() => {
+              const items = content.mediaItems || [];
+              if (items.length === 0 && content.mediaUrl && content.mediaType && content.mediaType !== 'none') {
+                items.push({ id: 'legacy', url: content.mediaUrl, type: content.mediaType });
+              }
 
-                  return <video src={embed.url} controls playsInline className="w-full h-auto object-cover rounded-xl" />;
-                })()}
-              </div>
-            )}
+              if (items.length === 0) return null;
+
+              const activeItem = items[currentSlide];
+
+              return (
+                <div className="w-full mb-6">
+                  <div className="w-full rounded-2xl overflow-hidden shadow-lg shadow-black/50 border border-white/10 relative">
+                    {activeItem.type === 'image' ? (
+                      <img src={activeItem.url} alt="Mídia" className="w-full h-auto object-cover" />
+                    ) : (
+                      (() => {
+                        const embed = getEmbedUrl(activeItem.url);
+                        if (!embed) return null;
+                        if (embed.type === 'iframe') {
+                          return (
+                            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+                              <iframe 
+                                src={embed.url} 
+                                className="absolute top-0 left-0 w-full h-full rounded-xl"
+                                allow="autoplay; encrypted-media; fullscreen"
+                                allowFullScreen
+                              />
+                            </div>
+                          );
+                        }
+                        return <video src={embed.url} controls playsInline className="w-full h-auto object-cover rounded-xl" />;
+                      })()
+                    )}
+
+                    {/* Navegação do Carrossel */}
+                    {items.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentSlide((prev) => (prev > 0 ? prev - 1 : items.length - 1))}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm transition-all border border-white/20 z-10"
+                        >
+                          <ChevronLeft size={18} />
+                        </button>
+                        <button
+                          onClick={() => setCurrentSlide((prev) => (prev < items.length - 1 ? prev + 1 : 0))}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm transition-all border border-white/20 z-10"
+                        >
+                          <ChevronRight size={18} />
+                        </button>
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 bg-black/40 px-2 py-1 rounded-full backdrop-blur-md">
+                          {items.map((_, idx) => (
+                            <div 
+                              key={idx} 
+                              className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentSlide ? 'bg-white scale-125' : 'bg-white/40'}`} 
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {content.topAlert && (
               <p className={`font-bold block mb-1 ${content.topAlert.type === 'danger' ? 'text-red-400' : 'text-indigo-400'}`}>
@@ -233,7 +272,7 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
           </div>
           
           <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
-            {selectedDevice.subOptions?.map(sub => (
+            {(selectedDevice.subOptions || []).filter(s => s.visible !== false).map(sub => (
               <button
                 key={sub.id}
                 type="button"
@@ -264,38 +303,69 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
 
   // 1. Renderizando a Lista de Dispositivos Principal
   return (
-    <motion.div 
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-    >
-      <div className="w-full max-w-lg mx-auto">
-        <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md uppercase">QUAL É O SEU DISPOSITIVO PRINCIPAL ?</h2>
-        </div>
-        
-        <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
-          {config.devices.map(device => (
-            <button
-              key={device.id}
-              type="button"
-              onClick={() => setSelectedDeviceId(device.id)}
-              className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
-            >
-              <span className="font-bold text-white text-lg tracking-wide">{device.name}</span>
-            </button>
-          ))}
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
+    <>
+      {/* Alerta Global */}
+      {config.globalAlert?.enabled && !alertDismissed && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#0c0e12] border border-slate-700 p-6 rounded-3xl w-full max-w-sm shadow-2xl relative"
           >
-            VOLTAR
-          </button>
+            <button 
+              onClick={() => setAlertDismissed(true)}
+              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+            <div className={`w-12 h-12 rounded-full mb-4 flex items-center justify-center ${config.globalAlert.type === 'danger' ? 'bg-red-500/20 text-red-500' : config.globalAlert.type === 'warning' ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-500'}`}>
+              <AlertTriangle size={24} />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">{config.globalAlert.title}</h3>
+            <p className="text-slate-300 text-sm mb-6 leading-relaxed whitespace-pre-wrap">{config.globalAlert.text}</p>
+            <button 
+              onClick={() => setAlertDismissed(true)}
+              className="w-full py-3 font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl transition-colors"
+            >
+              Entendi
+            </button>
+          </motion.div>
         </div>
-      </div>
-    </motion.div>
+      )}
+
+      <motion.div 
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+      >
+        <div className="w-full max-w-lg mx-auto">
+          <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md uppercase">QUAL É O SEU DISPOSITIVO PRINCIPAL ?</h2>
+          </div>
+          
+          <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
+            {config.devices.filter(d => d.visible !== false).map(device => (
+              <button
+                key={device.id}
+                type="button"
+                onClick={() => setSelectedDeviceId(device.id)}
+                className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
+              >
+                <span className="font-bold text-white text-lg tracking-wide">{device.name}</span>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
+            >
+              VOLTAR
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </>
   );
 }

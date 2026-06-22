@@ -5,12 +5,19 @@ export interface TrialLink {
   style?: 'primary' | 'outline' | 'text' | 'wa';
 }
 
+export interface TrialMedia {
+  id: string;
+  url: string;
+  type: 'image' | 'video';
+}
+
 export interface TrialContentBlock {
   title?: string;
   subtitle?: string;
   textBlocks?: string[];
-  mediaUrl?: string;
-  mediaType?: 'image' | 'video' | 'none';
+  mediaUrl?: string; // Mantido para retrocompatibilidade
+  mediaType?: 'image' | 'video' | 'none'; // Mantido para retrocompatibilidade
+  mediaItems?: TrialMedia[]; // Novo formato de carrossel de mídia
   links?: TrialLink[];
   whatsappText?: string;
   topAlert?: { type: 'info' | 'warning' | 'danger'; text: string };
@@ -22,6 +29,7 @@ export interface TrialContentBlock {
 export interface TrialSubOption {
   id: string;
   name: string;
+  visible?: boolean;
   content: TrialContentBlock;
 }
 
@@ -29,6 +37,7 @@ export interface TrialDevice {
   id: string;
   name: string;
   icon?: string;
+  visible?: boolean;
   type: 'content' | 'suboptions';
   content?: TrialContentBlock;
   subOptions?: TrialSubOption[];
@@ -36,6 +45,12 @@ export interface TrialDevice {
 
 export interface TrialConfig {
   devices: TrialDevice[];
+  globalAlert?: {
+    enabled: boolean;
+    title: string;
+    text: string;
+    type: 'info' | 'warning' | 'danger';
+  };
 }
 
 export const defaultTrialConfig: TrialConfig = {

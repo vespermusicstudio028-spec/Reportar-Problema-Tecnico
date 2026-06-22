@@ -11,6 +11,8 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedSubOptionId, setSelectedSubOptionId] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
+  const [macCode, setMacCode] = useState('');
+  const [deviceKey, setDeviceKey] = useState('');
 
   const selectedDevice = config.devices.find(d => d.id === selectedDeviceId);
   const selectedSubOption = selectedDevice?.subOptions?.find(s => s.id === selectedSubOptionId);
@@ -145,6 +147,42 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
             {content.bottomAlert && (
               <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl text-red-200 text-center font-bold">
                 {content.bottomAlert.text}
+              </div>
+            )}
+
+            {content.showMacInput && (
+              <div className="bg-slate-800/50 rounded-xl p-4 mt-6 border border-slate-700/50 space-y-3">
+                <h3 className="font-bold text-white text-sm uppercase text-center">Dados do Aplicativo (Opcional)</h3>
+                <p className="text-xs text-slate-400 mb-2 text-center">Se o aplicativo pedir, preencha abaixo para liberar.</p>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Código MAC</label>
+                  <input
+                    type="text"
+                    value={macCode}
+                    onChange={(e) => setMacCode(e.target.value)}
+                    placeholder="Ex: a1:b2:c3:d4:e5:f6"
+                    className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Device Key / Código do App</label>
+                  <input
+                    type="text"
+                    value={deviceKey}
+                    onChange={(e) => setDeviceKey(e.target.value)}
+                    placeholder="Ex: 123456"
+                    className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
+                  />
+                </div>
+                
+                <a 
+                  href={`https://wa.me/5521959368651?text=${encodeURIComponent(`Olá, baixei o aplicativo e aqui estão os meus dados para liberação:\n\n*MAC:* ${macCode || 'Não informado'}\n*Código (Key):* ${deviceKey || 'Não informado'}`)}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="mt-4 flex justify-center items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors w-full"
+                >
+                  Enviar Dados p/ WhatsApp
+                </a>
               </div>
             )}
 

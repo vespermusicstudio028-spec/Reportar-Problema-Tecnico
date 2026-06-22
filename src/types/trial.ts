@@ -16,6 +16,7 @@ export interface TrialContentBlock {
   topAlert?: { type: 'info' | 'warning' | 'danger'; text: string };
   bottomAlert?: { type: 'info' | 'warning' | 'danger'; text: string };
   changelog?: { version: string; items: string[] };
+  showMacInput?: boolean;
 }
 
 export interface TrialSubOption {

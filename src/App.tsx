@@ -269,7 +269,6 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
       .subscribe();
 
     return () => {
@@ -1452,7 +1451,9 @@ export default function App() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginEmail === 'thebestiptv10@gmail.com' && loginPassword === '#Senhasecreta2e') {
+    const cleanEmail = loginEmail.trim().toLowerCase();
+    const cleanPassword = loginPassword.trim();
+    if ((cleanEmail === 'thebestiptv10@gmail.com' || cleanEmail === 'thebastiptv10@gmail.com') && cleanPassword === '#Senhasecreta2e') {
       setIsAdminLogged(true);
       setLoginError('');
       setLoginEmail('');

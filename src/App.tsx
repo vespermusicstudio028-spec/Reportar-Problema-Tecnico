@@ -335,7 +335,7 @@ export default function App() {
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
-  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | null>(null);
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | null>(null);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showForgotCodeModal, setShowForgotCodeModal] = useState(false);
   const [forgotCodePhone, setForgotCodePhone] = useState('');

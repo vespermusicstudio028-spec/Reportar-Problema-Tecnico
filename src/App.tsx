@@ -3433,7 +3433,9 @@ export default function App() {
              <div className="md:hidden flex items-center justify-center drop-shadow-md mr-1">
                <img src="/logo.png?v=2" alt="Logo" className="w-12 h-12 object-contain" />
              </div>
-             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">Reportar<br className="md:hidden" />Problema Técnico</h1>
+             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">
+               Reportar <br className="md:hidden" />Problema Técnico
+             </h1>
           </div>
           
           <div className="flex flex-col items-end gap-3 w-full md:w-auto mt-2 md:mt-0">

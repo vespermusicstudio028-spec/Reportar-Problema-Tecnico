@@ -1611,6 +1611,7 @@ export default function App() {
     }
   };
 
+
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientName || !clientCode || !clientLink) return;
@@ -1620,25 +1621,46 @@ export default function App() {
       return;
     }
 
-    // Atualização otimista na UI para aparecer na hora
-    const tempClient = { 
-      id: Date.now().toString(), 
-      name: clientName, 
-      code: clientCode, 
-      canvasLink: clientLink, 
-      addedAt: new Date().toISOString() 
-    };
-    setClients(prev => [tempClient, ...prev]);
+    try {
+      const { data, error } = await supabase.from('clients').insert([{
+        name: clientName,
+        code: clientCode,
+        canvas_link: clientLink
+      }]).select();
 
-    await supabase.from('clients').insert([{
-      name: clientName,
-      code: clientCode,
-      canvas_link: clientLink
-    }]);
+      if (error) {
+        console.error('Erro ao cadastrar cliente:', error);
+        alert('Erro ao cadastrar cliente: ' + error.message);
+        return;
+      }
 
-    setClientName('');
-    setClientCode('');
-    setClientLink('https://testetestettt.my.canva.site/sr-carlos');
+      // Recarrega os clientes reais do banco para garantir sincronização
+      const { data: updatedClients } = await supabase
+        .from('clients')
+        .select('*')
+        .order('added_at', { ascending: false });
+
+      if (updatedClients) {
+        setClients(updatedClients.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code,
+          canvasLink: c.canvas_link,
+          email: c.email,
+          phone: c.phone,
+          addedAt: c.added_at,
+          lastRecoveryAt: c.last_recovery_at
+        })));
+      }
+
+      setClientName('');
+      setClientCode('');
+      setClientLink('https://testetestettt.my.canva.site/sr-carlos');
+      alert(`✅ Cliente "${clientName}" cadastrado com sucesso!`);
+    } catch (err: any) {
+      console.error('Erro inesperado ao cadastrar:', err);
+      alert('Erro inesperado ao cadastrar cliente: ' + (err.message || 'Tente novamente.'));
+    }
   };
 
   const handleSaveClient = async (updatedClient: Client) => {
@@ -1655,7 +1677,10 @@ export default function App() {
         .eq('id', updatedClient.id);
 
       if (error) throw error;
+
+      setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
       setEditingClient(null);
+      alert('✅ Alterações do cliente salvas com sucesso!');
     } catch (err: any) {
       alert('Erro ao salvar cliente: ' + (err.message || 'Erro desconhecido.'));
     }
@@ -1736,7 +1761,16 @@ export default function App() {
 
   const handleDeleteClient = async (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
-      await supabase.from('clients').delete().eq('id', id);
+      try {
+        const { error } = await supabase.from('clients').delete().eq('id', id);
+        if (error) {
+          alert('Erro ao remover cliente: ' + error.message);
+        } else {
+          setClients(prev => prev.filter(c => c.id !== id));
+        }
+      } catch (err: any) {
+        alert('Erro ao remover cliente: ' + (err.message || 'Erro desconhecido.'));
+      }
     }
   };
 

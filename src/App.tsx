@@ -524,16 +524,16 @@ export default function App() {
 
       const releaseDate = selectedTMDB?.release_date || selectedTMDB?.first_air_date;
       const year = releaseDate ? releaseDate.substring(0, 4) : '';
+      const displayTitle = year && !title.includes(`(${year})`) ? `${title} (${year})` : title;
 
       const { error } = await supabase.from('content_requests').insert([{
         client_code: clientCode,
         type: requestType === 'movie' ? 'Filme' : 'Série',
-        title,
+        title: displayTitle,
         tmdb_id: selectedTMDB?.id?.toString(),
         poster_url: posterUrl,
         season: requestType === 'tv' ? requestSeason : null,
         episode: requestType === 'tv' ? requestEpisode : null,
-        year: year,
       }]);
 
       if (error) {

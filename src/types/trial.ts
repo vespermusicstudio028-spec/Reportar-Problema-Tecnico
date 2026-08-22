@@ -24,6 +24,7 @@ export interface TrialContentBlock {
   bottomAlert?: { type: 'info' | 'warning' | 'danger'; text: string };
   changelog?: { version: string; items: string[] };
   showMacInput?: boolean;
+  macAppName?: string;
   warningAlert?: string; // Campo legado usado no conteúdo padrão de Celular
 }
 

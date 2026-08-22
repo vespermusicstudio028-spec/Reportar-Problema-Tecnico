@@ -342,20 +342,40 @@ export function TrialAdminPanel({ config, onSave }: Props) {
         </div>
 
         {/* Captura de MAC e Device Key */}
-        <div className="bg-[#0c0e12] border border-slate-700 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h5 className="font-bold text-sm text-slate-300">Captura de MAC e Device Key</h5>
-            <p className="text-xs text-slate-500 mt-1">Exibir campos opcionais para o cliente enviar o Código MAC e a Device Key para o seu WhatsApp.</p>
+        <div className="bg-[#0c0e12] border border-slate-700 rounded-xl p-4 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h5 className="font-bold text-sm text-slate-300">Captura de MAC e Device Key</h5>
+              <p className="text-xs text-slate-500 mt-1">Exibir campos opcionais para o cliente enviar o Código MAC e a Device Key para o seu WhatsApp.</p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={c.showMacInput || false}
+                onChange={e => setField({ showMacInput: e.target.checked })}
+              />
+              <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+            </label>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer shrink-0">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={c.showMacInput || false}
-              onChange={e => setField({ showMacInput: e.target.checked })}
-            />
-            <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
-          </label>
+
+          {c.showMacInput && (
+            <div className="pt-3 border-t border-slate-800 space-y-2">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Nome do Aplicativo (Enviado automaticamente no WhatsApp)
+              </label>
+              <input
+                type="text"
+                value={c.macAppName || ''}
+                onChange={e => setField({ macAppName: e.target.value })}
+                placeholder="Ex: IBO Player, XCIPTV, Smarters Pro, Smart STB"
+                className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-4 py-2.5 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+              />
+              <p className="text-[11px] text-slate-500">
+                Quando o cliente preencher o MAC ou Código, o nome deste aplicativo será anexado automaticamente na mensagem do WhatsApp.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );

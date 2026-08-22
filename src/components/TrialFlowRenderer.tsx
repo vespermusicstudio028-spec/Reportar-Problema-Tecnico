@@ -191,15 +191,19 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
 
             {content.showMacInput && (
               <div className="bg-slate-800/50 rounded-xl p-4 mt-6 border border-slate-700/50 space-y-3">
-                <h3 className="font-bold text-white text-sm uppercase text-center">Dados do Aplicativo (Opcional)</h3>
-                <p className="text-xs text-slate-400 mb-2 text-center">Se o aplicativo pedir, preencha abaixo para liberar.</p>
+                <h3 className="font-bold text-white text-sm uppercase text-center">
+                  {content.macAppName ? `Dados do Aplicativo - ${content.macAppName}` : 'Dados do Aplicativo (Opcional)'}
+                </h3>
+                <p className="text-xs text-slate-400 mb-2 text-center">
+                  {content.macAppName ? `Preencha os dados gerados pelo ${content.macAppName} para liberarmos seu teste.` : 'Se o aplicativo pedir, preencha abaixo para liberar.'}
+                </p>
                 <div>
                   <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Código MAC</label>
                   <input
                     type="text"
                     value={macCode}
                     onChange={(e) => setMacCode(e.target.value)}
-                    placeholder="Ex: a1:b2:c3:d4:e5:f6"
+                    placeholder="Ex: A1:B2:C3:D4:E5:F6"
                     className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
                   />
                 </div>
@@ -215,10 +219,12 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
                 </div>
                 
                 <a 
-                  href={`https://wa.me/5521959368651?text=${encodeURIComponent(`Olá, baixei o aplicativo e aqui estão os meus dados para liberação:\n\n*MAC:* ${macCode || 'Não informado'}\n*Código (Key):* ${deviceKey || 'Não informado'}`)}`}
+                  href={`https://wa.me/5521959368651?text=${encodeURIComponent(
+                    `Olá, baixei o aplicativo e aqui estão os meus dados para liberação:${content.macAppName ? `\n*Aplicativo:* ${content.macAppName}` : ''}\n\n*Código MAC:* ${macCode.trim() || 'Não informado'}\n*Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`
+                  )}`}
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="mt-4 flex justify-center items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors w-full"
+                  className="mt-4 flex justify-center items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors w-full shadow-lg shadow-green-500/20"
                 >
                   Enviar Dados p/ WhatsApp
                 </a>

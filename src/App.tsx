@@ -1815,933 +1815,169 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto pt-20"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto"
+          onClick={() => setShowLoginModal(false)}
         >
           <motion.div
-            initial={{ scale: 0.95, opacity: 0 }}
+            initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            className={`bg-[#15181e] border border-slate-800 rounded-3xl p-6 md:p-8 w-full ${isAdminLogged ? 'max-w-2xl' : 'max-w-md'} shadow-2xl relative my-auto`}
+            exit={{ scale: 0.92, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className={`bg-[#0d1017] border border-slate-800/80 rounded-3xl p-6 md:p-8 w-full ${isAdminLogged ? 'max-w-2xl' : 'max-w-md'} shadow-2xl relative my-auto`}
           >
             <button 
               onClick={() => setShowLoginModal(false)}
-              className="absolute top-6 right-6 text-slate-400 hover:text-white"
+              className="absolute top-6 right-6 w-9 h-9 rounded-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
             >
-              ✕
+              <X size={18} />
             </button>
             
             {isAdminLogged ? (
                <div className="space-y-6">
-                 <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
-                   <div className="w-12 h-12 bg-indigo-600/20 rounded-full flex items-center justify-center shrink-0">
-                     <LayoutDashboard size={24} className="text-indigo-400" />
+                 {/* Topo do Modal */}
+                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5 pr-8">
+                   <div className="flex items-center gap-3.5">
+                     <div className="w-12 h-12 bg-indigo-600/20 border border-indigo-500/30 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-600/20">
+                       <LayoutDashboard size={24} className="text-indigo-400" />
+                     </div>
+                     <div>
+                       <h2 className="text-xl font-bold text-white tracking-tight">Painel Admin</h2>
+                       <div className="flex items-center gap-2 mt-0.5">
+                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                         <span className="text-xs text-emerald-400 font-medium">Autenticado com sucesso</span>
+                       </div>
+                     </div>
                    </div>
-                   <div className="flex-1">
-                     <div className="flex items-center gap-6">
-                        <h2 className="text-xl font-bold text-white tracking-tight">Painel Admin</h2>
-                        <div className="flex items-center gap-2 bg-[#0c0e12] px-3 py-1.5 rounded-xl border border-slate-800 shadow-inner">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Teste Grátis</span>
-                          <button
-                            onClick={() => setIsTrialEnabled(!isTrialEnabled)}
-                            className={`relative w-9 h-5 rounded-full transition-colors duration-300 focus:outline-none ${isTrialEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                          >
-                            <div className={`absolute top-[2px] left-[2px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${isTrialEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-emerald-400 text-sm mt-0.5">Autenticado com sucesso</p>
+
+                   {/* Toggle Teste Grátis */}
+                   <div className="flex items-center gap-2.5 bg-[#151922] px-3.5 py-2 rounded-2xl border border-slate-800/80 shrink-0">
+                     <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Teste Grátis</span>
+                     <button
+                       type="button"
+                       onClick={() => setIsTrialEnabled(!isTrialEnabled)}
+                       className={`relative w-10 h-6 rounded-full transition-colors duration-300 focus:outline-none ${isTrialEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                     >
+                       <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300 ${isTrialEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                     </button>
                    </div>
                  </div>
 
-                 <div className="space-y-3">
-                   {/* Accordion: CMS Teste Grátis */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'cms-trial' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
-                       onClick={() => setAdminTab(adminTab === 'cms-trial' ? null : 'cms-trial')}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'cms-trial' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <Tv size={20} />
-                         </div>
-                         <div>
-                           <span className="text-white font-bold block">Gerenciar Teste Grátis</span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Botões, textos e links</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'cms-trial' ? 'rotate-180 text-indigo-400' : ''}`} />
-                     </button>
-                     
-                     <AnimatePresence>
-                       {adminTab === 'cms-trial' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           className="border-t border-slate-800/50 p-5 bg-[#0a0c10]"
-                         >
-                           <TrialAdminPanel config={trialConfig} onSave={saveTrialConfig} />
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
+                 {/* Título de Instrução */}
+                 <div>
+                   <p className="text-xs uppercase tracking-wider text-slate-400 font-bold">Escolha a página que deseja acessar:</p>
+                 </div>
 
-                   {/* Accordion: Informes */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'informes' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
-                       onClick={() => setAdminTab(adminTab === 'informes' ? null : 'informes')}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'informes' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <Bell size={20} />
-                         </div>
-                         <div>
-                           <span className="text-white font-bold block">Informes</span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Gestão de comunicados</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'informes' ? 'rotate-180 text-indigo-400' : ''}`} />
-                     </button>
-                     <AnimatePresence initial={false}>
-                       {adminTab === 'informes' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                           className="overflow-hidden"
-                         >
-                           <div className="p-5 pt-0 space-y-6">
-                             <form onSubmit={handleAddAnnouncement} className="bg-[#0c0e12] p-5 rounded-2xl border border-slate-800 space-y-4">
-                                <h3 className="text-white font-medium text-sm flex items-center gap-2">
-                                  <Bell size={16} className="text-indigo-400"/>
-                                  Novo Informe
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-slate-500 font-bold uppercase">Categoria</label>
-                                    <select 
-                                      value={annCategory} onChange={(e) => {
-                                        setAnnCategory(e.target.value);
-                                        if (e.target.value === 'Enquete / Evento') {
-                                          setAnnStatus('Enquete');
-                                        } else if (annStatus === 'Enquete' || annStatus === 'Evento') {
-                                          setAnnStatus('Problemas Técnicos');
-                                        }
-                                      }}
-                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
-                                    >
-                                      <option>Canal</option><option>Filme</option><option>Série</option><option>Serviço de Streaming</option><option>Enquete / Evento</option>
-                                    </select>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-slate-500 font-bold uppercase">Status/Motivo</label>
-                                    <select 
-                                      value={annStatus} onChange={(e) => setAnnStatus(e.target.value)}
-                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
-                                    >
-                                      {annCategory === 'Enquete / Evento' ? (
-                                        <>
-                                          <option>Enquete</option>
-                                          <option>Evento</option>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <option>Problemas Técnicos</option>
-                                          <option>Mudança</option>
-                                          <option>Removido</option>
-                                        </>
-                                      )}
-                                    </select>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-slate-500 font-bold uppercase">Nome do Conteúdo</label>
-                                    <input 
-                                      type="text"
-                                      disabled={annCategory === 'Serviço de Streaming'}
-                                      placeholder={annCategory === 'Serviço de Streaming' ? 'N/A' : (annCategory === 'Enquete / Evento' ? 'Ex: Melhor Filme do Ano (Opcional)' : 'Ex: HBO Brasil')}
-                                      value={annCategory === 'Serviço de Streaming' ? '' : annName}
-                                      onChange={(e) => setAnnName(e.target.value)}
-                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500 disabled:opacity-50"
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-slate-500 font-bold uppercase">Data de Expiração</label>
-                                    <input 
-                                      type="datetime-local"
-                                      required
-                                      value={annExpiry}
-                                      onFocus={() => {
-                                        if (!annExpiry) {
-                                          const now = new Date();
-                                          const offset = now.getTimezoneOffset() * 60000;
-                                          const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16);
-                                          setAnnExpiry(localISOTime);
-                                        }
-                                      }}
-                                      onChange={(e) => setAnnExpiry(e.target.value)}
-                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
-                                    />
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-xs text-slate-500 font-bold uppercase">Mensagem visível</label>
-                                  <textarea 
-                                    required value={annMessage} onChange={(e) => setAnnMessage(e.target.value)} rows={2}
-                                    placeholder="Descreva o que está acontecendo..."
-                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm resize-none outline-none focus:border-indigo-500"
-                                  />
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-xs text-slate-500 font-bold uppercase">Anexo (Opcional)</label>
-                                  <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <label className="flex-1 flex items-center justify-center h-10 border border-dashed border-slate-700 bg-[#15181e] rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
-                                        <input 
-                                          type="file" 
-                                          accept="image/*,video/*"
-                                          className="hidden"
-                                          onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                                          onChange={(e) => {
-                                            if (e.target.files && e.target.files[0]) {
-                                              setAnnMedia(e.target.files[0]);
-                                              setAnnMediaName(e.target.files[0].name);
-                                            }
-                                          }}
-                                        />
-                                        <span className="text-xs text-slate-500 truncate px-2">
-                                          {annMediaName || "Selecionar Foto ou Vídeo"}
-                                        </span>
-                                      </label>
-                                      {annMedia && (
-                                        <button 
-                                          type="button" 
-                                          onClick={() => { setAnnMedia(null); setAnnMediaName(''); }}
-                                          className="p-2 text-red-500 hover:text-red-400"
-                                        >
-                                          <Trash2 size={16} />
-                                        </button>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Preview da mídia selecionada */}
-                                    {annMedia && (
-                                      <div className="mt-1 rounded-xl overflow-hidden border border-slate-700/50 bg-black/40 relative">
-                                        {annMedia.type.startsWith('image/') ? (
-                                          <img 
-                                            src={URL.createObjectURL(annMedia)} 
-                                            alt="Preview" 
-                                            className="w-full max-h-48 object-contain"
-                                          />
-                                        ) : (
-                                          <video 
-                                            src={URL.createObjectURL(annMedia)} 
-                                            className="w-full max-h-48 object-contain" 
-                                            controls 
-                                          />
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                                
-                                {annStatus === 'Enquete' && (
-                                  <div className="space-y-3 bg-indigo-900/10 p-4 rounded-xl border border-indigo-500/20">
-                                    <div className="flex justify-between items-center">
-                                      <label className="text-xs text-indigo-300 font-bold uppercase">Opções da Enquete</label>
-                                      <button 
-                                        type="button" 
-                                        onClick={() => setPollOptionsInput([...pollOptionsInput, ''])}
-                                        className="text-xs text-indigo-400 hover:text-indigo-300 font-medium"
-                                      >
-                                        + Adicionar Opção
-                                      </button>
-                                    </div>
-                                    {pollOptionsInput.map((opt, index) => (
-                                      <div key={index} className="flex gap-2">
-                                        <input 
-                                          type="text" 
-                                          placeholder={`Opção ${index + 1}`}
-                                          value={opt}
-                                          onChange={(e) => {
-                                            const newOpts = [...pollOptionsInput];
-                                            newOpts[index] = e.target.value;
-                                            setPollOptionsInput(newOpts);
-                                          }}
-                                          className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-indigo-500"
-                                        />
-                                        {pollOptionsInput.length > 2 && (
-                                          <button 
-                                            type="button" 
-                                            onClick={() => {
-                                              const newOpts = [...pollOptionsInput];
-                                              newOpts.splice(index, 1);
-                                              setPollOptionsInput(newOpts);
-                                            }}
-                                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors"
-                                          >
-                                            ✕
-                                          </button>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                <button type="submit" className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors">
-                                  Publicar Informe
-                                </button>
-                              </form>
-
-                              {/* Histórico de Informes */}
-                              <div className="space-y-3">
-                                <h3 className="text-white font-medium text-sm flex items-center justify-between">
-                                  Histórico de Informes ({announcements.length})
-                                </h3>
-                                {announcements.length === 0 ? (
-                                  <p className="text-slate-500 text-sm italic py-4 text-center bg-[#0c0e12] rounded-xl border border-dashed border-slate-800">
-                                    Nenhum informe publicado.
-                                  </p>
-                                ) : (
-                                  <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                                    {announcements.map((ann) => (
-                                      <div key={ann.id} className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 space-y-3">
-                                        <div className="flex justify-between items-start gap-4">
-                                          <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                              <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700`}>
-                                                {ann.category}
-                                              </span>
-                                              <span className={`text-[10px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded ${
-                                                ann.status === 'Removido' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                                                ann.status === 'Mudança' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                                ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                                'bg-orange-500/10 text-orange-400 border border-orange-500/20'
-                                              }`}>
-                                                {ann.status}
-                                              </span>
-                                            </div>
-                                            <p className="text-white font-bold text-sm">{ann.name}</p>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            {ann.status !== 'Problema Resolvido' && (
-                                              <button 
-                                                title="Marcar como Resolvido"
-                                                onClick={() => handleResolveAnnouncement(ann.id)} 
-                                                className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                                              >
-                                                <CheckCircle2 size={16} />
-                                              </button>
-                                            )}
-                                            <button 
-                                              title="Enviar via WhatsApp"
-                                              onClick={() => {
-                                                const text = `📢 *${ann.name}*\n\n*Status:* ${ann.status}\n*Informe:* ${ann.message}\n\n_Expira em: ${new Date(ann.expiryDate).toLocaleString()}_`;
-                                                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                                              }} 
-                                              className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                                            >
-                                              <MessageCircle size={16} />
-                                            </button>
-                                            <button 
-                                              title="Duplicar/Editar"
-                                              onClick={() => handleDuplicateAnnouncement(ann)} 
-                                              className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
-                                            >
-                                              <Copy size={16} />
-                                            </button>
-                                            <button 
-                                              title="Excluir"
-                                              onClick={() => handleDeleteAnnouncement(ann.id)} 
-                                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
-                                            >
-                                              <Trash2 size={16} />
-                                            </button>
-                                          </div>
-                                        </div>
-                                        
-                                        <p className="text-slate-400 text-xs line-clamp-2 italic">"{ann.message}"</p>
-                                        
-                                        {ann.mediaUrl && (
-                                          <div className="mt-2 rounded-lg overflow-hidden border border-slate-800 bg-black/20">
-                                            {ann.mediaType === 'image' ? (
-                                              <img 
-                                                src={ann.mediaUrl} 
-                                                alt="Anexo" 
-                                                className="w-full h-24 object-cover cursor-zoom-in" 
-                                                onClick={() => setSelectedImage(ann.mediaUrl!)}
-                                              />
-                                            ) : (
-                                              <video src={ann.mediaUrl} className="w-full h-24 object-cover" controls />
-                                            )}
-                                          </div>
-                                        )}
-
-                                        {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
-                                          const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
-                                          const totalVotes = annVotes.length;
-                                          return (
-                                            <div className="mt-2 space-y-1.5 bg-indigo-900/10 p-3 rounded-xl border border-indigo-500/15">
-                                              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 mb-1">📊 Enquete · {totalVotes} voto{totalVotes !== 1 ? 's' : ''}</p>
-                                              {ann.pollOptions.map((opt: PollOption) => {
-                                                const optVotes = annVotes.filter(v => v.option_id === opt.id).length;
-                                                const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
-                                                return (
-                                                  <div key={opt.id} className="flex items-center gap-2">
-                                                    <div className="flex-1 bg-slate-800/50 rounded-lg h-7 relative overflow-hidden">
-                                                      <div className="absolute inset-0 bg-indigo-500/20 rounded-lg transition-all duration-500" style={{ width: `${pct}%` }} />
-                                                      <span className="absolute inset-0 flex items-center px-2 text-[11px] text-slate-300 font-medium">{opt.text}</span>
-                                                    </div>
-                                                    <span className="text-[11px] text-indigo-300 font-bold w-10 text-right">{pct}%</span>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          );
-                                        })()}
-
-                                        <div className="flex items-center justify-between pt-2 border-t border-slate-800/50">
-                                          <span className="text-[10px] text-slate-600 uppercase font-bold">Expira em:</span>
-                                          <span className="text-[10px] font-mono text-slate-500">{new Date(ann.expiryDate).toLocaleString()}</span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
-
-                   {/* Accordion: Clientes */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'clientes' ? 'bg-white/5 border-blue-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
-                       onClick={() => setAdminTab(adminTab === 'clientes' ? null : 'clientes')}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'clientes' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <User size={20} />
-                         </div>
-                         <div>
-                           <span className="text-white font-bold block">Clientes</span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Base de usuários</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'clientes' ? 'rotate-180 text-blue-400' : ''}`} />
-                     </button>
-                     <AnimatePresence initial={false}>
-                       {adminTab === 'clientes' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                           className="overflow-hidden"
-                         >
-                           <div className="p-5 pt-0 space-y-6">
-                              {/* Formulário para Adicionar Cliente */}
-                              <form onSubmit={handleAddClient} className="bg-[#0c0e12] p-5 rounded-2xl border border-slate-800 space-y-4">
-                                <h3 className="text-white font-medium text-sm flex items-center gap-2">
-                                  <User size={16} className="text-blue-400"/> Novo Cliente
-                                </h3>
-                                <div className="space-y-3">
-                                  <input
-                                    type="text" required value={clientName} onChange={(e) => setClientName(e.target.value)}
-                                    placeholder="Nome do cliente"
-                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
-                                  />
-                                  <div className="flex gap-2">
-                                    <input
-                                      type="text" required value={clientCode} onChange={(e) => setClientCode(e.target.value)}
-                                      placeholder="Código de acesso único"
-                                      className="flex-1 bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
-                                    />
-                                    <button 
-                                      type="button" 
-                                      onClick={() => setClientCode(Array.from({length: 6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join(''))}
-                                      className="px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors flex items-center justify-center border border-slate-700 hover:border-slate-600"
-                                      title="Gerar código aleatório (letras e números)"
-                                    >
-                                      <RefreshCcw size={16} />
-                                    </button>
-                                  </div>
-                                  <input
-                                    type="url" required value={clientLink} onChange={(e) => setClientLink(e.target.value)}
-                                    placeholder="Link do Canva do cliente"
-                                    className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-blue-500"
-                                  />
-                                </div>
-                                <button type="submit" className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition-colors">
-                                  Cadastrar Cliente
-                                </button>
-                              </form>
-
-                              <div className="space-y-3">
-                                <h3 className="text-white font-medium text-sm flex items-center justify-between">
-                                  Lista de Clientes ({clients.length})
-                                </h3>
-                                {clients.length === 0 ? (
-                                  <p className="text-slate-500 text-sm italic">Nenhum cliente cadastrado.</p>
-                                ) : (
-                                  <div className="max-h-48 overflow-y-auto pr-2 space-y-2">
-                                    {clients.map(client => (
-                                      <div 
-                                        key={client.id} 
-                                        onClick={() => setEditingClient(client)}
-                                        className="p-4 rounded-xl border bg-[#0c0e12] border-slate-700 hover:bg-slate-800/50 cursor-pointer transition-colors flex justify-between items-center gap-4 group"
-                                      >
-                                        <div className="overflow-hidden">
-                                          <p className="text-white font-bold text-sm truncate group-hover:text-indigo-400 transition-colors">{client.name}</p>
-                                          <div className="flex items-center gap-3 mt-1">
-                                            <span className="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 font-mono group-hover:bg-slate-700 transition-colors">Código: {client.code}</span>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center shrink-0">
-                                          <button 
-                                            type="button" 
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleDeleteClient(client.id);
-                                            }} 
-                                            className="text-slate-500 hover:text-red-400 p-2 transition-colors flex items-center justify-center"
-                                          >
-                                            <Trash2 size={18} />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
-
-                   {/* Accordion: Atualizações */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'atualizacoes' ? 'bg-white/5 border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.05)]' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
-                       onClick={() => setAdminTab(adminTab === 'atualizacoes' ? null : 'atualizacoes')}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'atualizacoes' ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <RefreshCcw size={20} />
-                         </div>
-                         <div>
-                           <span className="text-white font-bold block">Atualizações</span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Conteúdo do catálogo</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'atualizacoes' ? 'rotate-180 text-amber-400' : ''}`} />
-                     </button>
-                     <AnimatePresence initial={false}>
-                       {adminTab === 'atualizacoes' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                           className="overflow-hidden"
-                         >
-                           <div className="p-5 pt-0 space-y-6">
-                              <div className="space-y-6">
-                                <div className="space-y-4">
-                                  <div className="flex justify-between items-center">
-                                    <h3 className="text-white font-medium text-sm flex items-center gap-2">
-                                      <Film size={16} className="text-amber-400" /> Filmes
-                                    </h3>
-                                    {movieUpdates.length > 0 && (
-                                      <button 
-                                        type="button" 
-                                        onClick={async () => {
-                                          if (window.confirm('Excluir TODOS os filmes da lista?')) {
-                                            await supabase.from('movie_updates').delete().not('id', 'is', null);
-                                          }
-                                        }}
-                                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 bg-red-400/10 px-2 py-1 rounded border border-red-400/20 transition-colors"
-                                      >
-                                        <Trash2 size={12} /> Limpar Todos
-                                      </button>
-                                    )}
-                                  </div>
-                                  <form onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    if (newMovieTitle.trim()) {
-                                      const titles = newMovieTitle
-                                        .split('\n')
-                                        .map(t => t.replace(/^[>\-🍿\*]\s*(Atualização de.*)?/i, '').replace(/^[>\-]\s*/, '').trim())
-                                        .filter(t => t && !t.toLowerCase().includes('atualização de'));
-                                      
-                                      if (titles.length > 0) {
-                                        await supabase.from('movie_updates').insert(titles.map(t => ({ title: t })));
-                                        setNewMovieTitle('');
-                                      }
-                                    }
-                                  }} className="flex flex-col gap-2">
-                                    <textarea
-                                      value={newMovieTitle} onChange={(e) => setNewMovieTitle(e.target.value)}
-                                      placeholder="Ex:&#10;> Filme 1&#10;> Filme 2"
-                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-amber-500 resize-y"
-                                      rows={3}
-                                    />
-                                    <button type="submit" className="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors">Adicionar Filmes</button>
-                                  </form>
-                                  <div className="max-h-48 overflow-y-auto space-y-2 mt-4 pr-2">
-                                    {movieUpdates.map(m => (
-                                      <div key={m.id} className="flex items-center gap-2 bg-[#0c0e12] border border-slate-800 p-2 rounded-lg">
-                                        <span className="flex-1 text-slate-300 text-sm truncate">{m.title}</span>
-                                        <button type="button" onClick={async () => {
-                                            const newTitle = window.prompt("Editar título do filme:", m.title);
-                                            if (newTitle && newTitle !== m.title) {
-                                                await supabase.from('movie_updates').update({ title: newTitle }).eq('id', m.id);
-                                            }
-                                        }} className="text-slate-500 hover:text-amber-400 p-1.5 transition-colors"><Pencil size={14}/></button>
-                                        <button type="button" onClick={async () => {
-                                            if (window.confirm('Tem certeza que deseja excluir?')) {
-                                              await supabase.from('movie_updates').delete().eq('id', m.id);
-                                            }
-                                        }} className="text-slate-500 hover:text-red-400 p-1.5 transition-colors"><Trash2 size={14}/></button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                                <div className="space-y-4">
-                                  <div className="flex justify-between items-center">
-                                    <h3 className="text-white font-medium text-sm flex items-center gap-2">
-                                      <Tv size={16} className="text-purple-400" /> Séries
-                                    </h3>
-                                    {seriesUpdates.length > 0 && (
-                                      <button 
-                                        type="button" 
-                                        onClick={async () => {
-                                          if (window.confirm('Excluir TODAS as séries da lista?')) {
-                                            await supabase.from('series_updates').delete().not('id', 'is', null);
-                                          }
-                                        }}
-                                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1 bg-red-400/10 px-2 py-1 rounded border border-red-400/20 transition-colors"
-                                      >
-                                        <Trash2 size={12} /> Limpar Todas
-                                      </button>
-                                    )}
-                                  </div>
-                                  <form onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    if (newSeriesTitle.trim()) {
-                                      const titles = newSeriesTitle
-                                        .split('\n')
-                                        .map(t => t.replace(/^[>\-🍿\*]\s*(Atualização de.*)?/i, '').replace(/^[>\-]\s*/, '').trim())
-                                        .filter(t => t && !t.toLowerCase().includes('atualização de'));
-
-                                      if (titles.length > 0) {
-                                        await supabase.from('series_updates').insert(titles.map(t => ({ title: t })));
-                                        setNewSeriesTitle('');
-                                      }
-                                    }
-                                  }} className="flex flex-col gap-2">
-                                    <textarea
-                                      value={newSeriesTitle} onChange={(e) => setNewSeriesTitle(e.target.value)}
-                                      placeholder="Ex:&#10;> Série 1&#10;> Série 2"
-                                      className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-3 py-2 rounded-xl text-sm outline-none focus:border-purple-500 resize-y"
-                                      rows={3}
-                                    />
-                                    <button type="submit" className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-colors">Adicionar Séries</button>
-                                  </form>
-                                  <div className="max-h-48 overflow-y-auto space-y-2 mt-4 pr-2">
-                                    {seriesUpdates.map(s => (
-                                      <div key={s.id} className="flex items-center gap-2 bg-[#0c0e12] border border-slate-800 p-2 rounded-lg">
-                                        <span className="flex-1 text-slate-300 text-sm truncate">{s.title}</span>
-                                        <button type="button" onClick={async () => {
-                                            const newTitle = window.prompt("Editar título da série:", s.title);
-                                            if (newTitle && newTitle !== s.title) {
-                                                await supabase.from('series_updates').update({ title: newTitle }).eq('id', s.id);
-                                            }
-                                        }} className="text-slate-500 hover:text-purple-400 p-1.5 transition-colors"><Pencil size={14}/></button>
-                                        <button type="button" onClick={async () => {
-                                            if (window.confirm('Tem certeza que deseja excluir?')) {
-                                              await supabase.from('series_updates').delete().eq('id', s.id);
-                                            }
-                                        }} className="text-slate-500 hover:text-red-400 p-1.5 transition-colors"><Trash2 size={14}/></button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
-
-                   {/* Accordion: Pedidos de Conteúdos */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'pedidos' ? 'bg-white/5 border-indigo-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
+                 {/* Grid de Páginas */}
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                   {[
+                     {
+                       id: 'cms-trial' as const,
+                       icon: <Tv size={22} />,
+                       title: 'Gerenciar Teste Grátis',
+                       subtitle: 'Botões, textos e links',
+                       accent: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30 hover:border-emerald-400/60 text-emerald-400',
+                       iconBg: 'bg-emerald-500/20 text-emerald-300',
+                     },
+                     {
+                       id: 'informes' as const,
+                       icon: <Bell size={22} />,
+                       title: 'Informes',
+                       subtitle: 'Gestão de comunicados e enquetes',
+                       accent: 'from-indigo-500/20 to-purple-500/10 border-indigo-500/30 hover:border-indigo-400/60 text-indigo-400',
+                       iconBg: 'bg-indigo-500/20 text-indigo-300',
+                       badge: announcements.length > 0 ? announcements.length : null,
+                     },
+                     {
+                       id: 'clientes' as const,
+                       icon: <User size={22} />,
+                       title: 'Clientes',
+                       subtitle: 'Base de usuários e códigos',
+                       accent: 'from-blue-500/20 to-cyan-500/10 border-blue-500/30 hover:border-blue-400/60 text-blue-400',
+                       iconBg: 'bg-blue-500/20 text-blue-300',
+                       badge: clients.length > 0 ? clients.length : null,
+                     },
+                     {
+                       id: 'atualizacoes' as const,
+                       icon: <RefreshCcw size={22} />,
+                       title: 'Atualizações',
+                       subtitle: 'Filmes e séries do catálogo',
+                       accent: 'from-amber-500/20 to-orange-500/10 border-amber-500/30 hover:border-amber-400/60 text-amber-400',
+                       iconBg: 'bg-amber-500/20 text-amber-300',
+                       badge: (movieUpdates.length + seriesUpdates.length) > 0 ? (movieUpdates.length + seriesUpdates.length) : null,
+                     },
+                     {
+                       id: 'pedidos' as const,
+                       icon: <Clapperboard size={22} />,
+                       title: 'Pedidos de Conteúdo',
+                       subtitle: 'Solicitações de filmes e séries',
+                       accent: 'from-pink-500/20 to-purple-500/10 border-pink-500/30 hover:border-pink-400/60 text-pink-400',
+                       iconBg: 'bg-pink-500/20 text-pink-300',
+                       badge: contentRequests.length > 0 ? contentRequests.length : null,
+                       badgePulse: true,
+                     },
+                     {
+                       id: 'suporte' as const,
+                       icon: <AlertTriangle size={22} />,
+                       title: '🛠️ Suporte',
+                       subtitle: 'Problemas relatados por clientes',
+                       accent: 'from-red-500/20 to-orange-500/10 border-red-500/30 hover:border-red-400/60 text-red-400',
+                       iconBg: 'bg-red-500/20 text-red-300',
+                       badge: userReports.length > 0 ? userReports.length : null,
+                       badgePulse: newReportsCount > 0,
+                     },
+                   ].map((tab) => (
+                     <button
+                       key={tab.id}
+                       type="button"
                        onClick={() => {
-                         if (adminTab !== 'pedidos') {
+                         if (tab.id === 'pedidos') {
                            setLastSeenRequestsCount(contentRequests.length);
                            localStorage.setItem('admin_last_seen_requests', contentRequests.length.toString());
                            setNewRequestsCount(0);
-                           setAdminTab('pedidos');
-                         } else {
-                           setAdminTab(null);
                          }
-                       }}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
-                     >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'pedidos' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <Clapperboard size={20} />
-                         </div>
-                         <div>
-                           <span className="text-white font-bold flex items-center gap-2">
-                             Pedidos
-                             {contentRequests.length > 0 && (
-                               <span className="bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-indigo-500/20">
-                                 {contentRequests.length}
-                               </span>
-                             )}
-                           </span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Solicitações de filmes e séries</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'pedidos' ? 'rotate-180 text-indigo-400' : ''}`} />
-                     </button>
-                     <AnimatePresence initial={false}>
-                       {adminTab === 'pedidos' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                           className="overflow-hidden"
-                         >
-                           <div className="p-5 pt-0 space-y-4">
-                             {contentRequests.length > 0 ? (
-                               <div className="space-y-3">
-                                 {contentRequests.map((req) => {
-                                   const reqClient = clients.find(c => c.code === req.client_code);
-                                   return (
-                                     <div key={req.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex gap-4">
-                                       {req.poster_url ? (
-                                         <img src={req.poster_url} alt="Poster" className="w-16 h-24 object-cover rounded-md flex-shrink-0 shadow-lg" />
-                                       ) : (
-                                         <div className="w-16 h-24 bg-slate-800 rounded-md flex items-center justify-center flex-shrink-0">
-                                           {req.type === 'Filme' ? <MovieIcon size={24} className="text-slate-600"/> : <SeriesIcon size={24} className="text-slate-600"/>}
-                                         </div>
-                                       )}
-                                       <div className="flex-1 min-w-0">
-                                         <div className="flex justify-between items-start">
-                                           <div>
-                                             <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${req.type === 'Filme' ? 'bg-indigo-500/20 text-indigo-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                                               {req.type}
-                                             </span>
-                                             <h4 className="text-white font-bold mt-1 text-sm">{req.title}</h4>
-                                             {(req.season || req.episode) && (
-                                               <p className="text-slate-400 text-xs mt-1">
-                                                 {req.season && `Temp: ${req.season} `} 
-                                                 {req.episode && `Ep: ${req.episode}`}
-                                               </p>
-                                             )}
-                                           </div>
-                                           <div className="text-right">
-                                             <div className="text-xs text-slate-500">Solicitado por:</div>
-                                             <div className="text-sm font-medium text-white">{reqClient?.name || req.client_code}</div>
-                                             {reqClient?.canvasLink && (
-                                               <a href={reqClient.canvasLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 underline block mt-1">
-                                                 Ver Canvas
-                                               </a>
-                                             )}
-                                           </div>
-                                         </div>
-                                         <div className="mt-3 text-xs text-slate-500 flex justify-between items-center">
-                                           <span>{new Date(req.created_at).toLocaleString()}</span>
-                                           <div className="flex items-center gap-1">
-                                             <a
-                                               href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                                                 `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 ${req.type}: ${req.title}\n📌 Ano do conteúdo: ${req.year || ''}${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
-                                               )}`}
-                                               target="_blank"
-                                               rel="noopener noreferrer"
-                                               className="text-emerald-400 hover:text-emerald-300 font-bold px-2 py-1 rounded-md hover:bg-emerald-500/10 transition-colors flex items-center"
-                                             >
-                                               <MessageCircle size={14} className="inline mr-1" /> Enviar
-                                             </a>
-                                             <button
-                                               type="button"
-                                               onClick={async () => {
-                                                 if (window.confirm('Marcar como atendido/remover?')) {
-                                                   await supabase.from('content_requests').delete().eq('id', req.id);
-                                                 }
-                                               }}
-                                               className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors"
-                                             >
-                                               <Trash2 size={14} className="inline mr-1" /> Remover
-                                             </button>
-                                           </div>
-                                         </div>
-                                       </div>
-                                     </div>
-                                   );
-                                 })}
-                               </div>
-                             ) : (
-                               <div className="text-center py-6 border border-dashed border-slate-700/50 rounded-xl">
-                                 <Clapperboard className="w-12 h-12 text-slate-600 mx-auto mb-2 opacity-50" />
-                                 <p className="text-slate-400 text-sm">Nenhum pedido no momento.</p>
-                               </div>
-                             )}
-                           </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
-
-                   {/* Accordion: Suporte */}
-                   <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${adminTab === 'suporte' ? 'bg-white/5 border-red-500/30' : 'bg-[#0c0e12] border-slate-800'}`}>
-                     <button 
-                       onClick={() => {
-                         if (adminTab !== 'suporte') {
+                         if (tab.id === 'suporte') {
                            setLastSeenReportsCount(userReports.length);
                            localStorage.setItem('admin_last_seen_reports', userReports.length.toString());
                            setNewReportsCount(0);
-                           setAdminTab('suporte');
-                         } else {
-                           setAdminTab(null);
                          }
+                         setAdminTab(tab.id);
+                         setShowLoginModal(false);
                        }}
-                       className="w-full flex items-center justify-between p-5 text-left transition-colors"
+                       className={`w-full text-left p-4 rounded-2xl bg-gradient-to-br ${tab.accent} border transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-between group shadow-lg`}
                      >
-                       <div className="flex items-center gap-3">
-                         <div className={`p-2 rounded-xl transition-all duration-300 ${adminTab === 'suporte' ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-slate-800 text-slate-400'}`}>
-                           <AlertTriangle size={20} />
+                       <div className="flex items-center gap-3.5 min-w-0">
+                         <div className={`p-2.5 rounded-xl ${tab.iconBg} group-hover:scale-110 transition-transform shrink-0`}>
+                           {tab.icon}
                          </div>
-                         <div>
-                           <span className="text-white font-bold flex items-center gap-2">
-                             🛠️ Suporte
-                             {newReportsCount > 0 && (
-                               <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-red-500/20">
-                                 {newReportsCount} novo{newReportsCount > 1 ? 's' : ''}
+                         <div className="min-w-0">
+                           <div className="flex items-center gap-2">
+                             <h3 className="font-bold text-white text-sm md:text-base tracking-wide truncate">{tab.title}</h3>
+                             {tab.badge != null && (
+                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 text-white ${tab.badgePulse ? 'animate-pulse bg-red-500' : ''}`}>
+                                 {tab.badge}
                                </span>
-                             )}
-                             {userReports.length > 0 && (
-                               <span className="bg-slate-700 text-slate-300 text-[10px] px-2 py-0.5 rounded-full">
-                                 {userReports.length}
-                               </span>
-                             )}
-                           </span>
-                           <span className="text-slate-500 text-[10px] uppercase tracking-wider font-bold">Problemas reportados pelos clientes</span>
-                         </div>
-                       </div>
-                       <ChevronDown size={20} className={`text-slate-500 transition-transform duration-300 ${adminTab === 'suporte' ? 'rotate-180 text-red-400' : ''}`} />
-                     </button>
-                     <AnimatePresence initial={false}>
-                       {adminTab === 'suporte' && (
-                         <motion.div
-                           initial={{ height: 0, opacity: 0 }}
-                           animate={{ height: 'auto', opacity: 1 }}
-                           exit={{ height: 0, opacity: 0 }}
-                           transition={{ duration: 0.3, ease: 'easeInOut' }}
-                           className="overflow-hidden"
-                         >
-                           <div className="p-5 pt-0 space-y-4">
-                             {userReports.length > 0 ? (
-                               <div className="space-y-3">
-                                 {userReports.map((report) => {
-                                   const reportClient = clients.find(c => c.code === report.client_code) || null;
-                                   return (
-                                     <div key={report.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 relative overflow-hidden group hover:border-slate-700 transition-all">
-                                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
-                                         <div className="flex items-center gap-2 flex-wrap">
-                                           <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border ${
-                                             report.type === 'Canal' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                             report.type === 'Filme' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
-                                             'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                                           }`}>
-                                             {report.type}
-                                           </span>
-                                           <span className="text-white font-bold text-sm">{report.name}</span>
-                                         </div>
-                                         <div className="text-right shrink-0">
-                                            <div className="text-[10px] text-slate-500 uppercase tracking-wider font-bold mb-0.5">Reportado por:</div>
-                                            <div className="text-sm font-bold text-white">{reportClient?.name || report.client_code || 'Desconhecido'}</div>
-                                            <div className="text-[10px] text-slate-600 font-mono mt-1">
-                                              {new Date(report.timestamp).toLocaleString('pt-BR')}
-                                            </div>
-                                         </div>
-                                       </div>
-
-                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                                         <div className="space-y-1">
-                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Problema</p>
-                                           <p className="text-sm text-slate-300 flex items-center gap-2">
-                                             <AlertTriangle size={14} className="text-amber-500" /> {report.issue}
-                                           </p>
-                                         </div>
-                                         <div className="space-y-1">
-                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Dispositivo</p>
-                                           <p className="text-sm text-slate-300 flex items-center gap-2">
-                                             <Tv size={14} className="text-indigo-400" /> {report.device}
-                                           </p>
-                                         </div>
-                                       </div>
-
-                                       {report.description && (
-                                         <div className="pt-2 border-t border-slate-800/50 mb-3">
-                                           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Descrição</p>
-                                           <p className="text-sm text-slate-400 leading-relaxed italic">"{report.description}"</p>
-                                         </div>
-                                       )}
-
-                                       <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-800/50">
-                                         <button
-                                           type="button"
-                                           onClick={async () => {
-                                             if (window.confirm('Marcar como resolvido/remover este reporte?')) {
-                                               await supabase.from('user_reports').delete().eq('id', report.id);
-                                             }
-                                           }}
-                                           className="text-red-400 hover:text-red-300 font-bold px-2 py-1 rounded-md hover:bg-red-500/10 transition-colors text-xs flex items-center gap-1"
-                                         >
-                                           <Trash2 size={14} /> Remover
-                                         </button>
-                                       </div>
-
-                                       <div className="absolute top-0 left-0 w-1 h-full bg-red-600/20 group-hover:bg-red-600 transition-all" />
-                                     </div>
-                                   );
-                                 })}
-                               </div>
-                             ) : (
-                               <div className="text-center py-6 border border-dashed border-slate-700/50 rounded-xl">
-                                 <AlertTriangle className="w-12 h-12 text-slate-600 mx-auto mb-2 opacity-50" />
-                                 <p className="text-slate-400 text-sm">Nenhum problema reportado no momento. 🎉</p>
-                               </div>
                              )}
                            </div>
-                         </motion.div>
-                       )}
-                     </AnimatePresence>
-                   </div>
-
+                           <p className="text-xs text-slate-400 font-medium truncate">{tab.subtitle}</p>
+                         </div>
+                       </div>
+                       <ChevronRight size={18} className="text-slate-500 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0 ml-2" />
+                     </button>
+                   ))}
                  </div>
 
+                 {/* Botão de Logout */}
                  <button 
-                    type="button"
-                    onClick={() => {
-                      setIsAdminLogged(false);
-                      setShowLoginModal(false);
-                    }}
-                    className="w-full pt-4 border-t border-slate-800 text-slate-400 hover:text-white font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <LogOut size={18} /> Sair do Painel Admin
-                </button>
+                   type="button"
+                   onClick={() => {
+                     setIsAdminLogged(false);
+                     setShowLoginModal(false);
+                     setAdminTab(null);
+                   }}
+                   className="w-full pt-4 border-t border-slate-800/80 text-slate-400 hover:text-red-400 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                 >
+                   <LogOut size={16} /> Sair do Painel Admin
+                 </button>
                </div>
             ) : (
                 <form onSubmit={handleLogin} className="space-y-4">
@@ -2807,6 +2043,830 @@ export default function App() {
       )}
     </AnimatePresence>
   );
+
+  // ─────────────────────────────────────────────────────────────
+  // RENDER ADMIN PAGE (Abertura em Tela Cheia / Página Completa)
+  // ─────────────────────────────────────────────────────────────
+  const renderAdminPage = () => {
+    if (!adminTab || !isAdminLogged) return null;
+
+    const pageMeta = {
+      'cms-trial': { title: 'Gerenciar Teste Grátis', subtitle: 'Configurações de fluxo, botões e links', icon: <Tv size={24} />, color: 'emerald' },
+      'informes': { title: 'Informes e Comunicados', subtitle: 'Publicação de avisos, enquetes e eventos', icon: <Bell size={24} />, color: 'indigo' },
+      'clientes': { title: 'Gestão de Clientes', subtitle: 'Cadastrar, visualizar e gerenciar acessos', icon: <User size={24} />, color: 'blue' },
+      'atualizacoes': { title: 'Atualizações de Conteúdo', subtitle: 'Catálogo de novos filmes e séries', icon: <RefreshCcw size={24} />, color: 'amber' },
+      'pedidos': { title: 'Pedidos de Conteúdo', subtitle: 'Solicitações de filmes e séries enviadas pelos clientes', icon: <Clapperboard size={24} />, color: 'pink' },
+      'suporte': { title: '🛠️ Suporte Técnico', subtitle: 'Chamados e problemas relatados pelos clientes', icon: <AlertTriangle size={24} />, color: 'red' },
+    }[adminTab];
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          key={adminTab}
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 40 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+          className="fixed inset-0 z-[60] bg-[#090b10] flex flex-col overflow-hidden text-slate-100 font-sans"
+        >
+          {/* Header Superior da Página */}
+          <header className="px-4 md:px-8 py-4 border-b border-slate-800/80 bg-[#0d1017]/95 backdrop-blur-xl flex items-center justify-between shrink-0 shadow-lg">
+            <div className="flex items-center gap-3 md:gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setAdminTab(null);
+                  setShowLoginModal(true);
+                }}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-slate-200 hover:text-white text-xs md:text-sm font-bold border border-slate-700 transition-all active:scale-95 shadow-sm"
+              >
+                <ChevronRight size={18} className="rotate-180" />
+                <span>Voltar ao Menu</span>
+              </button>
+
+              <div className="h-6 w-px bg-slate-800 hidden sm:block"></div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                  {pageMeta?.icon}
+                </div>
+                <div>
+                  <h1 className="text-base md:text-xl font-bold text-white tracking-tight leading-tight">{pageMeta?.title}</h1>
+                  <p className="text-[11px] md:text-xs text-slate-400 font-medium hidden sm:block">{pageMeta?.subtitle}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAdminTab(null)}
+                className="w-10 h-10 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors border border-slate-700"
+                title="Fechar e ir para a tela inicial"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </header>
+
+          {/* Conteúdo da Página Completa */}
+          <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            <div className="max-w-4xl mx-auto space-y-8 pb-16">
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: CMS TESTE GRÁTIS              */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'cms-trial' && (
+                <div className="bg-[#0f131c] border border-slate-800/80 rounded-3xl p-5 md:p-8 shadow-2xl">
+                  <TrialAdminPanel config={trialConfig} onSave={saveTrialConfig} />
+                </div>
+              )}
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: INFORMES                      */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'informes' && (
+                <div className="space-y-8">
+                  {/* Formulário Novo Informe */}
+                  <form onSubmit={handleAddAnnouncement} className="bg-[#0f131c] p-6 md:p-8 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
+                    <h3 className="text-white font-bold text-lg flex items-center gap-2 border-b border-slate-800 pb-3">
+                      <Bell size={20} className="text-indigo-400"/>
+                      Criar Novo Informe ou Enquete
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Categoria</label>
+                        <select 
+                          value={annCategory} onChange={(e) => {
+                            setAnnCategory(e.target.value);
+                            if (e.target.value === 'Enquete / Evento') {
+                              setAnnStatus('Enquete');
+                            } else if (annStatus === 'Enquete' || annStatus === 'Evento') {
+                              setAnnStatus('Problemas Técnicos');
+                            }
+                          }}
+                          className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                        >
+                          <option>Canal</option><option>Filme</option><option>Série</option><option>Serviço de Streaming</option><option>Enquete / Evento</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Status / Motivo</label>
+                        <select 
+                          value={annStatus} onChange={(e) => setAnnStatus(e.target.value)}
+                          className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                        >
+                          {annCategory === 'Enquete / Evento' ? (
+                            <>
+                              <option>Enquete</option>
+                              <option>Evento</option>
+                            </>
+                          ) : (
+                            <>
+                              <option>Problemas Técnicos</option>
+                              <option>Mudança</option>
+                              <option>Removido</option>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Nome do Conteúdo</label>
+                        <input 
+                          type="text"
+                          disabled={annCategory === 'Serviço de Streaming'}
+                          placeholder={annCategory === 'Serviço de Streaming' ? 'N/A' : (annCategory === 'Enquete / Evento' ? 'Ex: Melhor Filme do Ano (Opcional)' : 'Ex: HBO Brasil')}
+                          value={annCategory === 'Serviço de Streaming' ? '' : annName}
+                          onChange={(e) => setAnnName(e.target.value)}
+                          className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 disabled:opacity-50 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Data de Expiração</label>
+                        <input 
+                          type="datetime-local"
+                          required
+                          value={annExpiry}
+                          onFocus={() => {
+                            if (!annExpiry) {
+                              const now = new Date();
+                              const offset = now.getTimezoneOffset() * 60000;
+                              const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16);
+                              setAnnExpiry(localISOTime);
+                            }
+                          }}
+                          onChange={(e) => setAnnExpiry(e.target.value)}
+                          className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Mensagem Visível aos Clientes</label>
+                      <textarea 
+                        required value={annMessage} onChange={(e) => setAnnMessage(e.target.value)} rows={3}
+                        placeholder="Descreva detalhadamente o comunicado ou situação técnica..."
+                        className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm resize-none outline-none focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Anexo de Foto ou Vídeo (Opcional)</label>
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                          <label className="flex-1 flex items-center justify-center h-12 border border-dashed border-slate-700 bg-[#151922] rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
+                            <input 
+                              type="file" 
+                              accept="image/*,video/*"
+                              className="hidden"
+                              onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                              onChange={(e) => {
+                                if (e.target.files && e.target.files[0]) {
+                                  setAnnMedia(e.target.files[0]);
+                                  setAnnMediaName(e.target.files[0].name);
+                                }
+                              }}
+                            />
+                            <span className="text-xs md:text-sm text-slate-400 font-medium truncate px-4">
+                              {annMediaName ? `📎 ${annMediaName}` : "Clique para selecionar uma foto ou vídeo"}
+                            </span>
+                          </label>
+                          {annMedia && (
+                            <button 
+                              type="button" 
+                              onClick={() => { setAnnMedia(null); setAnnMediaName(''); }}
+                              className="p-3 text-red-500 hover:text-red-400 bg-red-500/10 rounded-xl transition-colors"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          )}
+                        </div>
+                        
+                        {annMedia && (
+                          <div className="mt-2 rounded-2xl overflow-hidden border border-slate-700 bg-black/40 relative max-w-md mx-auto">
+                            {annMedia.type.startsWith('image/') ? (
+                              <img src={URL.createObjectURL(annMedia)} alt="Preview" className="w-full max-h-60 object-contain" />
+                            ) : (
+                              <video src={URL.createObjectURL(annMedia)} className="w-full max-h-60 object-contain" controls />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {annStatus === 'Enquete' && (
+                      <div className="space-y-3.5 bg-indigo-950/20 p-5 rounded-2xl border border-indigo-500/30">
+                        <div className="flex justify-between items-center">
+                          <label className="text-xs text-indigo-300 font-bold uppercase tracking-wider">Opções da Enquete</label>
+                          <button 
+                            type="button" 
+                            onClick={() => setPollOptionsInput([...pollOptionsInput, ''])}
+                            className="text-xs text-indigo-400 hover:text-indigo-300 font-bold bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/30 transition-colors"
+                          >
+                            + Adicionar Opção
+                          </button>
+                        </div>
+                        {pollOptionsInput.map((opt, index) => (
+                          <div key={index} className="flex gap-2">
+                            <input 
+                              type="text" 
+                              placeholder={`Opção ${index + 1}`}
+                              value={opt}
+                              onChange={(e) => {
+                                const newOpts = [...pollOptionsInput];
+                                newOpts[index] = e.target.value;
+                                setPollOptionsInput(newOpts);
+                              }}
+                              className="flex-1 bg-[#151922] border border-slate-700 text-slate-50 px-4 py-2.5 rounded-xl text-sm outline-none focus:border-indigo-500"
+                            />
+                            {pollOptionsInput.length > 2 && (
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  const newOpts = [...pollOptionsInput];
+                                  newOpts.splice(index, 1);
+                                  setPollOptionsInput(newOpts);
+                                }}
+                                className="px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-colors"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button type="submit" className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-indigo-600/30 text-sm">
+                      Publicar Informe
+                    </button>
+                  </form>
+
+                  {/* Histórico de Informes */}
+                  <div className="space-y-4">
+                    <h3 className="text-white font-bold text-lg flex items-center justify-between">
+                      <span>Informes Cadastrados ({announcements.length})</span>
+                    </h3>
+                    {announcements.length === 0 ? (
+                      <div className="text-center py-12 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800">
+                        <Bell size={36} className="text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400 font-medium">Nenhum informe publicado até o momento.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {announcements.map((ann) => (
+                          <div key={ann.id} className="p-5 rounded-2xl border bg-[#0f131c] border-slate-800 space-y-4 shadow-xl">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div>
+                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                    {ann.category}
+                                  </span>
+                                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
+                                    ann.status === 'Removido' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                    ann.status === 'Mudança' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                                    ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                    'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                                  }`}>
+                                    {ann.status}
+                                  </span>
+                                </div>
+                                <h4 className="text-white font-bold text-base">{ann.name}</h4>
+                              </div>
+                              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                {ann.status !== 'Problema Resolvido' && (
+                                  <button 
+                                    title="Marcar como Resolvido"
+                                    onClick={() => handleResolveAnnouncement(ann.id)} 
+                                    className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
+                                  >
+                                    <CheckCircle2 size={18} />
+                                  </button>
+                                )}
+                                <button 
+                                  title="Enviar via WhatsApp"
+                                  onClick={() => {
+                                    const text = `📢 *${ann.name}*\n\n*Status:* ${ann.status}\n*Informe:* ${ann.message}\n\n_Expira em: ${new Date(ann.expiryDate).toLocaleString()}_`;
+                                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                  }} 
+                                  className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
+                                >
+                                  <MessageCircle size={18} />
+                                </button>
+                                <button 
+                                  title="Duplicar/Editar"
+                                  onClick={() => handleDuplicateAnnouncement(ann)} 
+                                  className="p-2.5 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors border border-blue-500/20"
+                                >
+                                  <Copy size={18} />
+                                </button>
+                                <button 
+                                  title="Excluir"
+                                  onClick={() => handleDeleteAnnouncement(ann.id)} 
+                                  className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <p className="text-slate-300 text-sm leading-relaxed">{ann.message}</p>
+                            
+                            {ann.mediaUrl && (
+                              <div className="rounded-xl overflow-hidden border border-slate-800 bg-black/30 max-w-sm">
+                                {ann.mediaType === 'image' ? (
+                                  <img 
+                                    src={ann.mediaUrl} 
+                                    alt="Anexo" 
+                                    className="w-full h-36 object-cover cursor-zoom-in" 
+                                    onClick={() => setSelectedImage(ann.mediaUrl!)}
+                                  />
+                                ) : (
+                                  <video src={ann.mediaUrl} className="w-full h-36 object-cover" controls />
+                                )}
+                              </div>
+                            )}
+
+                            {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
+                              const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
+                              const totalVotes = annVotes.length;
+                              return (
+                                <div className="space-y-2 bg-[#141822] p-4 rounded-xl border border-indigo-500/20">
+                                  <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">📊 Enquete · {totalVotes} voto(s)</p>
+                                  {ann.pollOptions.map((opt: PollOption) => {
+                                    const optVotes = annVotes.filter(v => v.option_id === opt.id).length;
+                                    const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
+                                    return (
+                                      <div key={opt.id} className="flex items-center gap-2">
+                                        <div className="flex-1 bg-slate-800/60 rounded-lg h-8 relative overflow-hidden">
+                                          <div className="absolute inset-0 bg-indigo-500/25 rounded-lg transition-all duration-500" style={{ width: `${pct}%` }} />
+                                          <span className="absolute inset-0 flex items-center px-3 text-xs text-slate-200 font-medium">{opt.text}</span>
+                                        </div>
+                                        <span className="text-xs text-indigo-300 font-bold w-12 text-right">{pct}%</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              );
+                            })()}
+
+                            <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
+                              <span>Expira em: {new Date(ann.expiryDate).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: CLIENTES                      */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'clientes' && (
+                <div className="space-y-8">
+                  {/* Formulário Novo Cliente */}
+                  <form onSubmit={handleAddClient} className="bg-[#0f131c] p-6 md:p-8 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
+                    <h3 className="text-white font-bold text-lg flex items-center gap-2 border-b border-slate-800 pb-3">
+                      <User size={20} className="text-blue-400"/> Cadastrar Novo Cliente
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Nome Completo</label>
+                        <input
+                          type="text" required value={clientName} onChange={(e) => setClientName(e.target.value)}
+                          placeholder="Ex: Carlos Silva"
+                          className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Código de Acesso Único</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text" required value={clientCode} onChange={(e) => setClientCode(e.target.value)}
+                            placeholder="Ex: 8X2K9P"
+                            className="flex-1 bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 font-mono transition-colors"
+                          />
+                          <button 
+                            type="button" 
+                            onClick={() => setClientCode(Array.from({length: 6}, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'[Math.floor(Math.random() * 36)]).join(''))}
+                            className="px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition-colors flex items-center justify-center border border-slate-700"
+                            title="Gerar código aleatório"
+                          >
+                            <RefreshCcw size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Link da Área do Cliente (Canva / Página)</label>
+                      <input
+                        type="url" required value={clientLink} onChange={(e) => setClientLink(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+
+                    <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 text-sm">
+                      Cadastrar Cliente
+                    </button>
+                  </form>
+
+                  {/* Lista de Clientes */}
+                  <div className="space-y-4">
+                    <h3 className="text-white font-bold text-lg flex items-center justify-between">
+                      <span>Clientes Cadastrados ({clients.length})</span>
+                    </h3>
+                    {clients.length === 0 ? (
+                      <div className="text-center py-12 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800">
+                        <User size={36} className="text-slate-600 mx-auto mb-3" />
+                        <p className="text-slate-400 font-medium">Nenhum cliente cadastrado no banco de dados.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {clients.map(client => (
+                          <div 
+                            key={client.id} 
+                            onClick={() => setEditingClient(client)}
+                            className="p-5 rounded-2xl border bg-[#0f131c] border-slate-800 hover:border-blue-500/40 hover:bg-[#141924] cursor-pointer transition-all flex justify-between items-center gap-4 group shadow-xl"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-white font-bold text-base truncate group-hover:text-blue-400 transition-colors">{client.name}</p>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-mono border border-slate-700">Código: {client.code}</span>
+                                {client.phone && <span className="text-xs text-slate-400">{client.phone}</span>}
+                              </div>
+                            </div>
+                            <div className="flex items-center shrink-0 gap-1.5">
+                              <button 
+                                type="button" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleWhatsAppMessage(client.name, client.code);
+                                }}
+                                className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
+                                title="Enviar código via WhatsApp"
+                              >
+                                <MessageCircle size={18} />
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClient(client.id);
+                                }} 
+                                className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20"
+                                title="Excluir cliente"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: ATUALIZAÇÕES                  */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'atualizacoes' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Bloco Filmes */}
+                  <div className="bg-[#0f131c] p-6 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                      <h3 className="text-white font-bold text-base flex items-center gap-2">
+                        <Film size={18} className="text-amber-400" /> Filmes ({movieUpdates.length})
+                      </h3>
+                      {movieUpdates.length > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={async () => {
+                            if (window.confirm('Excluir TODOS os filmes da lista de atualizações?')) {
+                              await supabase.from('movie_updates').delete().not('id', 'is', null);
+                            }
+                          }}
+                          className="text-xs text-red-400 hover:text-red-300 font-bold flex items-center gap-1 bg-red-500/10 px-2.5 py-1.5 rounded-lg border border-red-500/20 transition-colors"
+                        >
+                          <Trash2 size={13} /> Limpar Todos
+                        </button>
+                      )}
+                    </div>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (newMovieTitle.trim()) {
+                        const titles = newMovieTitle
+                          .split('\n')
+                          .map(t => t.replace(/^[>\-🍿\*]\s*(Atualização de.*)?/i, '').replace(/^[>\-]\s*/, '').trim())
+                          .filter(t => t && !t.toLowerCase().includes('atualização de'));
+                        
+                        if (titles.length > 0) {
+                          await supabase.from('movie_updates').insert(titles.map(t => ({ title: t })));
+                          setNewMovieTitle('');
+                        }
+                      }
+                    }} className="flex flex-col gap-3">
+                      <textarea
+                        value={newMovieTitle} onChange={(e) => setNewMovieTitle(e.target.value)}
+                        placeholder="Digite os filmes (um por linha):&#10;> Filme 1&#10;> Filme 2"
+                        className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-amber-500 resize-y"
+                        rows={3}
+                      />
+                      <button type="submit" className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-sm font-bold transition-colors shadow-lg shadow-amber-600/30">
+                        Adicionar Filmes
+                      </button>
+                    </form>
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {movieUpdates.length === 0 ? (
+                        <p className="text-slate-500 text-xs italic py-4 text-center">Nenhum filme registrado.</p>
+                      ) : (
+                        movieUpdates.map(m => (
+                          <div key={m.id} className="flex items-center gap-2 bg-[#151922] border border-slate-800 p-3 rounded-xl">
+                            <span className="flex-1 text-slate-200 text-sm truncate font-medium">{m.title}</span>
+                            <button type="button" onClick={async () => {
+                                const newTitle = window.prompt("Editar título do filme:", m.title);
+                                if (newTitle && newTitle !== m.title) {
+                                    await supabase.from('movie_updates').update({ title: newTitle }).eq('id', m.id);
+                                }
+                            }} className="text-slate-400 hover:text-amber-400 p-1.5 transition-colors"><Pencil size={15}/></button>
+                            <button type="button" onClick={async () => {
+                                if (window.confirm('Tem certeza que deseja excluir?')) {
+                                  await supabase.from('movie_updates').delete().eq('id', m.id);
+                                }
+                            }} className="text-slate-400 hover:text-red-400 p-1.5 transition-colors"><Trash2 size={15}/></button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Bloco Séries */}
+                  <div className="bg-[#0f131c] p-6 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                      <h3 className="text-white font-bold text-base flex items-center gap-2">
+                        <Tv size={18} className="text-purple-400" /> Séries ({seriesUpdates.length})
+                      </h3>
+                      {seriesUpdates.length > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={async () => {
+                            if (window.confirm('Excluir TODAS as séries da lista de atualizações?')) {
+                              await supabase.from('series_updates').delete().not('id', 'is', null);
+                            }
+                          }}
+                          className="text-xs text-red-400 hover:text-red-300 font-bold flex items-center gap-1 bg-red-500/10 px-2.5 py-1.5 rounded-lg border border-red-500/20 transition-colors"
+                        >
+                          <Trash2 size={13} /> Limpar Todas
+                        </button>
+                      )}
+                    </div>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (newSeriesTitle.trim()) {
+                        const titles = newSeriesTitle
+                          .split('\n')
+                          .map(t => t.replace(/^[>\-🍿\*]\s*(Atualização de.*)?/i, '').replace(/^[>\-]\s*/, '').trim())
+                          .filter(t => t && !t.toLowerCase().includes('atualização de'));
+
+                        if (titles.length > 0) {
+                          await supabase.from('series_updates').insert(titles.map(t => ({ title: t })));
+                          setNewSeriesTitle('');
+                        }
+                      }
+                    }} className="flex flex-col gap-3">
+                      <textarea
+                        value={newSeriesTitle} onChange={(e) => setNewSeriesTitle(e.target.value)}
+                        placeholder="Digite as séries (uma por linha):&#10;> Série 1&#10;> Série 2"
+                        className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-purple-500 resize-y"
+                        rows={3}
+                      />
+                      <button type="submit" className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-colors shadow-lg shadow-purple-600/30">
+                        Adicionar Séries
+                      </button>
+                    </form>
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {seriesUpdates.length === 0 ? (
+                        <p className="text-slate-500 text-xs italic py-4 text-center">Nenhuma série registrada.</p>
+                      ) : (
+                        seriesUpdates.map(s => (
+                          <div key={s.id} className="flex items-center gap-2 bg-[#151922] border border-slate-800 p-3 rounded-xl">
+                            <span className="flex-1 text-slate-200 text-sm truncate font-medium">{s.title}</span>
+                            <button type="button" onClick={async () => {
+                                const newTitle = window.prompt("Editar título da série:", s.title);
+                                if (newTitle && newTitle !== s.title) {
+                                    await supabase.from('series_updates').update({ title: newTitle }).eq('id', s.id);
+                                }
+                            }} className="text-slate-400 hover:text-purple-400 p-1.5 transition-colors"><Pencil size={15}/></button>
+                            <button type="button" onClick={async () => {
+                                if (window.confirm('Tem certeza que deseja excluir?')) {
+                                  await supabase.from('series_updates').delete().eq('id', s.id);
+                                }
+                            }} className="text-slate-400 hover:text-red-400 p-1.5 transition-colors"><Trash2 size={15}/></button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: PEDIDOS DE CONTEÚDO           */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'pedidos' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-bold text-lg">Pedidos Solicitados ({contentRequests.length})</h3>
+                  </div>
+
+                  {contentRequests.length === 0 ? (
+                    <div className="text-center py-16 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800">
+                      <Clapperboard size={48} className="text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-400 font-bold text-base">Nenhum pedido de conteúdo no momento.</p>
+                      <p className="text-slate-500 text-xs mt-1">Os pedidos feitos pelos clientes aparecerão aqui com pôster e detalhes.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {contentRequests.map((req) => {
+                        const reqClient = clients.find(c => c.code === req.client_code);
+                        return (
+                          <div key={req.id} className="bg-[#0f131c] border border-slate-800/80 rounded-2xl p-5 flex flex-col sm:flex-row gap-5 items-start shadow-xl">
+                            {req.poster_url ? (
+                              <img src={req.poster_url} alt="Poster" className="w-20 h-28 object-cover rounded-xl shrink-0 shadow-lg border border-slate-700" />
+                            ) : (
+                              <div className="w-20 h-28 bg-[#151922] rounded-xl flex items-center justify-center shrink-0 border border-slate-800">
+                                {req.type === 'Filme' ? <Film size={32} className="text-slate-600"/> : <Clapperboard size={32} className="text-slate-600"/>}
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0 w-full">
+                              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                                <div>
+                                  <span className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full ${req.type === 'Filme' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'}`}>
+                                    {req.type}
+                                  </span>
+                                  <h4 className="text-white font-bold text-lg mt-1">{req.title}</h4>
+                                  {(req.season || req.episode) && (
+                                    <p className="text-slate-400 text-xs font-semibold mt-1">
+                                      {req.season && `Temporada: ${req.season} `} 
+                                      {req.episode && `• Episódio: ${req.episode}`}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="text-left sm:text-right bg-slate-800/40 p-3 rounded-xl border border-slate-800 sm:bg-transparent sm:p-0 sm:border-0">
+                                  <div className="text-xs text-slate-400">Solicitado por:</div>
+                                  <div className="text-sm font-bold text-white">{reqClient?.name || req.client_code}</div>
+                                  {reqClient?.canvasLink && (
+                                    <a href={reqClient.canvasLink} target="_blank" rel="noopener noreferrer" className="text-xs text-indigo-400 hover:text-indigo-300 underline block mt-1">
+                                      Ver Canvas do Cliente
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="mt-4 pt-3 border-t border-slate-800/60 text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                                <span>Enviado em: {new Date(req.created_at).toLocaleString()}</span>
+                                <div className="flex items-center gap-2 self-end sm:self-auto">
+                                  <a
+                                    href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                                      `🎬 *PEDIDO DE CONTEÚDO - THE BEST IPTV*\n\nServidor: *CENTRAL*\n\n📌 ${req.type}: ${req.title}\n📌 Ano do conteúdo: ${req.year || ''}${req.type !== 'Filme' ? `\n📌 Temporada/Episódio: ${req.season || '-'}x${req.episode || '-'}` : ''}\n\nSolicito a adição deste conteúdo ao catálogo.\n\nObrigado! 🚀`
+                                    )}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-emerald-400 hover:text-emerald-300 font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors flex items-center gap-1.5"
+                                  >
+                                    <MessageCircle size={15} /> Notificar
+                                  </a>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (window.confirm('Marcar este pedido como atendido ou remover?')) {
+                                        await supabase.from('content_requests').delete().eq('id', req.id);
+                                      }
+                                    }}
+                                    className="text-red-400 hover:text-red-300 font-bold px-3 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors flex items-center gap-1.5"
+                                  >
+                                    <Trash2 size={15} /> Remover
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: SUPORTE TÉCNICO               */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'suporte' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-bold text-lg">Problemas Reportados ({userReports.length})</h3>
+                  </div>
+
+                  {userReports.length === 0 ? (
+                    <div className="text-center py-16 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800">
+                      <AlertTriangle size={48} className="text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-400 font-bold text-base">Nenhum problema reportado no momento!</p>
+                      <p className="text-slate-500 text-xs mt-1">Todos os sistemas e conteúdos estão operando normalmente.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {userReports.map((report) => {
+                        const reportClient = clients.find(c => c.code === report.client_code) || null;
+                        return (
+                          <div key={report.id} className="bg-[#0f131c] border border-slate-800/80 rounded-2xl p-5 relative overflow-hidden shadow-xl space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                              <div className="flex items-center gap-2.5 flex-wrap">
+                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border ${
+                                  report.type === 'Canal' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                  report.type === 'Filme' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                  'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                                }`}>
+                                  {report.type}
+                                </span>
+                                <h4 className="text-white font-bold text-base">{report.name}</h4>
+                              </div>
+                              <div className="text-left sm:text-right bg-slate-800/40 p-2.5 rounded-xl sm:bg-transparent sm:p-0">
+                                <div className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Reportado por:</div>
+                                <div className="text-sm font-bold text-white">{reportClient?.name || report.client_code || 'Desconhecido'}</div>
+                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                  {new Date(report.timestamp).toLocaleString('pt-BR')}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-[#141822] p-4 rounded-xl border border-slate-800/60">
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tipo do Problema</p>
+                                <p className="text-sm text-amber-400 font-semibold flex items-center gap-2">
+                                  <AlertTriangle size={15} /> {report.issue}
+                                </p>
+                              </div>
+                              <div className="space-y-1">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Dispositivo Utilizado</p>
+                                <p className="text-sm text-indigo-400 font-semibold flex items-center gap-2">
+                                  <Tv size={15} /> {report.device}
+                                </p>
+                              </div>
+                            </div>
+
+                            {report.description && (
+                              <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Descrição do Cliente:</p>
+                                <p className="text-sm text-slate-300 leading-relaxed italic">"{report.description}"</p>
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800/60">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (window.confirm('Marcar como resolvido e remover este chamado de suporte?')) {
+                                    await supabase.from('user_reports').delete().eq('id', report.id);
+                                  }
+                                }}
+                                className="text-emerald-400 hover:text-emerald-300 font-bold px-3.5 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-colors text-xs flex items-center gap-1.5"
+                              >
+                                <CheckCircle2 size={15} /> Resolvido / Concluído
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (window.confirm('Remover este reporte?')) {
+                                    await supabase.from('user_reports').delete().eq('id', report.id);
+                                  }
+                                }}
+                                className="text-red-400 hover:text-red-300 font-bold px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition-colors text-xs flex items-center gap-1.5"
+                              >
+                                <Trash2 size={15} /> Excluir
+                              </button>
+                            </div>
+
+                            <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500" />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          </main>
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
 
   const renderRequestModal = () => (
     <AnimatePresence>
@@ -3565,6 +3625,7 @@ export default function App() {
       {renderRequestModal()}
       {renderUpdatesModal()}
       {renderLoginModal()}
+      {renderAdminPage()}
 
       {/* Image Viewer Modal */}
       <AnimatePresence>

@@ -686,17 +686,20 @@ export default function App() {
         exit={{ opacity: 0, y: -20 }}
         className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
       >
-        <div id="tour-announcements" className="w-full max-w-2xl mb-8">
+        <div id="tour-announcements" className="w-full max-w-xl mb-6">
           <button 
             type="button"
             onClick={() => setIsAnnouncementsOpen(!isAnnouncementsOpen)}
-            className={`w-full flex items-center justify-between text-white font-bold mb-2 p-3 bg-slate-800/50 hover:bg-slate-800/80 rounded-xl transition-colors border ${activeAnnouncements.length > 0 ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)] animate-pulse' : 'border-slate-700/50'}`}
+            className={`w-full flex items-center justify-between text-white font-bold mb-2 p-3.5 bg-[#141724]/80 hover:bg-[#1c2033]/90 rounded-2xl transition-all shadow-xl ${activeAnnouncements.length > 0 ? 'shadow-amber-500/10' : ''}`}
           >
-            <div className="flex items-center gap-2">
-              <AlertTriangle className={`${activeAnnouncements.length > 0 ? 'text-amber-400' : 'text-slate-400'}`} size={20} />
-              Avisos Importantes {activeAnnouncements.length > 0 && <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-0.5 rounded-full">{activeAnnouncements.length}</span>}
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                <AlertTriangle size={18} />
+              </div>
+              <span className="text-sm md:text-base font-bold">Avisos Importantes</span>
+              {activeAnnouncements.length > 0 && <span className="bg-amber-500/20 text-amber-300 text-xs px-2.5 py-0.5 rounded-full font-bold">{activeAnnouncements.length}</span>}
             </div>
-            <ChevronDown size={20} className={`min-w-5 shrink-0 transition-transform ${isAnnouncementsOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={20} className={`min-w-5 shrink-0 transition-transform text-slate-400 ${isAnnouncementsOpen ? 'rotate-180 text-white' : ''}`} />
           </button>
           
           <AnimatePresence>
@@ -858,22 +861,22 @@ export default function App() {
           </AnimatePresence>
         </div>
 
-        <div id="tour-report" className="w-full max-w-lg mx-auto">
-          <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
+        <div id="tour-report" className="w-full max-w-xl mx-auto flex flex-col items-center">
+          <div className="text-center space-y-2 mb-8 mt-2 relative z-10 flex flex-col items-center">
             <button
               type="button"
               onClick={handleGoHome}
               className="cursor-pointer hover:scale-105 transition-transform duration-300 focus:outline-none"
               title="Voltar para a tela inicial"
             >
-              <img src="/logo.png?v=2" alt="The Best IPTV" className="w-32 h-32 object-contain mb-4 drop-shadow-lg" />
+              <img src="/logo.png?v=2" alt="The Best IPTV" className="w-32 h-32 md:w-36 md:h-36 object-contain mb-4 drop-shadow-2xl" />
             </button>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
+            <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
             <p className="text-slate-300 font-medium text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
           </div>
           
           <div className="flex flex-col gap-4 w-full relative z-10">
-            <div className="w-full mb-2">
+            <div className="w-full mb-1">
               {(() => {
                 const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
                 return (
@@ -892,20 +895,20 @@ export default function App() {
                     className={`w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 ${
                       isQuotaReached 
                         ? 'bg-slate-700/50' 
-                        : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-xl shadow-purple-500/20 hover:shadow-purple-500/40'
+                        : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40'
                     }`}
                   >
                     <div className={`absolute inset-0 ${isQuotaReached ? 'bg-transparent' : 'bg-white/20 group-hover:bg-white/0'} transition-colors duration-300`} />
-                    <div className={`relative ${isQuotaReached ? 'bg-slate-900/95' : 'bg-slate-900/90 group-hover:bg-transparent'} backdrop-blur-sm px-6 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300`}>
+                    <div className={`relative ${isQuotaReached ? 'bg-slate-900/95' : 'bg-slate-900/90 group-hover:bg-transparent'} backdrop-blur-md px-6 py-4 md:py-5 rounded-[14px] flex items-center justify-between transition-colors duration-300`}>
                       <div className="flex items-center gap-4">
-                        <div className={`p-2.5 rounded-xl transition-transform ${isQuotaReached ? 'bg-slate-800/80' : 'bg-white/10 group-hover:scale-110'}`}>
+                        <div className={`p-3 rounded-xl transition-transform ${isQuotaReached ? 'bg-slate-800/80' : 'bg-white/10 group-hover:scale-110'}`}>
                           {isQuotaReached ? <Lock className="text-slate-500 w-6 h-6" /> : <PlusCircle className="text-white w-6 h-6" />}
                         </div>
                         <div className="text-left">
-                          <h3 className={`font-bold text-lg tracking-wide ${isQuotaReached ? 'text-slate-400' : 'text-white'}`}>
+                          <h3 className={`font-bold text-lg md:text-xl tracking-wide ${isQuotaReached ? 'text-slate-400' : 'text-white'}`}>
                             {isQuotaReached ? 'Pedidos Bloqueados' : 'Pedir Conteúdos'}
                           </h3>
-                          <p className={`text-sm font-medium ${isQuotaReached ? 'text-slate-500' : 'text-white/70'}`}>
+                          <p className={`text-xs md:text-sm font-medium ${isQuotaReached ? 'text-slate-500' : 'text-white/70'}`}>
                             {isQuotaReached ? 'Aguarde 7 dias' : 'Filmes e Séries'}
                           </p>
                         </div>
@@ -934,9 +937,9 @@ export default function App() {
               setIssueType('');
               setDevice('');
             }}
-            className="flex items-center w-full p-5 md:p-6 gap-6 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-white/10 hover:border-white/20 rounded-[1.5rem] transition-all group shadow-xl shadow-black/30"
+            className="flex items-center w-full p-5 md:p-6 gap-6 bg-[#131622]/80 hover:bg-[#1c2136]/90 backdrop-blur-xl hover:scale-[1.01] rounded-2xl transition-all group shadow-xl shadow-black/40"
           >
-            <div className="flex items-center justify-center p-3 sm:p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl group-hover:bg-indigo-500 group-hover:border-indigo-400 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
+            <div className="flex items-center justify-center p-3.5 sm:p-4 bg-indigo-500/15 rounded-2xl group-hover:bg-indigo-600 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
               {item.icon}
             </div>
             <span className="font-bold text-white text-xl md:text-2xl tracking-wide">{item.label}</span>
@@ -3600,18 +3603,18 @@ export default function App() {
           </div>
         </header>
 
-        <div className="flex-1 flex flex-col min-h-0 bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl p-4 sm:p-6 md:p-8 overflow-hidden relative shadow-2xl shadow-black/50">
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto relative w-full custom-scrollbar">
           <AnimatePresence mode="wait">
             {activeView === 'dashboard' ? (
-              <div key="dashboard" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div key="dashboard" className="flex-1 flex flex-col min-h-0">
                 {renderDashboard()}
               </div>
             ) : activeView === 'history' ? (
-              <div key="history" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div key="history" className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full p-4 md:p-6">
                 {renderHistoryView()}
               </div>
             ) : (
-              <div key="profile" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div key="profile" className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full p-4 md:p-6">
                 {renderProfileView()}
               </div>
             )}

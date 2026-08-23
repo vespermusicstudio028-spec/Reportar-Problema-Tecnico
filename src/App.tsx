@@ -861,22 +861,22 @@ export default function App() {
           </AnimatePresence>
         </div>
 
-        <div id="tour-report" className="w-full max-w-xl mx-auto flex flex-col items-center">
-          <div className="text-center space-y-2 mb-8 mt-2 relative z-10 flex flex-col items-center">
+        <div id="tour-report" className="w-full max-w-xl mx-auto flex flex-col items-center pb-6">
+          <div className="text-center space-y-1.5 mb-5 mt-1 relative z-10 flex flex-col items-center">
             <button
               type="button"
               onClick={handleGoHome}
               className="cursor-pointer hover:scale-105 transition-transform duration-300 focus:outline-none"
               title="Voltar para a tela inicial"
             >
-              <img src="/logo.png?v=2" alt="The Best IPTV" className="w-32 h-32 md:w-36 md:h-36 object-contain mb-4 drop-shadow-2xl" />
+              <img src="/logo.png?v=2" alt="The Best IPTV" className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 object-contain mb-2 drop-shadow-2xl" />
             </button>
-            <h2 className="text-2xl md:text-4xl font-extrabold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
-            <p className="text-slate-300 font-medium text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
+            <p className="text-slate-300 font-medium text-xs sm:text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
           </div>
           
-          <div className="flex flex-col gap-4 w-full relative z-10">
-            <div className="w-full mb-1">
+          <div className="flex flex-col gap-3 sm:gap-4 w-full relative z-10">
+            <div className="w-full mb-0.5">
               {(() => {
                 const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
                 return (
@@ -899,21 +899,21 @@ export default function App() {
                     }`}
                   >
                     <div className={`absolute inset-0 ${isQuotaReached ? 'bg-transparent' : 'bg-white/20 group-hover:bg-white/0'} transition-colors duration-300`} />
-                    <div className={`relative ${isQuotaReached ? 'bg-slate-900/95' : 'bg-slate-900/90 group-hover:bg-transparent'} backdrop-blur-md px-6 py-4 md:py-5 rounded-[14px] flex items-center justify-between transition-colors duration-300`}>
-                      <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-xl transition-transform ${isQuotaReached ? 'bg-slate-800/80' : 'bg-white/10 group-hover:scale-110'}`}>
-                          {isQuotaReached ? <Lock className="text-slate-500 w-6 h-6" /> : <PlusCircle className="text-white w-6 h-6" />}
+                    <div className={`relative ${isQuotaReached ? 'bg-slate-900/95' : 'bg-slate-900/90 group-hover:bg-transparent'} backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 md:py-5 rounded-[14px] flex items-center justify-between transition-colors duration-300`}>
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        <div className={`p-2.5 sm:p-3 rounded-xl transition-transform ${isQuotaReached ? 'bg-slate-800/80' : 'bg-white/10 group-hover:scale-110'}`}>
+                          {isQuotaReached ? <Lock className="text-slate-500 w-5 h-5 sm:w-6 sm:h-6" /> : <PlusCircle className="text-white w-5 h-5 sm:w-6 sm:h-6" />}
                         </div>
                         <div className="text-left">
-                          <h3 className={`font-bold text-lg md:text-xl tracking-wide ${isQuotaReached ? 'text-slate-400' : 'text-white'}`}>
+                          <h3 className={`font-bold text-base sm:text-lg md:text-xl tracking-wide ${isQuotaReached ? 'text-slate-400' : 'text-white'}`}>
                             {isQuotaReached ? 'Pedidos Bloqueados' : 'Pedir Conteúdos'}
                           </h3>
-                          <p className={`text-xs md:text-sm font-medium ${isQuotaReached ? 'text-slate-500' : 'text-white/70'}`}>
+                          <p className={`text-[11px] sm:text-xs md:text-sm font-medium ${isQuotaReached ? 'text-slate-500' : 'text-white/70'}`}>
                             {isQuotaReached ? 'Aguarde 7 dias' : 'Filmes e Séries'}
                           </p>
                         </div>
                       </div>
-                      {!isQuotaReached && <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />}
+                      {!isQuotaReached && <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" size={18} />}
                     </div>
                   </button>
                 );
@@ -921,9 +921,9 @@ export default function App() {
             </div>
 
         {[
-          { id: 'Canal', icon: <Tv size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
-          { id: 'Filme', icon: <Film size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
-          { id: 'Série', icon: <Clapperboard size={28} className="w-7 h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
+          { id: 'Canal', icon: <Tv size={26} className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
+          { id: 'Filme', icon: <Film size={26} className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
+          { id: 'Série', icon: <Clapperboard size={26} className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
         ].map((item) => (
           <button
             key={item.id}
@@ -937,12 +937,12 @@ export default function App() {
               setIssueType('');
               setDevice('');
             }}
-            className="flex items-center w-full p-5 md:p-6 gap-6 bg-[#131622]/80 hover:bg-[#1c2136]/90 backdrop-blur-xl hover:scale-[1.01] rounded-2xl transition-all group shadow-xl shadow-black/40"
+            className="flex items-center w-full p-4 sm:p-5 md:p-6 gap-4 sm:gap-6 bg-[#131622]/80 hover:bg-[#1c2136]/90 backdrop-blur-xl hover:scale-[1.01] rounded-2xl transition-all group shadow-xl shadow-black/40"
           >
-            <div className="flex items-center justify-center p-3.5 sm:p-4 bg-indigo-500/15 rounded-2xl group-hover:bg-indigo-600 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
+            <div className="flex items-center justify-center p-3 sm:p-4 bg-indigo-500/15 rounded-2xl group-hover:bg-indigo-600 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
               {item.icon}
             </div>
-            <span className="font-bold text-white text-xl md:text-2xl tracking-wide">{item.label}</span>
+            <span className="font-bold text-white text-lg sm:text-xl md:text-2xl tracking-wide">{item.label}</span>
           </button>
         ))}
         </div>
@@ -3508,8 +3508,8 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col p-4 md:p-8 pb-24 md:pb-8 overflow-hidden relative">
-        <header className="flex justify-between items-start md:items-center mb-6 shrink-0 pt-2 md:pt-0">
+      <main className="flex-1 flex flex-col p-3 sm:p-6 md:p-8 pb-4 sm:pb-6 md:pb-8 overflow-hidden relative">
+        <header className="flex justify-between items-start md:items-center mb-4 md:mb-6 shrink-0 pt-1 md:pt-0">
           <div className="flex items-center gap-3 md:gap-4">
              <button
                type="button"

@@ -3712,6 +3712,26 @@ export default function App() {
         />
       )}
 
+      {/* Botão Flutuante de Chat para o Admin (tela principal) */}
+      {isAdminLogged && !adminTab && (
+        <button
+          type="button"
+          onClick={() => {
+            setAdminTab('chat');
+            setShowLoginModal(false);
+          }}
+          className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white shadow-2xl shadow-violet-600/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+          title="Abrir Chat com Clientes"
+        >
+          <MessageSquare size={24} />
+          {unreadChatCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-red-500 text-[11px] font-bold text-white flex items-center justify-center animate-pulse shadow-lg">
+              {unreadChatCount}
+            </span>
+          )}
+        </button>
+      )}
+
       {/* Image Viewer Modal */}
       <AnimatePresence>
         {selectedImage && (

@@ -4,6 +4,8 @@ import { supabase } from './lib/supabase';
 import { TrialConfig, defaultTrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from './types/trial';
 import { TrialAdminPanel } from './components/TrialAdminPanel';
 import { TrialFlowRenderer } from './components/TrialFlowRenderer';
+import { AdminChatPanel } from './components/AdminChatPanel';
+import { ClientChatWidget } from './components/ClientChatWidget';
 import { 
   RefreshCcw,
   Tv, 
@@ -25,6 +27,7 @@ import {
   Key,
   Dices,
   MessageCircle,
+  MessageSquare,
   HelpCircle,
   Info,
   Copy,
@@ -255,6 +258,16 @@ export default function App() {
         const count = Math.max(0, reqs.length - lastSeenRequestsCount);
         setNewRequestsCount(count);
       }
+
+      // Buscar mensagens não lidas do chat para o admin
+      const { data: chatData } = await supabase
+        .from('chat_messages')
+        .select('id')
+        .eq('sender', 'client')
+        .eq('read_by_admin', false);
+      if (chatData) {
+        setUnreadChatCount(chatData.length);
+      }
     };
 
     fetchData();
@@ -269,6 +282,7 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, fetchData)
       .subscribe();
 
     return () => {
@@ -334,7 +348,9 @@ export default function App() {
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
-  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | null>(null);
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | null>(null);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [isClientChatOpen, setIsClientChatOpen] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showForgotCodeModal, setShowForgotCodeModal] = useState(false);
   const [forgotCodePhone, setForgotCodePhone] = useState('');
@@ -1367,6 +1383,12 @@ export default function App() {
                 Caso precise de auxílio além dos reportes técnicos, você pode entrar em contato com nossa central de atendimento especializada.
               </p>
               <button 
+                onClick={() => setIsClientChatOpen(true)}
+                className="w-full py-3 bg-violet-600/15 hover:bg-violet-600/25 border border-violet-500/30 text-violet-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-600/10"
+              >
+                <MessageSquare size={18} /> 💬 Chat ao Vivo com Administrador
+              </button>
+              <button 
                 onClick={() => window.open('https://wa.me/5521959368651', '_blank')}
                 className="w-full py-3 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
               >
@@ -1919,6 +1941,16 @@ export default function App() {
                        badgePulse: true,
                      },
                      {
+                        id: 'chat' as const,
+                        icon: <MessageSquare size={22} />,
+                        title: '💬 Chat com Clientes',
+                        subtitle: 'Atendimento em tempo real',
+                        accent: 'from-violet-500/20 to-indigo-500/10 border-violet-500/30 hover:border-violet-400/60 text-violet-400',
+                        iconBg: 'bg-violet-500/20 text-violet-300',
+                        badge: unreadChatCount > 0 ? unreadChatCount : null,
+                        badgePulse: unreadChatCount > 0,
+                      },
+                     {
                        id: 'suporte' as const,
                        icon: <AlertTriangle size={22} />,
                        title: '🛠️ Suporte',
@@ -2059,6 +2091,7 @@ export default function App() {
       'clientes': { title: 'Gestão de Clientes', subtitle: 'Cadastrar, visualizar e gerenciar acessos', icon: <User size={24} />, color: 'blue' },
       'atualizacoes': { title: 'Atualizações de Conteúdo', subtitle: 'Catálogo de novos filmes e séries', icon: <RefreshCcw size={24} />, color: 'amber' },
       'pedidos': { title: 'Pedidos de Conteúdo', subtitle: 'Solicitações de filmes e séries enviadas pelos clientes', icon: <Clapperboard size={24} />, color: 'pink' },
+      'chat': { title: '💬 Central de Chat & Atendimento', subtitle: 'Converse em tempo real com seus clientes', icon: <MessageSquare size={24} />, color: 'indigo' },
       'suporte': { title: '🛠️ Suporte Técnico', subtitle: 'Chamados e problemas relatados pelos clientes', icon: <AlertTriangle size={24} />, color: 'red' },
     }[adminTab];
 
@@ -2864,6 +2897,15 @@ export default function App() {
                 </div>
               )}
 
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: CHAT COM CLIENTES             */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'chat' && (
+                <div className="w-full">
+                  <AdminChatPanel clientsList={clients} />
+                </div>
+              )}
+
             </div>
           </main>
         </motion.div>
@@ -3567,7 +3609,7 @@ export default function App() {
                 className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors relative"
               >
                  <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
-                 {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0)) && (
+                 {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0 || unreadChatCount > 0)) && (
                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
                  )}
               </button>
@@ -3629,6 +3671,17 @@ export default function App() {
       {renderUpdatesModal()}
       {renderLoginModal()}
       {renderAdminPage()}
+
+      {/* Widget de Chat dos Clientes */}
+      {!isAdminLogged && (
+        <ClientChatWidget
+          clientCode={loggedClientCode}
+          clientName={currentClient?.name}
+          onOpenCodeLogin={() => setShowCodeModal(true)}
+          isOpenExternal={isClientChatOpen}
+          onCloseExternal={() => setIsClientChatOpen(false)}
+        />
+      )}
 
       {/* Image Viewer Modal */}
       <AnimatePresence>

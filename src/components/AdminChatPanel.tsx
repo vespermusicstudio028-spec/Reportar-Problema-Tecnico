@@ -1,0 +1,522 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
+import { ChatMessage, ChatConversation } from '../types/chat';
+import { 
+  MessageSquare, 
+  Send, 
+  Search, 
+  User, 
+  CheckCheck, 
+  Clock, 
+  Trash2, 
+  Sparkles, 
+  ExternalLink,
+  Phone,
+  MessageCircle,
+  RefreshCw,
+  Info
+} from 'lucide-react';
+
+interface AdminChatPanelProps {
+  clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
+}
+
+const QUICK_REPLIES = [
+  'Olá! Tudo bem? Como posso te ajudar hoje? 😊',
+  'Recebi sua mensagem. Já estou verificando para você!',
+  'Seu sinal/acesso foi atualizado. Poderia testar novamente?',
+  'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?',
+  'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀'
+];
+
+export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [] }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [selectedClientCode, setSelectedClientCode] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Buscar todas as mensagens
+  const fetchMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      if (data) {
+        setMessages(data as ChatMessage[]);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar mensagens do chat:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMessages();
+
+    // Escutar novas mensagens em tempo real
+    const channel = supabase
+      .channel('admin-chat-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_messages' },
+        () => {
+          fetchMessages();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Rolar para o final quando a conversa ativa mudar ou receber nova mensagem
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, selectedClientCode]);
+
+  // Marcar mensagens do cliente selecionado como lidas pelo admin
+  useEffect(() => {
+    if (!selectedClientCode) return;
+
+    const unreadMessages = messages.filter(
+      (m) => m.client_code === selectedClientCode && m.sender === 'client' && !m.read_by_admin
+    );
+
+    if (unreadMessages.length > 0) {
+      const unreadIds = unreadMessages.map((m) => m.id);
+      supabase
+        .from('chat_messages')
+        .update({ read_by_admin: true })
+        .in('id', unreadIds)
+        .then(({ error }) => {
+          if (error) console.error('Erro ao marcar mensagens como lidas:', error);
+        });
+    }
+  }, [selectedClientCode, messages]);
+
+  // Agrupar mensagens por cliente para criar a lista de conversas
+  const conversations: ChatConversation[] = React.useMemo(() => {
+    const map = new Map<string, ChatConversation>();
+
+    // Primeiro preencher com clientes que enviaram mensagens
+    messages.forEach((msg) => {
+      const clientInfo = clientsList.find((c) => c.code === msg.client_code);
+      const name = msg.client_name || clientInfo?.name || `Cliente (${msg.client_code})`;
+
+      const existing = map.get(msg.client_code);
+      const isUnread = msg.sender === 'client' && !msg.read_by_admin;
+
+      if (!existing) {
+        map.set(msg.client_code, {
+          client_code: msg.client_code,
+          client_name: name,
+          last_message: msg.message,
+          last_message_time: msg.created_at,
+          unread_count: isUnread ? 1 : 0,
+          last_sender: msg.sender
+        });
+      } else {
+        existing.last_message = msg.message;
+        existing.last_message_time = msg.created_at;
+        existing.last_sender = msg.sender;
+        if (isUnread) {
+          existing.unread_count += 1;
+        }
+      }
+    });
+
+    // Ordenar pelas conversas mais recentes
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime()
+    );
+  }, [messages, clientsList]);
+
+  // Se nenhuma conversa selecionada e houver conversas, seleciona a primeira automaticamente
+  useEffect(() => {
+    if (!selectedClientCode && conversations.length > 0) {
+      setSelectedClientCode(conversations[0].client_code);
+    }
+  }, [conversations, selectedClientCode]);
+
+  // Conversas filtradas pela busca
+  const filteredConversations = conversations.filter(
+    (c) =>
+      c.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.client_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.last_message.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Mensagens do cliente selecionado
+  const activeMessages = selectedClientCode
+    ? messages.filter((m) => m.client_code === selectedClientCode)
+    : [];
+
+  const selectedClientInfo = clientsList.find((c) => c.code === selectedClientCode);
+  const selectedConversation = conversations.find((c) => c.client_code === selectedClientCode);
+
+  const activeClientName =
+    selectedClientInfo?.name || selectedConversation?.client_name || `Cliente (${selectedClientCode})`;
+
+  // Enviar resposta do administrador
+  const handleSendMessage = async (textToSend?: string) => {
+    const text = (textToSend || replyText).trim();
+    if (!text || !selectedClientCode || isSending) return;
+
+    setIsSending(true);
+    try {
+      const { error } = await supabase.from('chat_messages').insert({
+        client_code: selectedClientCode,
+        client_name: activeClientName,
+        sender: 'admin',
+        message: text,
+        read_by_admin: true,
+        read_by_client: false
+      });
+
+      if (error) throw error;
+      setReplyText('');
+    } catch (err: any) {
+      alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Limpar histórico da conversa selecionada
+  const handleDeleteConversation = async () => {
+    if (!selectedClientCode) return;
+    if (confirm(`Tem certeza que deseja apagar todas as mensagens de ${activeClientName}?`)) {
+      try {
+        const { error } = await supabase
+          .from('chat_messages')
+          .delete()
+          .eq('client_code', selectedClientCode);
+
+        if (error) throw error;
+        setMessages((prev) => prev.filter((m) => m.client_code !== selectedClientCode));
+        setSelectedClientCode(null);
+      } catch (err: any) {
+        alert('Erro ao apagar histórico: ' + (err.message || 'Erro desconhecido.'));
+      }
+    }
+  };
+
+  const formatTime = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
+  const formatDate = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      const today = new Date();
+      if (date.toDateString() === today.toDateString()) {
+        return 'Hoje';
+      }
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
+  return (
+    <div className="bg-[#0f131c] border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh] min-h-[550px]">
+      {/* Topo do Painel de Chat */}
+      <div className="p-4 md:px-6 py-4 bg-[#141824] border-b border-slate-800/80 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+            <MessageSquare size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              Central de Atendimento ao Cliente
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            </h2>
+            <p className="text-xs text-slate-400">
+              Converse em tempo real com clientes logados nos painéis
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={fetchMessages}
+          className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5 border border-slate-700/60"
+          title="Atualizar mensagens"
+        >
+          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+          <span className="hidden sm:inline">Atualizar</span>
+        </button>
+      </div>
+
+      {/* Grid Principal: Lista de Conversas (Esquerda) e Chat Ativo (Direita) */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Coluna da Esquerda: Lista de Conversas */}
+        <div className="w-full sm:w-80 md:w-96 border-r border-slate-800/80 bg-[#0d1017]/80 flex flex-col">
+          {/* Busca de Conversas */}
+          <div className="p-3 border-b border-slate-800/60">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Buscar por cliente ou código..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#151922] border border-slate-800 text-slate-200 placeholder-slate-500 pl-9 pr-4 py-2 rounded-xl text-xs focus:border-indigo-500 outline-none transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Lista de Clientes com Conversa */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            {isLoading ? (
+              <div className="p-8 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
+                <RefreshCw size={18} className="animate-spin text-indigo-400" />
+                Carregando conversas...
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-8 text-center text-slate-500 text-xs">
+                {searchQuery ? 'Nenhum cliente encontrado.' : 'Nenhuma mensagem recebida ainda.'}
+              </div>
+            ) : (
+              filteredConversations.map((conv) => {
+                const isSelected = conv.client_code === selectedClientCode;
+                return (
+                  <button
+                    key={conv.client_code}
+                    onClick={() => setSelectedClientCode(conv.client_code)}
+                    className={`w-full text-left p-3 rounded-2xl transition-all flex items-start gap-3 relative ${
+                      isSelected
+                        ? 'bg-indigo-600/20 border border-indigo-500/40 shadow-lg shadow-indigo-600/10'
+                        : 'hover:bg-slate-800/40 border border-transparent'
+                    }`}
+                  >
+                    {/* Avatar */}
+                    <div className="relative shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                        {conv.client_name.charAt(0).toUpperCase()}
+                      </div>
+                      {conv.unread_count > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
+                          {conv.unread_count}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Detalhes */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <h4 className="text-sm font-semibold text-white truncate">
+                          {conv.client_name}
+                        </h4>
+                        <span className="text-[10px] text-slate-500 shrink-0 ml-1">
+                          {formatTime(conv.last_message_time)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 bg-slate-800 text-indigo-300 rounded border border-slate-700/60">
+                          {conv.client_code}
+                        </span>
+                        <p className="text-xs text-slate-400 truncate flex-1">
+                          {conv.last_sender === 'admin' && (
+                            <span className="text-indigo-400 font-medium">Você: </span>
+                          )}
+                          {conv.last_message}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Coluna da Direita: Janela de Atendimento do Cliente */}
+        <div className="flex-1 flex flex-col bg-[#0b0e14] overflow-hidden">
+          {selectedClientCode ? (
+            <>
+              {/* Header do Chat Ativo */}
+              <div className="p-3.5 md:px-6 bg-[#121620] border-b border-slate-800/80 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold">
+                    {activeClientName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-white text-sm md:text-base">{activeClientName}</h3>
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
+                        Código: {selectedClientCode}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                      {selectedClientInfo?.phone && (
+                        <a
+                          href={`https://wa.me/${selectedClientInfo.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:text-emerald-400 transition-colors flex items-center gap-1"
+                        >
+                          <Phone size={12} /> {selectedClientInfo.phone}
+                        </a>
+                      )}
+                      {selectedClientInfo?.canvasLink && (
+                        <a
+                          href={selectedClientInfo.canvasLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:text-indigo-400 transition-colors flex items-center gap-1"
+                        >
+                          <ExternalLink size={12} /> Painel Canva
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDeleteConversation}
+                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all border border-red-500/20"
+                  title="Apagar conversa deste cliente"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              {/* Corpo das Mensagens */}
+              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar">
+                {activeMessages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 p-6">
+                    <MessageSquare size={36} className="text-slate-600 mb-2 stroke-[1.5]" />
+                    <p className="text-sm font-medium">Inicie o atendimento com este cliente</p>
+                    <p className="text-xs text-slate-600 mt-1">
+                      Envie uma mensagem abaixo ou use uma resposta rápida.
+                    </p>
+                  </div>
+                ) : (
+                  activeMessages.map((msg, index) => {
+                    const isAdmin = msg.sender === 'admin';
+                    const showDateHeader =
+                      index === 0 ||
+                      formatDate(msg.created_at) !== formatDate(activeMessages[index - 1].created_at);
+
+                    return (
+                      <React.Fragment key={msg.id}>
+                        {showDateHeader && (
+                          <div className="text-center my-3">
+                            <span className="text-[11px] font-semibold text-slate-500 bg-slate-800/80 px-3 py-1 rounded-full border border-slate-700/50">
+                              {formatDate(msg.created_at)}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
+                          <div className="flex items-end gap-2 max-w-[85%] sm:max-w-[70%]">
+                            {!isAdmin && (
+                              <div className="w-7 h-7 rounded-full bg-slate-800 text-slate-300 text-xs font-bold flex items-center justify-center shrink-0 border border-slate-700">
+                                {activeClientName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+
+                            <div
+                              className={`p-3.5 rounded-2xl text-sm leading-relaxed relative ${
+                                isAdmin
+                                  ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-br-none shadow-lg shadow-indigo-600/15'
+                                  : 'bg-[#1a1f2c] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
+                              }`}
+                            >
+                              <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+                              <div
+                                className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
+                                  isAdmin ? 'text-indigo-200/80' : 'text-slate-500'
+                                }`}
+                              >
+                                <span>{formatTime(msg.created_at)}</span>
+                                {isAdmin && (
+                                  <CheckCheck
+                                    size={13}
+                                    className={msg.read_by_client ? 'text-emerald-300' : 'text-indigo-200/80'}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Respostas Rápidas */}
+              <div className="px-4 py-2 bg-[#0e1118] border-t border-slate-800/60 overflow-x-auto flex items-center gap-2 custom-scrollbar">
+                <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 shrink-0 uppercase tracking-wider">
+                  <Sparkles size={13} className="text-amber-400" />
+                  Rápidas:
+                </span>
+                {QUICK_REPLIES.map((reply, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSendMessage(reply)}
+                    className="text-xs bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-300 border border-slate-800 px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap"
+                  >
+                    {reply}
+                  </button>
+                ))}
+              </div>
+
+              {/* Campo de Envio de Mensagem */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSendMessage();
+                }}
+                className="p-3 md:p-4 bg-[#121620] border-t border-slate-800/80 flex items-center gap-2"
+              >
+                <input
+                  type="text"
+                  placeholder={`Responder para ${activeClientName}... (Pressione Enter)`}
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className="flex-1 bg-[#181d28] border border-slate-700/80 text-white placeholder-slate-500 px-4 py-3 rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all shadow-inner"
+                />
+
+                <button
+                  type="submit"
+                  disabled={!replyText.trim() || isSending}
+                  className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/20 transition-all flex items-center gap-2 shrink-0 active:scale-95"
+                >
+                  <Send size={16} />
+                  <span className="hidden sm:inline">Enviar</span>
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 p-8">
+              <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mb-3">
+                <MessageSquare size={28} className="text-slate-600" />
+              </div>
+              <h3 className="text-base font-bold text-slate-300">Nenhuma conversa selecionada</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                Selecione um cliente na lista ao lado para visualizar o histórico de mensagens e responder.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

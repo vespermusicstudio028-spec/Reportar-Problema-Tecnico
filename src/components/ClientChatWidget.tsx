@@ -22,11 +22,20 @@ interface ClientChatWidgetProps {
   onCloseExternal?: () => void;
 }
 
-const COMMON_CLIENT_TOPICS = [
+const CLIENT_TOPICS_LEFT = [
   'Olá! Preciso de ajuda com meu acesso.',
   'Um canal/filme está travando ou fora do ar.',
   'Gostaria de informações sobre renovação.',
-  'Como configurar no meu aparelho?'
+  'Como configurar no meu aparelho?',
+  'Solicitar liberação ou renovação de sinal.'
+];
+
+const CLIENT_TOPICS_RIGHT = [
+  'Minha lista de canais não está carregando.',
+  'Áudio ou legenda fora de sincronia.',
+  'Gostaria de pedir um filme ou série.',
+  'Como faço para atualizar meu acesso?',
+  'Estou com lentidão ou buffering no app.'
 ];
 
 export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
@@ -205,7 +214,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] sm:w-96 h-[560px] max-h-[85vh] bg-[#0e121a] border border-slate-800/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100 font-sans"
+            className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] sm:w-[450px] h-[640px] max-h-[90vh] bg-[#0e121a] border border-slate-800/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100 font-sans"
           >
             {/* Header da Janela */}
             <div className="p-4 bg-gradient-to-r from-indigo-900/90 via-[#151a28] to-[#0e121a] border-b border-slate-800/80 flex items-center justify-between shrink-0">
@@ -331,18 +340,44 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Sugestões Rápidas de Tópicos */}
-                <div className="px-3 py-1.5 bg-[#0f121a] border-t border-slate-800/80 overflow-x-auto flex items-center gap-1.5 custom-scrollbar">
-                  {COMMON_CLIENT_TOPICS.map((topic, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => handleSendMessage(topic)}
-                      className="text-[11px] bg-[#171b26] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-300 border border-slate-800 px-2.5 py-1 rounded-xl transition-all shrink-0 whitespace-nowrap"
-                    >
-                      {topic}
-                    </button>
-                  ))}
+                {/* Sugestões Rápidas de Tópicos (2 Colunas com 5 itens cada) */}
+                <div className="p-2.5 bg-[#0f121a] border-t border-slate-800/80 shrink-0">
+                  <div className="flex items-center justify-between mb-1.5 px-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                      <Sparkles size={12} className="text-amber-400" />
+                      Atalhos Rápidos:
+                    </span>
+                    <span className="text-[9px] text-slate-500 font-medium">Toque para enviar</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-0.5">
+                    {/* Fileira Esquerda (5) */}
+                    <div className="flex flex-col gap-1.5">
+                      {CLIENT_TOPICS_LEFT.map((topic, i) => (
+                        <button
+                          key={`left-${i}`}
+                          type="button"
+                          onClick={() => handleSendMessage(topic)}
+                          className="text-left text-[11px] bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90 p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-start"
+                        >
+                          <span className="line-clamp-2">{topic}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Fileira Direita (5) */}
+                    <div className="flex flex-col gap-1.5">
+                      {CLIENT_TOPICS_RIGHT.map((topic, i) => (
+                        <button
+                          key={`right-${i}`}
+                          type="button"
+                          onClick={() => handleSendMessage(topic)}
+                          className="text-left text-[11px] bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90 p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-start"
+                        >
+                          <span className="line-clamp-2">{topic}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Campo de Envio */}

@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Info,
   Copy,
-  Check
+  Check,
+  ArrowLeft
 } from 'lucide-react';
 
 interface AdminChatPanelProps {
@@ -39,6 +40,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [mobileShowChat, setMobileShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleCopyMessage = (id: string, text: string) => {
@@ -271,9 +273,11 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       </div>
 
       {/* Grid Principal: Lista de Conversas (Esquerda) e Chat Ativo (Direita) */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Coluna da Esquerda: Lista de Conversas */}
-        <div className="w-full sm:w-80 md:w-96 border-r border-slate-800/80 bg-[#0d1017]/80 flex flex-col">
+        <div className={`${
+          mobileShowChat ? 'hidden' : 'flex'
+        } sm:flex w-full sm:w-80 md:w-96 border-r border-slate-800/80 bg-[#0d1017]/80 flex-col`}>
           {/* Busca de Conversas */}
           <div className="p-3 border-b border-slate-800/60">
             <div className="relative">
@@ -305,7 +309,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 return (
                   <button
                     key={conv.client_code}
-                    onClick={() => setSelectedClientCode(conv.client_code)}
+                    onClick={() => {
+                      setSelectedClientCode(conv.client_code);
+                      setMobileShowChat(true);
+                    }}
                     className={`w-full text-left p-3 rounded-2xl transition-all flex items-start gap-3 relative ${
                       isSelected
                         ? 'bg-indigo-600/20 border border-indigo-500/40 shadow-lg shadow-indigo-600/10'
@@ -354,12 +361,26 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         </div>
 
         {/* Coluna da Direita: Janela de Atendimento do Cliente */}
-        <div className="flex-1 flex flex-col bg-[#0b0e14] overflow-hidden">
+        <div className={`${
+          mobileShowChat ? 'flex' : 'hidden'
+        } sm:flex flex-1 flex-col bg-[#0b0e14] overflow-hidden`}>
           {selectedClientCode ? (
             <>
               {/* Header do Chat Ativo */}
               <div className="p-3.5 md:px-6 bg-[#121620] border-b border-slate-800/80 flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  {/* Botão Voltar — só aparece no mobile */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileShowChat(false);
+                      setSelectedClientCode(null);
+                    }}
+                    className="sm:hidden p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700/60 shrink-0"
+                    title="Voltar para lista"
+                  >
+                    <ArrowLeft size={16} />
+                  </button>
                   <div className="w-10 h-10 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold">
                     {activeClientName.charAt(0).toUpperCase()}
                   </div>

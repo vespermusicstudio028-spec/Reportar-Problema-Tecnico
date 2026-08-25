@@ -14,7 +14,9 @@ import {
   Phone,
   MessageCircle,
   RefreshCw,
-  Info
+  Info,
+  Copy,
+  Check
 } from 'lucide-react';
 
 interface AdminChatPanelProps {
@@ -36,7 +38,15 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [searchQuery, setSearchQuery] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleCopyMessage = (id: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedMsgId(id);
+      setTimeout(() => setCopiedMsgId(null), 2000);
+    });
+  };
 
   // Buscar todas as mensagens
   const fetchMessages = async () => {
@@ -430,13 +440,30 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                             )}
 
                             <div
-                              className={`p-3.5 rounded-2xl text-sm leading-relaxed relative ${
+                              className={`group p-3.5 rounded-2xl text-sm leading-relaxed relative ${
                                 isAdmin
                                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-br-none shadow-lg shadow-indigo-600/15'
                                   : 'bg-[#1a1f2c] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
                               }`}
                             >
-                              <p className="whitespace-pre-wrap break-words">{msg.message}</p>
+                              <p className="whitespace-pre-wrap break-words pr-6">{msg.message}</p>
+
+                              {/* Botão de Copiar */}
+                              <button
+                                type="button"
+                                onClick={() => handleCopyMessage(msg.id, msg.message)}
+                                title="Copiar mensagem"
+                                className={`absolute top-2 right-2 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                                  isAdmin
+                                    ? 'bg-white/20 hover:bg-white/30 text-white/80 hover:text-white'
+                                    : 'bg-slate-700/70 hover:bg-slate-600/80 text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                {copiedMsgId === msg.id
+                                  ? <Check size={12} className="text-emerald-400" />
+                                  : <Copy size={12} />}
+                              </button>
+
                               <div
                                 className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
                                   isAdmin ? 'text-indigo-200/80' : 'text-slate-500'

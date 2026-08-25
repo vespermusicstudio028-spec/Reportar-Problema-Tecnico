@@ -1388,12 +1388,6 @@ export default function App() {
               >
                 <MessageSquare size={18} /> 💬 Chat ao Vivo com Administrador
               </button>
-              <button 
-                onClick={() => window.open('https://wa.me/5521959368651', '_blank')}
-                className="w-full py-3 bg-emerald-600/10 hover:bg-emerald-600/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-              >
-                <MessageCircle size={18} /> Central WhatsApp
-              </button>
               {currentClient ? (
                 <>
                   <button 

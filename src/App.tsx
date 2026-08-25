@@ -629,7 +629,7 @@ export default function App() {
     
     const sendData = async (data: any) => {
       try {
-        // Save to Supabase
+        // Save to Supabase user_reports
         await supabase.from('user_reports').insert([{
           type: data.tipoConteudo_Selecionado || '',
           name: data.nome || '',
@@ -653,18 +653,46 @@ export default function App() {
       } catch (err) {
         console.error('Submission Error:', err);
       } finally {
-        // Redirecionamento para o WhatsApp
-        let waText = `*Novo Reporte de Problema*\n\n`;
-        waText += `*Tipo:* ${data.tipoConteudo_Selecionado}\n`;
-        if (data.nome) waText += `*Nome:* ${data.nome}\n`;
-        if (data.temporada) waText += `*Temporada:* ${data.temporada}\n`;
-        if (data.episodio) waText += `*Episódio:* ${data.episodio}\n`;
-        waText += `*Problema:* ${data.tipoProblema}\n`;
-        waText += `*Dispositivo:* ${data.dispositivo}\n`;
-        if (data.descricao) waText += `*Descrição:* ${data.descricao}\n`;
-        
-        const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
-        window.open(waUrl, '_blank');
+        if (data.tipoConteudo_Selecionado === 'Canal') {
+          // Enviar para o chat interno (Suporte The Best IPTV+)
+          try {
+            const clientCode = loggedClientCode || (isAdminLogged ? 'admin' : 'visitante');
+            const clientName = currentClient?.name || clientCode;
+
+            // Montar mensagem formatada para o chat interno
+            let chatMsg = `📺 *Reporte de Problema — Canal*\n\n`;
+            if (data.nome) chatMsg += `📌 *Canal:* ${data.nome}\n`;
+            chatMsg += `⚠️ *Problema:* ${data.tipoProblema}\n`;
+            chatMsg += `📱 *Dispositivo:* ${data.dispositivo}\n`;
+            if (data.descricao) chatMsg += `💬 *Descrição:* ${data.descricao}\n`;
+            if (data.attachmentName) chatMsg += `📎 *Arquivo anexado:* ${data.attachmentName}\n`;
+            chatMsg += `\n🔖 *Código do cliente:* ${clientCode}`;
+
+            await supabase.from('chat_messages').insert([{
+              client_code: clientCode,
+              client_name: clientName,
+              sender: 'client',
+              message: chatMsg,
+              read_by_admin: false,
+              read_by_client: true,
+            }]);
+          } catch (chatErr) {
+            console.error('Erro ao enviar para o chat interno:', chatErr);
+          }
+        } else {
+          // Outros tipos: abrir WhatsApp
+          let waText = `*Novo Reporte de Problema*\n\n`;
+          waText += `*Tipo:* ${data.tipoConteudo_Selecionado}\n`;
+          if (data.nome) waText += `*Nome:* ${data.nome}\n`;
+          if (data.temporada) waText += `*Temporada:* ${data.temporada}\n`;
+          if (data.episodio) waText += `*Episódio:* ${data.episodio}\n`;
+          waText += `*Problema:* ${data.tipoProblema}\n`;
+          waText += `*Dispositivo:* ${data.dispositivo}\n`;
+          if (data.descricao) waText += `*Descrição:* ${data.descricao}\n`;
+          
+          const waUrl = `https://wa.me/5521959368651?text=${encodeURIComponent(waText)}`;
+          window.open(waUrl, '_blank');
+        }
 
         setSubmitStatus('success');
         setIsSubmitting(false);

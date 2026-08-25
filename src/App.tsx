@@ -2168,8 +2168,16 @@ export default function App() {
           </header>
 
           {/* Conteúdo da Página Completa */}
-          <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-            <div className="max-w-4xl mx-auto space-y-8 pb-16">
+          <main className={`flex-1 overflow-hidden ${
+            adminTab === 'chat'
+              ? 'flex flex-col'
+              : 'overflow-y-auto p-4 md:p-8 custom-scrollbar'
+          }`}>
+            <div className={`${
+              adminTab === 'chat'
+                ? 'flex-1 flex flex-col h-full'
+                : 'max-w-4xl mx-auto space-y-8 pb-16'
+            }`}>
 
               {/* ───────────────────────────────────── */}
               {/* PÁGINA: CMS TESTE GRÁTIS              */}
@@ -2923,7 +2931,7 @@ export default function App() {
               {/* PÁGINA: CHAT COM CLIENTES             */}
               {/* ───────────────────────────────────── */}
               {adminTab === 'chat' && (
-                <div className="w-full">
+                <div className="flex-1 flex flex-col h-full overflow-hidden">
                   <AdminChatPanel clientsList={clients} />
                 </div>
               )}

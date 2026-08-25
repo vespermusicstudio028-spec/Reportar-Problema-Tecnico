@@ -244,7 +244,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   };
 
   return (
-    <div className="bg-[#0f131c] border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh] min-h-[550px]">
+    <div className="bg-[#0f131c] border border-slate-800/80 rounded-none overflow-hidden shadow-2xl flex flex-col h-full">
       {/* Topo do Painel de Chat */}
       <div className="p-4 md:px-6 py-4 bg-[#141824] border-b border-slate-800/80 flex items-center justify-between">
         <div className="flex items-center gap-3">

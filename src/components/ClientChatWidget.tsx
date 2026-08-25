@@ -23,6 +23,7 @@ interface ClientChatWidgetProps {
   onOpenCodeLogin?: () => void;
   isOpenExternal?: boolean;
   onCloseExternal?: () => void;
+  onSelectCanal?: () => void;
 }
 
 const CLIENT_TOPICS_LEFT = [
@@ -47,7 +48,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   canvasLink,
   onOpenCodeLogin,
   isOpenExternal,
-  onCloseExternal
+  onCloseExternal,
+  onSelectCanal
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -385,16 +387,31 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
 
                     {/* Fileira Direita (5) */}
                     <div className="flex flex-col gap-1.5">
-                      {CLIENT_TOPICS_RIGHT.map((topic, i) => (
-                        <button
-                          key={`right-${i}`}
-                          type="button"
-                          onClick={() => handleSendMessage(topic)}
-                          className="text-left text-[11px] bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90 p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-start"
-                        >
-                          <span className="line-clamp-2">{topic}</span>
-                        </button>
-                      ))}
+                      {CLIENT_TOPICS_RIGHT.map((topic, i) => {
+                        const isCanal = topic.includes('lista de canais');
+                        return (
+                          <button
+                            key={`right-${i}`}
+                            type="button"
+                            onClick={() => {
+                              if (isCanal && onSelectCanal) {
+                                onSelectCanal();
+                                setIsOpen(false);
+                              } else {
+                                handleSendMessage(topic);
+                              }
+                            }}
+                            className={`text-left text-[11px] p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
+                              isCanal
+                                ? 'bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold'
+                                : 'bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90'
+                            }`}
+                          >
+                            <span className="line-clamp-2">{topic}</span>
+                            {isCanal && <Tv size={12} className="text-sky-300 shrink-0" />}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

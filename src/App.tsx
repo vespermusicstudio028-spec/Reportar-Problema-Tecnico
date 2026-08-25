@@ -3675,6 +3675,12 @@ export default function App() {
           onOpenCodeLogin={() => setShowCodeModal(true)}
           isOpenExternal={isClientChatOpen}
           onCloseExternal={() => setIsClientChatOpen(false)}
+          onSelectCanal={() => {
+            setActiveView('dashboard');
+            setContentType('Canal' as ContentType);
+            setIssueType('');
+            setDevice('');
+          }}
         />
       )}
 

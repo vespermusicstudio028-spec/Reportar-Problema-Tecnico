@@ -11,23 +11,26 @@ import {
   Headphones, 
   User, 
   Key,
-  ChevronDown
+  ChevronDown,
+  ExternalLink,
+  Tv
 } from 'lucide-react';
 
 interface ClientChatWidgetProps {
   clientCode?: string;
   clientName?: string;
+  canvasLink?: string;
   onOpenCodeLogin?: () => void;
   isOpenExternal?: boolean;
   onCloseExternal?: () => void;
 }
 
 const CLIENT_TOPICS_LEFT = [
+  '🌐 Minha Área Exclusiva',
   'Olá! Preciso de ajuda com meu acesso.',
   'Um canal/filme está travando ou fora do ar.',
   'Gostaria de informações sobre renovação.',
-  'Como configurar no meu aparelho?',
-  'Solicitar liberação ou renovação de sinal.'
+  'Como configurar no meu aparelho?'
 ];
 
 const CLIENT_TOPICS_RIGHT = [
@@ -41,6 +44,7 @@ const CLIENT_TOPICS_RIGHT = [
 export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   clientCode,
   clientName,
+  canvasLink,
   onOpenCodeLogin,
   isOpenExternal,
   onCloseExternal
@@ -349,19 +353,34 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[9px] text-slate-500 font-medium">Toque para enviar</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-0.5">
+                  <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-0.5">
                     {/* Fileira Esquerda (5) */}
                     <div className="flex flex-col gap-1.5">
-                      {CLIENT_TOPICS_LEFT.map((topic, i) => (
-                        <button
-                          key={`left-${i}`}
-                          type="button"
-                          onClick={() => handleSendMessage(topic)}
-                          className="text-left text-[11px] bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90 p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-start"
-                        >
-                          <span className="line-clamp-2">{topic}</span>
-                        </button>
-                      ))}
+                      {CLIENT_TOPICS_LEFT.map((topic, i) => {
+                        const isExclusiva = topic.includes('Minha Área Exclusiva');
+                        return (
+                          <button
+                            key={`left-${i}`}
+                            type="button"
+                            onClick={() => {
+                              if (isExclusiva) {
+                                const link = canvasLink || 'https://testetestettt.my.canva.site/sr-carlos';
+                                window.open(link, '_blank');
+                              } else {
+                                handleSendMessage(topic);
+                              }
+                            }}
+                            className={`text-left text-[11px] p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
+                              isExclusiva
+                                ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/45 hover:to-purple-600/35 text-indigo-200 border border-indigo-500/50 font-bold'
+                                : 'bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90'
+                            }`}
+                          >
+                            <span className="line-clamp-2">{topic}</span>
+                            {isExclusiva && <ExternalLink size={12} className="text-indigo-300 shrink-0" />}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* Fileira Direita (5) */}

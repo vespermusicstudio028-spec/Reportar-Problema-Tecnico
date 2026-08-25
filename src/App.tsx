@@ -3671,6 +3671,7 @@ export default function App() {
         <ClientChatWidget
           clientCode={loggedClientCode}
           clientName={currentClient?.name}
+          canvasLink={currentClient?.canvasLink}
           onOpenCodeLogin={() => setShowCodeModal(true)}
           isOpenExternal={isClientChatOpen}
           onCloseExternal={() => setIsClientChatOpen(false)}

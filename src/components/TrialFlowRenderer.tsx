@@ -83,17 +83,11 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
 
   // Ponto de entrada ao clicar em "Enviar Dados p/ Suporte"
   const handleInitiateSend = (content: TrialContentBlock) => {
-    const existingCode = clientCode || localStorage.getItem('iptv_access_code_v1') || localStorage.getItem('tbi_active_client_code');
-    const existingName = clientName || localStorage.getItem('tbi_active_client_name');
-
-    // Se já estiver autenticado/identificado, envia direto
-    if (existingCode && existingName) {
-      handleSendToSupport(content, existingCode, existingName);
-    } else {
-      // Cliente novo: abre modal para pegar Nome, Telefone e gerar Código de Acesso
-      setPendingContent(content);
-      setShowRegisterModal(true);
-    }
+    // No fluxo de Teste Grátis, sempre pede identificação.
+    // Isso garante que cada pessoa que solicita o teste precisa confirmar quem é,
+    // evitando enviar com dados de sessões antigas de outros clientes.
+    setPendingContent(content);
+    setShowRegisterModal(true);
   };
 
   // Envia dados para o chat com código e nome existentes
@@ -265,37 +259,9 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
   };
 
   const handleSendTextToSupport = async (customText: string) => {
-    const existingCode = clientCode || localStorage.getItem('iptv_access_code_v1') || localStorage.getItem('tbi_active_client_code');
-    const existingName = clientName || localStorage.getItem('tbi_active_client_name');
-
-    if (!existingCode || !existingName) {
-      setPendingContent({ whatsappText: customText });
-      setShowRegisterModal(true);
-      return;
-    }
-
-    if (isSending) return;
-    setIsSending(true);
-    try {
-      await supabase.from('chat_messages').insert({
-        client_code: existingCode,
-        client_name: existingName,
-        sender: 'client',
-        message: `🎁 *Teste Grátis 3h:* ${customText}`,
-        read_by_admin: false,
-        read_by_client: true
-      });
-
-      if (onOpenChat) {
-        onOpenChat();
-      } else {
-        onClose();
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSending(false);
-    }
+    // No fluxo de Teste Grátis, sempre pede identificação
+    setPendingContent({ whatsappText: customText });
+    setShowRegisterModal(true);
   };
 
   const getEmbedUrl = (url: string) => {

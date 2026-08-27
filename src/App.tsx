@@ -484,6 +484,9 @@ export default function App() {
   const [loggedClientCode, setLoggedClientCode] = useState(() => {
     return localStorage.getItem('iptv_access_code_v1') || '';
   });
+  const [loggedClientName, setLoggedClientName] = useState(() => {
+    return localStorage.getItem('tbi_active_client_name') || '';
+  });
 
   interface Client {
     id: string;
@@ -834,10 +837,11 @@ export default function App() {
             setIsClientChatOpen(true);
           }}
           clientCode={loggedClientCode || undefined}
-          clientName={currentClient?.name}
+          clientName={loggedClientName || undefined}
           onClientRegistered={(newCli) => {
             setClients((prev) => [newCli, ...prev.filter((c) => c.code !== newCli.code)]);
             setLoggedClientCode(newCli.code);
+            setLoggedClientName(newCli.name);
           }}
         />
       );

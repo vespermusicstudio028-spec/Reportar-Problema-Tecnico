@@ -171,6 +171,7 @@ export default function App() {
   });
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
   const [isReportContentOpen, setIsReportContentOpen] = useState(false);
+  const [isPedirConteudoOpen, setIsPedirConteudoOpen] = useState(false);
 
   // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -687,6 +688,7 @@ export default function App() {
     setActiveView('dashboard');
     setContentType(null);
     setIsReportContentOpen(false);
+    setIsPedirConteudoOpen(false);
     setTrialState(null);
     setIssueType('');
     setIssueTypeOther('');
@@ -1054,51 +1056,98 @@ export default function App() {
               </button>
             </div>
 
-            <div className="w-full mb-0.5">
-              {(() => {
-                const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
-                return (
-                  <button
-                    onClick={() => {
-                      if (!loggedClientCode && !isAdminLogged) {
-                        setShowCodeModal(true);
-                      } else {
-                        if (isQuotaReached) {
-                          setQuotaAlert('limit');
-                          return;
-                        }
-                        setShowRequestModal(true);
-                      }
-                    }}
-                    className={`w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 ${
-                      isQuotaReached 
-                        ? 'bg-slate-700/50' 
-                        : 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40'
-                    }`}
-                  >
-                    <div className={`absolute inset-0 ${isQuotaReached ? 'bg-transparent' : 'bg-white/20 group-hover:bg-white/0'} transition-colors duration-300`} />
-                    <div className={`relative ${isQuotaReached ? 'bg-slate-900/95' : 'bg-slate-900/90 group-hover:bg-transparent'} backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 md:py-5 rounded-[14px] flex items-center justify-between transition-colors duration-300`}>
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        <div className={`p-2.5 sm:p-3 rounded-xl transition-transform ${isQuotaReached ? 'bg-slate-800/80' : 'bg-white/10 group-hover:scale-110'}`}>
-                          {isQuotaReached ? <Lock className="text-slate-500 w-5 h-5 sm:w-6 sm:h-6" /> : <PlusCircle className="text-white w-5 h-5 sm:w-6 sm:h-6" />}
-                        </div>
-                        <div className="text-left">
-                          <h3 className={`font-bold text-base sm:text-lg md:text-xl tracking-wide ${isQuotaReached ? 'text-slate-400' : 'text-white'}`}>
-                            {isQuotaReached ? 'Pedidos Bloqueados' : 'Pedir Conteúdos'}
-                          </h3>
-                          <p className={`text-[11px] sm:text-xs md:text-sm font-medium ${isQuotaReached ? 'text-slate-500' : 'text-white/70'}`}>
-                            {isQuotaReached ? 'Aguarde 7 dias' : 'Filmes e Séries'}
-                          </p>
-                        </div>
-                      </div>
-                      {!isQuotaReached && <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" size={18} />}
-                    </div>
-                  </button>
-                );
-              })()}
-            </div>
+
           </div>
         </div>
+      </motion.div>
+    );
+  };
+
+  const renderPedirConteudoPage = () => {
+    const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.98, y: -15 }}
+        className="min-h-full flex flex-col items-center justify-center py-6 md:p-6 w-full max-w-xl mx-auto"
+      >
+        {/* Cabeçalho com Voltar */}
+        <div className="w-full flex items-center justify-between mb-6 pb-3 border-b border-white/10">
+          <button
+            type="button"
+            onClick={() => setIsPedirConteudoOpen(false)}
+            className="text-slate-400 hover:text-white transition-colors text-sm font-semibold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60"
+          >
+            <ChevronRight size={16} className="rotate-180" /> Voltar ao Início
+          </button>
+          <span className="text-xs font-bold uppercase tracking-wider text-pink-400 bg-pink-500/10 px-3 py-1 rounded-full border border-pink-500/20">
+            Pedir Conteúdo
+          </span>
+        </div>
+
+        {/* Ícone + Título */}
+        <div className="text-center space-y-2 mb-8 flex flex-col items-center">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-600/30 to-purple-600/20 border border-pink-500/30 flex items-center justify-center text-pink-300 shadow-xl shadow-pink-600/20 mb-2">
+            <PlusCircle size={32} />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            Pedir Conteúdos
+          </h2>
+          <p className="text-slate-300 font-medium text-sm max-w-sm">
+            Solicite filmes ou séries para nossa equipe adicionar ao catálogo.
+          </p>
+        </div>
+
+        {isQuotaReached ? (
+          /* Quota atingida */
+          <div className="w-full p-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-center space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center mx-auto">
+              <Lock size={24} className="text-red-400" />
+            </div>
+            <h3 className="text-white font-bold text-lg">Pedidos Bloqueados</h3>
+            <p className="text-red-300 text-sm">Você atingiu o limite de pedidos desta semana.</p>
+            <p className="text-slate-500 text-xs">Aguarde 7 dias para fazer novos pedidos.</p>
+          </div>
+        ) : (
+          /* Formulário de Pedido — abre o modal existente */
+          <div className="w-full space-y-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (!loggedClientCode && !isAdminLogged) {
+                  setShowCodeModal(true);
+                } else {
+                  setShowRequestModal(true);
+                }
+              }}
+              className="w-full relative overflow-hidden group rounded-2xl p-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 shadow-2xl shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300 rounded-2xl" />
+              <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-md px-5 py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 rounded-xl bg-white/10 group-hover:scale-110 transition-transform">
+                    <PlusCircle className="text-white w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h3 className="font-bold text-lg text-white">Fazer um Pedido</h3>
+                    <p className="text-sm text-white/70">Filmes e Séries</p>
+                  </div>
+                </div>
+                <ChevronRight className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" size={20} />
+              </div>
+            </button>
+
+            <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/15 text-sm text-slate-400 space-y-2">
+              <p className="font-bold text-indigo-300 text-xs uppercase tracking-wider">📌 Regras de Pedido</p>
+              <ul className="space-y-1.5 text-xs">
+                <li>• Máximo de <strong className="text-white">2 pedidos</strong> por semana por conta.</li>
+                <li>• Os pedidos são analisados pela nossa equipe.</li>
+                <li>• Conteúdos podem levar até 72h para serem adicionados.</li>
+              </ul>
+            </div>
+          </div>
+        )}
       </motion.div>
     );
   };
@@ -1678,6 +1727,8 @@ export default function App() {
     <AnimatePresence mode="wait">
       {submitStatus === 'success' ? (
         <div key="success" className="absolute inset-0">{renderSuccess()}</div>
+      ) : isPedirConteudoOpen ? (
+        <div key="pedir-conteudo" className="flex-1 overflow-y-auto w-full">{renderPedirConteudoPage()}</div>
       ) : isReportContentOpen && !contentType ? (
         <div key="theme-selection" className="flex-1 overflow-y-auto w-full">{renderReportThemeSelection()}</div>
       ) : isReportContentOpen && contentType ? (
@@ -4167,9 +4218,17 @@ export default function App() {
           onSelectCanal={() => {
             setActiveView('dashboard');
             setIsReportContentOpen(true);
+            setIsPedirConteudoOpen(false);
             setContentType(null);
             setIssueType('');
             setDevice('');
+            setIsClientChatOpen(false);
+          }}
+          onPedirConteudo={() => {
+            setActiveView('dashboard');
+            setIsPedirConteudoOpen(true);
+            setIsReportContentOpen(false);
+            setContentType(null);
             setIsClientChatOpen(false);
           }}
         />

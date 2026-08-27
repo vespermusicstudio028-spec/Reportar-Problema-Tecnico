@@ -30,6 +30,7 @@ interface ClientChatWidgetProps {
   isOpenExternal?: boolean;
   onCloseExternal?: () => void;
   onSelectCanal?: () => void;
+  onPedirConteudo?: () => void;
 }
 
 export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
@@ -39,7 +40,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   onOpenCodeLogin,
   isOpenExternal,
   onCloseExternal,
-  onSelectCanal
+  onSelectCanal,
+  onPedirConteudo
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -518,7 +520,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">Clique para enviar rapidamente</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {/* Atalho 1: Minha Área Exclusiva */}
                     <button
                       type="button"
@@ -547,6 +549,22 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     >
                       <span className="truncate">O conteúdo não está carregando.</span>
                       <Tv size={14} className="text-sky-300 shrink-0" />
+                    </button>
+
+                    {/* Atalho 3: Pedir Conteúdos */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onPedirConteudo) {
+                          onPedirConteudo();
+                          setIsOpen(false);
+                        } else {
+                          handleSendMessage('Gostaria de pedir um filme ou série.');
+                        }
+                      }}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-pink-600/30 to-purple-600/20 hover:from-pink-600/45 hover:to-purple-600/35 text-pink-200 border border-pink-500/50 font-bold"
+                    >
+                      <span className="truncate">🎬 Pedir Conteúdos</span>
                     </button>
                   </div>
                 </div>

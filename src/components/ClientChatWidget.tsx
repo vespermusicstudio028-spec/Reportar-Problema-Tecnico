@@ -308,6 +308,16 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     return getClientQueueInfo(activeCode, messages);
   }, [activeCode, messages]);
 
+  // Verificar se o chat atual está finalizado
+  const isChatFinished = React.useMemo(() => {
+    if (messages.length === 0) return false;
+    const lastMsg = messages[messages.length - 1];
+    return lastMsg.sender === 'admin' && (
+      lastMsg.message.includes('Chat Finalizado') || 
+      lastMsg.message.includes('Atendimento Finalizado')
+    );
+  }, [messages]);
+
   return (
     <>
       {/* Botão Flutuante no Canto Inferior Direito */}
@@ -494,7 +504,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
             </div>
 
             {/* Banner de Fila de Espera em Tempo Real */}
-            {businessStatus.isOnline && queueStatus.isInQueue && (
+            {businessStatus.isOnline && queueStatus.isInQueue && !isChatFinished && (
               <div className="bg-gradient-to-r from-amber-950/80 via-orange-950/70 to-amber-950/80 border-b border-amber-500/40 px-4 md:px-8 py-2.5 flex items-center justify-between gap-3 text-amber-200 text-xs shrink-0 shadow-lg">
                 <div className="flex items-center gap-2.5">
                   <span className="relative flex h-2.5 w-2.5 shrink-0">
@@ -509,6 +519,16 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                 <span className="text-[11px] font-mono text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30 shrink-0 font-bold">
                   ⏱️ Tempo estimado: ~{queueStatus.estimatedMinutes} min
                 </span>
+              </div>
+            )}
+
+            {/* Banner de Chat Finalizado */}
+            {isChatFinished && (
+              <div className="bg-[#101420] border-b border-slate-700/60 px-4 md:px-8 py-2 flex items-center justify-between gap-3 text-slate-300 text-xs shrink-0 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                  <span>🔒 <strong>Chat Finalizado:</strong> Atendimento concluído. Se precisar de mais ajuda, basta enviar uma nova mensagem!</span>
+                </div>
               </div>
             )}
 

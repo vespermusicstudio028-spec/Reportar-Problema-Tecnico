@@ -242,6 +242,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const isServingSelected = selectedClientCode ? selectedClientCode === currentlyServingCode : false;
   const currentQueueItem = selectedClientCode ? supportQueue.queue.find((q) => q.client_code === selectedClientCode) : null;
 
+  // Verificar se o último status deste cliente foi atendimento finalizado
+  const isSelectedChatFinished = React.useMemo(() => {
+    if (!selectedClientCode || activeMessages.length === 0) return false;
+    const lastMsg = activeMessages[activeMessages.length - 1];
+    return lastMsg.sender === 'admin' && (
+      lastMsg.message.includes('Chat Finalizado') || 
+      lastMsg.message.includes('Atendimento Finalizado')
+    );
+  }, [selectedClientCode, activeMessages]);
+
   // Iniciar atendimento para o cliente selecionado
   const handleStartServingThisClient = async () => {
     if (!selectedClientCode) return;
@@ -406,6 +416,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 const isSelected = conv.client_code === selectedClientCode;
                 const queueItem = supportQueue.queue.find((q) => q.client_code === conv.client_code);
                 const isServingThis = conv.client_code === currentlyServingCode;
+                const isConvFinished = conv.last_sender === 'admin' && (
+                  conv.last_message.includes('Chat Finalizado') || 
+                  conv.last_message.includes('Atendimento Finalizado')
+                );
 
                 return (
                   <button
@@ -439,16 +453,19 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                           <h4 className="text-sm font-semibold text-white truncate">
                             {conv.client_name}
                           </h4>
-                          {isServingThis && (
+                          {isConvFinished ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60 shrink-0">
+                              🔒 Finalizado
+                            </span>
+                          ) : isServingThis ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0 flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Atendendo
                             </span>
-                          )}
-                          {!isServingThis && queueItem && (
+                          ) : queueItem ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> Fila #{queueItem.position} (~{queueItem.estimatedMinutes}m)
                             </span>
-                          )}
+                          ) : null}
                         </div>
                         <span className="text-[10px] text-slate-500 shrink-0 ml-1">
                           {formatTime(conv.last_message_time)}
@@ -543,7 +560,12 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
               {/* Barra de Status da Fila e Atendimento do Cliente Selecionado */}
               <div className="bg-[#0f131d] border-b border-slate-800/80 px-4 md:px-6 py-2.5 flex items-center justify-between gap-3 text-xs shrink-0 flex-wrap">
-                {isServingSelected ? (
+                {isSelectedChatFinished ? (
+                  <div className="flex items-center gap-2 text-slate-300 font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                    <span>🔒 <strong>Chat Finalizado:</strong> Este atendimento foi concluído</span>
+                  </div>
+                ) : isServingSelected ? (
                   <div className="flex items-center gap-2 text-emerald-400 font-semibold">
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -567,7 +589,15 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 )}
 
                 <div className="flex items-center gap-2">
-                  {isServingSelected ? (
+                  {isSelectedChatFinished ? (
+                    <button
+                      type="button"
+                      onClick={handleStartServingThisClient}
+                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95"
+                    >
+                      <UserCheck size={14} /> Iniciar Novo Atendimento
+                    </button>
+                  ) : isServingSelected ? (
                     <button
                       type="button"
                       onClick={handleFinishAttendance}

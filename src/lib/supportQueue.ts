@@ -173,11 +173,11 @@ Como posso te ajudar agora? 😊`;
  * Gera mensagem quando o atendimento é finalizado pelo admin
  */
 export function getAutomatedFinishAttendanceMessage(clientName: string = 'Cliente'): string {
-  return `✅ **Atendimento Finalizado com Sucesso!**
+  return `🔒 **Chat Finalizado com Sucesso!**
 
-Olá, ${clientName}! Seu chamado de suporte foi encerrado pelo atendente.
+Olá, ${clientName}! Seu atendimento foi encerrado pelo suporte.
 
-Se precisar de qualquer outra ajuda, basta mandar uma nova mensagem aqui no chat a qualquer momento.
+Caso precise de novas orientações ou qualquer ajuda técnica, basta enviar uma nova mensagem aqui no chat a qualquer momento.
 
-Desejamos uma ótima programação com a **The Best IPTV**! 🍿📺`;
+Agradecemos pelo contato e desejamos uma ótima programação com a **The Best IPTV**! 🍿📺`;
 }

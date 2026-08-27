@@ -4119,9 +4119,10 @@ export default function App() {
           onCloseExternal={() => setIsClientChatOpen(false)}
           onSelectCanal={() => {
             setActiveView('dashboard');
-            setContentType('Canal' as ContentType);
+            setContentType(null);
             setIssueType('');
             setDevice('');
+            setIsClientChatOpen(false);
           }}
         />
       )}

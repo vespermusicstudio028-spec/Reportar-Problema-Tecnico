@@ -518,7 +518,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">Clique para enviar rapidamente</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {/* Atalho 1: Minha Área Exclusiva */}
                     <button
                       type="button"
@@ -532,16 +532,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <ExternalLink size={14} className="text-indigo-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 2: Ajuda com o Acesso */}
-                    <button
-                      type="button"
-                      onClick={() => handleSendMessage('Olá! Preciso de ajuda com meu acesso.')}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 bg-[#151924] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800"
-                    >
-                      <span className="truncate">Olá! Preciso de ajuda com meu acesso.</span>
-                    </button>
-
-                    {/* Atalho 3: Lista de Canais */}
+                    {/* Atalho 2: O conteúdo não está carregando */}
                     <button
                       type="button"
                       onClick={() => {
@@ -549,12 +540,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                           onSelectCanal();
                           setIsOpen(false);
                         } else {
-                          handleSendMessage('Minha lista de canais não está carregando.');
+                          handleSendMessage('O conteúdo não está carregando.');
                         }
                       }}
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold"
                     >
-                      <span className="truncate">Minha lista de canais não está carregando.</span>
+                      <span className="truncate">O conteúdo não está carregando.</span>
                       <Tv size={14} className="text-sky-300 shrink-0" />
                     </button>
                   </div>

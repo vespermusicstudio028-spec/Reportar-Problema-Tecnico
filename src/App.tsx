@@ -170,6 +170,7 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+  const [isReportContentOpen, setIsReportContentOpen] = useState(false);
 
   // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -685,6 +686,7 @@ export default function App() {
   const handleGoHome = () => {
     setActiveView('dashboard');
     setContentType(null);
+    setIsReportContentOpen(false);
     setTrialState(null);
     setIssueType('');
     setIssueTypeOther('');
@@ -1095,11 +1097,53 @@ export default function App() {
                 );
               })()}
             </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
 
+  const renderReportThemeSelection = () => (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.98, y: 15 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.98, y: -15 }}
+      className="min-h-full flex flex-col items-center justify-center py-6 md:p-6 w-full max-w-xl mx-auto"
+    >
+      {/* Botão de Voltar ao Início */}
+      <div className="w-full flex items-center justify-between mb-6 pb-3 border-b border-white/10">
+        <button 
+          type="button"
+          onClick={() => {
+            setIsReportContentOpen(false);
+            setContentType(null);
+          }}
+          className="text-slate-400 hover:text-white transition-colors text-sm font-semibold uppercase tracking-wider flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60"
+        >
+          <ChevronRight size={16} className="rotate-180" /> Voltar ao Início
+        </button>
+        <span className="text-xs font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+          Reportar Conteúdo
+        </span>
+      </div>
+
+      <div className="text-center space-y-2 mb-8 relative z-10 flex flex-col items-center">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300 shadow-xl shadow-indigo-600/20 mb-2">
+          <Tv size={32} className="animate-pulse" />
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-md">
+          O que não está carregando?
+        </h2>
+        <p className="text-slate-300 font-medium text-xs sm:text-sm md:text-base drop-shadow-md max-w-sm">
+          Selecione o tipo de conteúdo com problema para relatar ao suporte:
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-3.5 sm:gap-4 w-full relative z-10">
         {[
-          { id: 'Canal', icon: <Tv size={26} className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
-          { id: 'Filme', icon: <Film size={26} className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
-          { id: 'Série', icon: <Clapperboard size={26} className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-300 group-hover:text-white" />, label: 'Série' },
+          { id: 'Canal', icon: <Tv size={28} className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-300 group-hover:text-white" />, label: 'Canal' },
+          { id: 'Filme', icon: <Film size={28} className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-300 group-hover:text-white" />, label: 'Filme' },
+          { id: 'Série', icon: <Clapperboard size={28} className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-300 group-hover:text-white" />, label: 'Série' },
         ].map((item) => (
           <button
             key={item.id}
@@ -1113,19 +1157,20 @@ export default function App() {
               setIssueType('');
               setDevice('');
             }}
-            className="flex items-center w-full p-4 sm:p-5 md:p-6 gap-4 sm:gap-6 bg-[#131622]/80 hover:bg-[#1c2136]/90 backdrop-blur-xl hover:scale-[1.01] rounded-2xl transition-all group shadow-xl shadow-black/40"
+            className="flex items-center justify-between w-full p-4 sm:p-5 md:p-6 bg-[#131622]/90 hover:bg-[#1e233a] backdrop-blur-xl hover:scale-[1.01] rounded-2xl transition-all group shadow-xl shadow-black/50 border border-slate-800 hover:border-indigo-500/50"
           >
-            <div className="flex items-center justify-center p-3 sm:p-4 bg-indigo-500/15 rounded-2xl group-hover:bg-indigo-600 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
-              {item.icon}
+            <div className="flex items-center gap-4 sm:gap-5">
+              <div className="flex items-center justify-center p-3.5 sm:p-4 bg-indigo-500/15 rounded-2xl group-hover:bg-indigo-600 transition-all shadow-lg group-hover:shadow-indigo-500/40 shrink-0">
+                {item.icon}
+              </div>
+              <span className="font-bold text-white text-lg sm:text-xl md:text-2xl tracking-wide">{item.label}</span>
             </div>
-            <span className="font-bold text-white text-lg sm:text-xl md:text-2xl tracking-wide">{item.label}</span>
+            <ChevronRight size={22} className="text-slate-500 group-hover:text-white group-hover:translate-x-1 transition-all shrink-0" />
           </button>
         ))}
-        </div>
-        </div>
+      </div>
     </motion.div>
-    );
-  };
+  );
 
   const renderFormFields = () => (
     <motion.form
@@ -1633,10 +1678,12 @@ export default function App() {
     <AnimatePresence mode="wait">
       {submitStatus === 'success' ? (
         <div key="success" className="absolute inset-0">{renderSuccess()}</div>
-      ) : !contentType ? (
-        <div key="selection" className="flex-1 overflow-y-auto w-full">{renderContentSelection()}</div>
-      ) : (
+      ) : isReportContentOpen && !contentType ? (
+        <div key="theme-selection" className="flex-1 overflow-y-auto w-full">{renderReportThemeSelection()}</div>
+      ) : isReportContentOpen && contentType ? (
         <div key="form" className="flex-1 overflow-hidden w-full">{renderFormFields()}</div>
+      ) : (
+        <div key="selection" className="flex-1 overflow-y-auto w-full">{renderContentSelection()}</div>
       )}
     </AnimatePresence>
   );
@@ -4119,6 +4166,7 @@ export default function App() {
           onCloseExternal={() => setIsClientChatOpen(false)}
           onSelectCanal={() => {
             setActiveView('dashboard');
+            setIsReportContentOpen(true);
             setContentType(null);
             setIssueType('');
             setDevice('');

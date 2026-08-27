@@ -169,11 +169,12 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
     setIsSending(true);
 
     try {
-      // 1. Gerar código único numérico de 4 dígitos
-      let newCode = Math.floor(1000 + Math.random() * 9000).toString();
+      // 1. Gerar código único alfanumérico no padrão do Código de Acesso Único do Painel
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let newCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
       const { data: existingCodes } = await supabase.from('clients').select('code').eq('code', newCode);
       if (existingCodes && existingCodes.length > 0) {
-        newCode = Math.floor(10000 + Math.random() * 90000).toString();
+        newCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
       }
 
       // 2. Salvar cliente na tabela 'clients' do Supabase (visível no painel do admin)

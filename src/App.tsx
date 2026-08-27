@@ -466,12 +466,19 @@ export default function App() {
   const [seriesUpdates, setSeriesUpdates] = useState<CatalogUpdate[]>([]);
   const [newMovieTitle, setNewMovieTitle] = useState('');
   const [newSeriesTitle, setNewSeriesTitle] = useState('');
+  const generateUniqueClientCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  };
 
   const [accessCode, setAccessCode] = useState('');
   const [accessCodeError, setAccessCodeError] = useState('');
   const [showClientCode, setShowClientCode] = useState(false);
   const [clientName, setClientName] = useState('');
-  const [clientCode, setClientCode] = useState('');
+  const [clientCode, setClientCode] = useState(() => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  });
   const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
   
   const [loggedClientCode, setLoggedClientCode] = useState(() => {
@@ -490,6 +497,12 @@ export default function App() {
   }
   const [clients, setClients] = useState<Client[]>([]);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+
+  useEffect(() => {
+    if (adminTab === 'clientes' && !clientCode) {
+      setClientCode(generateUniqueClientCode());
+    }
+  }, [adminTab, clientCode]);
 
   // Image Viewer State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -2029,7 +2042,7 @@ export default function App() {
       }
 
       setClientName('');
-      setClientCode('');
+      setClientCode(generateUniqueClientCode());
       setClientLink('https://testetestettt.my.canva.site/sr-carlos');
       alert(`✅ Cliente "${clientName}" cadastrado com sucesso!`);
     } catch (err: any) {

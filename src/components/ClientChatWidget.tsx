@@ -19,8 +19,13 @@ import {
   Info,
   Calendar,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Paperclip,
+  FileText
 } from 'lucide-react';
+import { PixPdfCard } from './PixPdfCard';
+import { PixUploadModal } from './PixUploadModal';
+import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } from '../lib/pixUtils';
 
 interface ClientChatWidgetProps {
   clientCode?: string;
@@ -50,6 +55,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [tempCodeInput, setTempCodeInput] = useState('');
   const [customClientName, setCustomClientName] = useState('');
   const [showScheduleInfo, setShowScheduleInfo] = useState(false);
+  const [showPixUploadModal, setShowPixUploadModal] = useState(false);
   const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -199,6 +205,39 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     } finally {
       setIsSending(false);
     }
+  };
+
+  const handleSendPixAttachment = async (payloadString: string, fileName: string) => {
+    if (!activeCode) return;
+    const currentClientDisplayName = clientName || customClientName || 'Cliente';
+
+    // 1. Enviar mensagem com o anexo do comprovante Pix como cliente
+    const { error } = await supabase.from('chat_messages').insert({
+      client_code: activeCode,
+      client_name: currentClientDisplayName,
+      sender: 'client',
+      message: payloadString,
+      read_by_admin: false,
+      read_by_client: true
+    });
+
+    if (error) throw error;
+
+    // 2. Disparar imediatamente a resposta automática do bot confirmando o recebimento do Pix
+    setTimeout(async () => {
+      try {
+        await supabase.from('chat_messages').insert({
+          client_code: activeCode,
+          client_name: 'Suporte The Best IPTV+',
+          sender: 'admin',
+          message: getAutomatedPixReceivedMessage(currentClientDisplayName),
+          read_by_admin: true,
+          read_by_client: false
+        });
+      } catch (autoErr) {
+        console.error('Erro ao disparar resposta automática de Pix:', autoErr);
+      }
+    }, 600);
   };
 
   const handleClose = () => {
@@ -484,12 +523,20 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                             className={`p-3.5 md:p-4 rounded-2xl text-xs md:text-sm leading-relaxed break-words ${
                               isClient
                                 ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-600/15'
-                                : msg.message.includes('🤖') || msg.message.includes('fora do horário')
-                                ? 'bg-[#1b1e2c] border border-amber-500/30 text-slate-100 rounded-bl-none shadow-md'
+                                : msg.message.includes('🤖') || msg.message.includes('fora do horário') || msg.message.includes('Comprovante de Pagamento Pix') || msg.message.includes('PAGAMENTO PIX')
+                                ? 'bg-[#1b1e2c] border border-emerald-500/30 text-slate-100 rounded-bl-none shadow-md'
                                 : 'bg-[#171b28] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
                             }`}
                           >
-                            <p className="whitespace-pre-wrap">{msg.message}</p>
+                            {isPixPdfMessage(msg.message) ? (
+                              <PixPdfCard
+                                payload={parsePixPdfMessage(msg.message)!}
+                                isClientSender={isClient}
+                              />
+                            ) : (
+                              <p className="whitespace-pre-wrap">{msg.message}</p>
+                            )}
+
                             <div
                               className={`flex items-center justify-end gap-1.5 mt-1.5 text-[10px] ${
                                 isClient ? 'text-indigo-200/80' : 'text-slate-500'
@@ -511,7 +558,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Sugestões Rápidas de Tópicos (2 Colunas) */}
+                {/* Sugestões Rápidas de Tópicos (4 Colunas Responsivas) */}
                 <div className="p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">
                   <div className="flex items-center justify-between mb-2 px-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -520,7 +567,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">Clique para enviar rapidamente</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {/* Atalho 1: Minha Área Exclusiva */}
                     <button
                       type="button"
@@ -530,8 +577,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       }}
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/45 hover:to-purple-600/35 text-indigo-200 border border-indigo-500/50 font-bold"
                     >
-                      <span className="truncate">🌐 Minha Área Exclusiva</span>
-                      <ExternalLink size={14} className="text-indigo-300 shrink-0" />
+                      <span className="truncate">🌐 Minha Área</span>
+                      <ExternalLink size={13} className="text-indigo-300 shrink-0" />
                     </button>
 
                     {/* Atalho 2: O conteúdo não está carregando */}
@@ -547,8 +594,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       }}
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold"
                     >
-                      <span className="truncate">O conteúdo não está carregando.</span>
-                      <Tv size={14} className="text-sky-300 shrink-0" />
+                      <span className="truncate">📺 Não carrega</span>
+                      <Tv size={13} className="text-sky-300 shrink-0" />
                     </button>
 
                     {/* Atalho 3: Pedir Conteúdos */}
@@ -564,19 +611,39 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       }}
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-pink-600/30 to-purple-600/20 hover:from-pink-600/45 hover:to-purple-600/35 text-pink-200 border border-pink-500/50 font-bold"
                     >
-                      <span className="truncate">🎬 Pedir Conteúdos</span>
+                      <span className="truncate">🎬 Pedir Conteúdo</span>
+                    </button>
+
+                    {/* Atalho 4: Enviar Comprovante Pix (PDF) */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPixUploadModal(true)}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold"
+                    >
+                      <span className="truncate">📄 Comprovante Pix</span>
+                      <FileText size={13} className="text-emerald-300 shrink-0" />
                     </button>
                   </div>
                 </div>
 
-                {/* Campo de Envio */}
+                {/* Campo de Envio com Botão de Anexo */}
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
                     handleSendMessage();
                   }}
-                  className="p-3 md:p-4 bg-[#0a0d14] border-t border-slate-800/80 flex items-center gap-2 md:gap-3"
+                  className="p-3 md:p-4 bg-[#0a0d14] border-t border-slate-800/80 flex items-center gap-2 md:gap-2.5"
                 >
+                  {/* Botão de Anexar Comprovante PDF / Pix */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPixUploadModal(true)}
+                    className="p-3 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 rounded-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-600/10"
+                    title="Anexar Comprovante Pix (PDF)"
+                  >
+                    <Paperclip size={18} />
+                  </button>
+
                   <input
                     type="text"
                     placeholder={businessStatus.isOnline ? "Digite sua mensagem para o suporte..." : "Suporte ausente. Deixe sua mensagem aqui..."}
@@ -599,6 +666,13 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal de Anexo de Comprovante Pix PDF */}
+      <PixUploadModal
+        isOpen={showPixUploadModal}
+        onClose={() => setShowPixUploadModal(false)}
+        onSendPixPayload={handleSendPixAttachment}
+      />
     </>
   );
 };

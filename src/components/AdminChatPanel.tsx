@@ -19,6 +19,8 @@ import {
   Check,
   ArrowLeft
 } from 'lucide-react';
+import { PixPdfCard } from './PixPdfCard';
+import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -202,6 +204,25 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
+  // Confirmar e Reconhecer Pagamento Pix com 1 clique
+  const handleConfirmPixPayment = async (clientCode: string, clientName: string) => {
+    try {
+      const confirmMsg = getAutomatedPixConfirmedMessage(clientName);
+      const { error } = await supabase.from('chat_messages').insert({
+        client_code: clientCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: confirmMsg,
+        read_by_admin: true,
+        read_by_client: false
+      });
+
+      if (error) throw error;
+    } catch (err: any) {
+      alert('Erro ao confirmar pagamento Pix: ' + (err.message || 'Erro desconhecido.'));
+    }
+  };
+
   // Limpar histórico da conversa selecionada
   const handleDeleteConversation = async () => {
     if (!selectedClientCode) return;
@@ -349,7 +370,9 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                           {conv.last_sender === 'admin' && (
                             <span className="text-indigo-400 font-medium">Você: </span>
                           )}
-                          {conv.last_message}
+                          {conv.last_message.includes('[PIX_COMPROVANTE:')
+                            ? '📄 [Comprovante Pix Enviado]'
+                            : conv.last_message}
                         </p>
                       </div>
                     </div>
@@ -464,10 +487,21 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                               className={`group p-3.5 rounded-2xl text-sm leading-relaxed relative ${
                                 isAdmin
                                   ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-br-none shadow-lg shadow-indigo-600/15'
+                                  : msg.message.includes('Comprovante de Pagamento Pix') || msg.message.includes('PAGAMENTO PIX')
+                                  ? 'bg-[#182120] border border-emerald-500/40 text-slate-100 rounded-bl-none shadow-md'
                                   : 'bg-[#1a1f2c] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
                               }`}
                             >
-                              <p className="whitespace-pre-wrap break-words pr-6">{msg.message}</p>
+                              {isPixPdfMessage(msg.message) ? (
+                                <PixPdfCard
+                                  payload={parsePixPdfMessage(msg.message)!}
+                                  isAdmin={true}
+                                  onConfirmPixPayment={() => handleConfirmPixPayment(msg.client_code, activeClientName)}
+                                  isClientSender={!isAdmin}
+                                />
+                              ) : (
+                                <p className="whitespace-pre-wrap break-words pr-6">{msg.message}</p>
+                              )}
 
                               {/* Botão de Copiar */}
                               <button

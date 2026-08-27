@@ -32,22 +32,6 @@ interface ClientChatWidgetProps {
   onSelectCanal?: () => void;
 }
 
-const CLIENT_TOPICS_LEFT = [
-  '🌐 Minha Área Exclusiva',
-  'Olá! Preciso de ajuda com meu acesso.',
-  'Um canal/filme está travando ou fora do ar.',
-  'Gostaria de informações sobre renovação.',
-  'Como configurar no meu aparelho?'
-];
-
-const CLIENT_TOPICS_RIGHT = [
-  'Minha lista de canais não está carregando.',
-  'Áudio ou legenda fora de sincronia.',
-  'Gostaria de pedir um filme ou série.',
-  'Como faço para atualizar meu acesso?',
-  'Estou com lentidão ou buffering no app.'
-];
-
 export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   clientCode,
   clientName,
@@ -534,64 +518,45 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">Clique para enviar rapidamente</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
-                    {/* Fileira Esquerda (5) */}
-                    <div className="flex flex-col gap-1.5">
-                      {CLIENT_TOPICS_LEFT.map((topic, i) => {
-                        const isExclusiva = topic.includes('Minha Área Exclusiva');
-                        return (
-                          <button
-                            key={`left-${i}`}
-                            type="button"
-                            onClick={() => {
-                              if (isExclusiva) {
-                                const link = canvasLink || 'https://testetestettt.my.canva.site/sr-carlos';
-                                window.open(link, '_blank');
-                              } else {
-                                handleSendMessage(topic);
-                              }
-                            }}
-                            className={`text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
-                              isExclusiva
-                                ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/45 hover:to-purple-600/35 text-indigo-200 border border-indigo-500/50 font-bold'
-                                : 'bg-[#151924] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800'
-                            }`}
-                          >
-                            <span className="line-clamp-2">{topic}</span>
-                            {isExclusiva && <ExternalLink size={14} className="text-indigo-300 shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Atalho 1: Minha Área Exclusiva */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const link = canvasLink || 'https://testetestettt.my.canva.site/sr-carlos';
+                        window.open(link, '_blank');
+                      }}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/45 hover:to-purple-600/35 text-indigo-200 border border-indigo-500/50 font-bold"
+                    >
+                      <span className="truncate">🌐 Minha Área Exclusiva</span>
+                      <ExternalLink size={14} className="text-indigo-300 shrink-0" />
+                    </button>
 
-                    {/* Fileira Direita (5) */}
-                    <div className="flex flex-col gap-1.5">
-                      {CLIENT_TOPICS_RIGHT.map((topic, i) => {
-                        const isCanal = topic.includes('lista de canais');
-                        return (
-                          <button
-                            key={`right-${i}`}
-                            type="button"
-                            onClick={() => {
-                              if (isCanal && onSelectCanal) {
-                                onSelectCanal();
-                                setIsOpen(false);
-                              } else {
-                                handleSendMessage(topic);
-                              }
-                            }}
-                            className={`text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
-                              isCanal
-                                ? 'bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold'
-                                : 'bg-[#151924] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800'
-                            }`}
-                          >
-                            <span className="line-clamp-2">{topic}</span>
-                            {isCanal && <Tv size={14} className="text-sky-300 shrink-0" />}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {/* Atalho 2: Ajuda com o Acesso */}
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage('Olá! Preciso de ajuda com meu acesso.')}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 bg-[#151924] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800"
+                    >
+                      <span className="truncate">Olá! Preciso de ajuda com meu acesso.</span>
+                    </button>
+
+                    {/* Atalho 3: Lista de Canais */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onSelectCanal) {
+                          onSelectCanal();
+                          setIsOpen(false);
+                        } else {
+                          handleSendMessage('Minha lista de canais não está carregando.');
+                        }
+                      }}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold"
+                    >
+                      <span className="truncate">Minha lista de canais não está carregando.</span>
+                      <Tv size={14} className="text-sky-300 shrink-0" />
+                    </button>
                   </div>
                 </div>
 

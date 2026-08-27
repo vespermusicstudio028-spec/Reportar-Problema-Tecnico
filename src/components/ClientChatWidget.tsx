@@ -26,6 +26,7 @@ import {
 import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } from '../lib/pixUtils';
+import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
 
 interface ClientChatWidgetProps {
   clientCode?: string;
@@ -199,6 +200,51 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
             }
           }, 800);
         }
+      } else {
+        // Se estiver online, verificar se há outros clientes sendo atendidos para enviar mensagem de fila de espera
+        try {
+          const { data: recentMsgs } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+            .order('created_at', { ascending: true });
+
+          if (recentMsgs && recentMsgs.length > 0) {
+            const queueInfo = getClientQueueInfo(activeCode, recentMsgs as ChatMessage[]);
+            if (queueInfo.isInQueue && queueInfo.position > 0) {
+              const twentyMinAgo = Date.now() - 20 * 60 * 1000;
+              const alreadySentQueue = messages.some(
+                (m) =>
+                  m.sender === 'admin' &&
+                  m.message.includes('Sua Posição na Fila:') &&
+                  new Date(m.created_at).getTime() > twentyMinAgo
+              );
+
+              if (!alreadySentQueue) {
+                setTimeout(async () => {
+                  try {
+                    await supabase.from('chat_messages').insert({
+                      client_code: activeCode,
+                      client_name: 'Suporte The Best IPTV+',
+                      sender: 'admin',
+                      message: getAutomatedQueueWaitMessage(
+                        currentClientDisplayName,
+                        queueInfo.position,
+                        queueInfo.estimatedMinutes
+                      ),
+                      read_by_admin: true,
+                      read_by_client: false
+                    });
+                  } catch (qErr) {
+                    console.error('Erro ao enviar mensagem de fila de espera:', qErr);
+                  }
+                }, 800);
+              }
+            }
+          }
+        } catch (queueCheckErr) {
+          console.error('Erro ao verificar fila de espera:', queueCheckErr);
+        }
       }
     } catch (err: any) {
       alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
@@ -255,6 +301,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       return '';
     }
   };
+
+  // Status da fila para este cliente
+  const queueStatus = React.useMemo(() => {
+    if (!activeCode || messages.length === 0) return { isBeingServed: false, isInQueue: false, position: 0, estimatedMinutes: 0 };
+    return getClientQueueInfo(activeCode, messages);
+  }, [activeCode, messages]);
 
   return (
     <>
@@ -440,6 +492,25 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                 )}
               </AnimatePresence>
             </div>
+
+            {/* Banner de Fila de Espera em Tempo Real */}
+            {businessStatus.isOnline && queueStatus.isInQueue && (
+              <div className="bg-gradient-to-r from-amber-950/80 via-orange-950/70 to-amber-950/80 border-b border-amber-500/40 px-4 md:px-8 py-2.5 flex items-center justify-between gap-3 text-amber-200 text-xs shrink-0 shadow-lg">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                  </span>
+                  <div>
+                    <span className="font-bold text-amber-300">Fila de Espera: </span>
+                    <span className="font-semibold text-white">Você está em {queueStatus.position}º lugar</span>
+                  </div>
+                </div>
+                <span className="text-[11px] font-mono text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30 shrink-0 font-bold">
+                  ⏱️ Tempo estimado: ~{queueStatus.estimatedMinutes} min
+                </span>
+              </div>
+            )}
 
             {/* Conteúdo do Chat em Tela Cheia */}
             {!activeCode ? (

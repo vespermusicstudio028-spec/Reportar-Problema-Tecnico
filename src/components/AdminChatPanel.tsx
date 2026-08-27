@@ -17,10 +17,19 @@ import {
   Info,
   Copy,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  UserCheck,
+  CheckCircle2,
+  Users
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
+import { 
+  calculateSupportQueue, 
+  getClientQueueInfo, 
+  getAutomatedTurnReachedMessage, 
+  getAutomatedFinishAttendanceMessage 
+} from '../lib/supportQueue';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -37,6 +46,7 @@ const QUICK_REPLIES = [
 export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [] }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedClientCode, setSelectedClientCode] = useState<string | null>(null);
+  const [activeServingClientCode, setActiveServingClientCode] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -223,6 +233,73 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
+  // Fila de atendimento e cliente ativo
+  const supportQueue = React.useMemo(() => {
+    return calculateSupportQueue(messages, activeServingClientCode);
+  }, [messages, activeServingClientCode]);
+
+  const currentlyServingCode = activeServingClientCode || (supportQueue.activeClient ? supportQueue.activeClient : selectedClientCode);
+  const isServingSelected = selectedClientCode ? selectedClientCode === currentlyServingCode : false;
+  const currentQueueItem = selectedClientCode ? supportQueue.queue.find((q) => q.client_code === selectedClientCode) : null;
+
+  // Iniciar atendimento para o cliente selecionado
+  const handleStartServingThisClient = async () => {
+    if (!selectedClientCode) return;
+    setActiveServingClientCode(selectedClientCode);
+    try {
+      const turnMsg = getAutomatedTurnReachedMessage(activeClientName);
+      await supabase.from('chat_messages').insert({
+        client_code: selectedClientCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: turnMsg,
+        read_by_admin: true,
+        read_by_client: false
+      });
+    } catch (err: any) {
+      console.error('Erro ao iniciar atendimento:', err);
+    }
+  };
+
+  // Finalizar atendimento do cliente atual e avançar fila
+  const handleFinishAttendance = async () => {
+    if (!selectedClientCode) return;
+    try {
+      // 1. Enviar mensagem de encerramento do chamado para o cliente
+      const finishMsg = getAutomatedFinishAttendanceMessage(activeClientName);
+      await supabase.from('chat_messages').insert({
+        client_code: selectedClientCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: finishMsg,
+        read_by_admin: true,
+        read_by_client: false
+      });
+
+      // 2. Chamar próximo da fila se houver
+      const nextInQueue = supportQueue.queue[0];
+      if (nextInQueue) {
+        setActiveServingClientCode(nextInQueue.client_code);
+        setSelectedClientCode(nextInQueue.client_code);
+
+        // Notificar o próximo que a vez dele chegou
+        const turnMsg = getAutomatedTurnReachedMessage(nextInQueue.client_name);
+        await supabase.from('chat_messages').insert({
+          client_code: nextInQueue.client_code,
+          client_name: 'Suporte The Best IPTV+',
+          sender: 'admin',
+          message: turnMsg,
+          read_by_admin: true,
+          read_by_client: false
+        });
+      } else {
+        setActiveServingClientCode(null);
+      }
+    } catch (err: any) {
+      alert('Erro ao finalizar atendimento: ' + (err.message || 'Erro desconhecido.'));
+    }
+  };
+
   // Limpar histórico da conversa selecionada
   const handleDeleteConversation = async () => {
     if (!selectedClientCode) return;
@@ -327,6 +404,9 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
             ) : (
               filteredConversations.map((conv) => {
                 const isSelected = conv.client_code === selectedClientCode;
+                const queueItem = supportQueue.queue.find((q) => q.client_code === conv.client_code);
+                const isServingThis = conv.client_code === currentlyServingCode;
+
                 return (
                   <button
                     key={conv.client_code}
@@ -355,9 +435,21 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     {/* Detalhes */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
-                        <h4 className="text-sm font-semibold text-white truncate">
-                          {conv.client_name}
-                        </h4>
+                        <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                          <h4 className="text-sm font-semibold text-white truncate">
+                            {conv.client_name}
+                          </h4>
+                          {isServingThis && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Atendendo
+                            </span>
+                          )}
+                          {!isServingThis && queueItem && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> Fila #{queueItem.position} (~{queueItem.estimatedMinutes}m)
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[10px] text-slate-500 shrink-0 ml-1">
                           {formatTime(conv.last_message_time)}
                         </span>
@@ -447,6 +539,52 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 >
                   <Trash2 size={16} />
                 </button>
+              </div>
+
+              {/* Barra de Status da Fila e Atendimento do Cliente Selecionado */}
+              <div className="bg-[#0f131d] border-b border-slate-800/80 px-4 md:px-6 py-2.5 flex items-center justify-between gap-3 text-xs shrink-0 flex-wrap">
+                {isServingSelected ? (
+                  <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span>🟢 <strong>Em Atendimento Ativo:</strong> Você está conversando com este cliente</span>
+                  </div>
+                ) : currentQueueItem ? (
+                  <div className="flex items-center gap-2 text-amber-300 font-semibold">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                    </span>
+                    <span>⏳ <strong>Aguardando na Fila:</strong> {currentQueueItem.position}º lugar (~{currentQueueItem.estimatedMinutes} min de espera)</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Users size={14} className="text-slate-500" />
+                    <span>Atendimento Disponível</span>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  {isServingSelected ? (
+                    <button
+                      type="button"
+                      onClick={handleFinishAttendance}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 active:scale-95"
+                    >
+                      <CheckCircle2 size={14} /> Finalizar Atendimento & Chamar Próximo
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleStartServingThisClient}
+                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 active:scale-95"
+                    >
+                      <UserCheck size={14} /> Iniciar Atendimento Agora
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Corpo das Mensagens */}

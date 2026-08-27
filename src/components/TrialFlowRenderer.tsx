@@ -10,7 +10,14 @@ import {
   Trash2, 
   Loader2, 
   MessageSquare,
-  UploadCloud
+  UploadCloud,
+  User,
+  Phone,
+  Key,
+  Check,
+  Copy,
+  Sparkles,
+  CheckCircle2
 } from 'lucide-react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from '../types/trial';
 import { supabase } from '../lib/supabase';
@@ -21,9 +28,10 @@ interface Props {
   onOpenChat?: () => void;
   clientCode?: string;
   clientName?: string;
+  onClientRegistered?: (client: { id: string; name: string; code: string; canvasLink: string; addedAt: string; phone?: string; email?: string }) => void;
 }
 
-export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, clientName }: Props) {
+export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, clientName, onClientRegistered }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedSubOptionId, setSelectedSubOptionId] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
@@ -34,6 +42,24 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
   const [isSending, setIsSending] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [alertDismissed, setAlertDismissed] = useState(false);
+
+  // Estados do Modal de Identificação e Cadastro para Novos Clientes
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [regName, setRegName] = useState('');
+  const [regPhone, setRegPhone] = useState('');
+  const [regError, setRegError] = useState('');
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [pendingContent, setPendingContent] = useState<TrialContentBlock | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const formatPhoneNumber = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -55,14 +81,27 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
   const selectedDevice = config.devices.find(d => d.id === selectedDeviceId);
   const selectedSubOption = selectedDevice?.subOptions?.find(s => s.id === selectedSubOptionId);
 
-  const handleSendToSupport = async (content: TrialContentBlock) => {
+  // Ponto de entrada ao clicar em "Enviar Dados p/ Suporte"
+  const handleInitiateSend = (content: TrialContentBlock) => {
+    const existingCode = clientCode || localStorage.getItem('iptv_access_code_v1') || localStorage.getItem('tbi_active_client_code');
+    const existingName = clientName || localStorage.getItem('tbi_active_client_name');
+
+    // Se já estiver autenticado/identificado, envia direto
+    if (existingCode && existingName) {
+      handleSendToSupport(content, existingCode, existingName);
+    } else {
+      // Cliente novo: abre modal para pegar Nome, Telefone e gerar Código de Acesso
+      setPendingContent(content);
+      setShowRegisterModal(true);
+    }
+  };
+
+  // Envia dados para o chat com código e nome existentes
+  const handleSendToSupport = async (content: TrialContentBlock, activeCode: string, activeName: string) => {
     if (isSending) return;
     setIsSending(true);
 
     try {
-      const currentCode = clientCode || localStorage.getItem('tbi_active_client_code') || `VISITANTE_${Date.now().toString().slice(-4)}`;
-      const currentName = clientName || localStorage.getItem('tbi_active_client_name') || 'Cliente';
-
       const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
       const deviceTitle = selectedDevice?.name || 'Dispositivo';
 
@@ -80,8 +119,8 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
 
       // 1. Salvar mensagem do cliente no chat
       await supabase.from('chat_messages').insert({
-        client_code: currentCode,
-        client_name: currentName,
+        client_code: activeCode,
+        client_name: activeName,
         sender: 'client',
         message: msgText,
         read_by_admin: false,
@@ -89,9 +128,9 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
       });
 
       // 2. Disparar resposta automática imediata do bot
-      const autoReply = `🤖 **Olá, ${currentName}!**\n\nRecebemos os dados do seu dispositivo (*${appName}*) para liberação do **Teste Grátis de 3h**! 🎉\n\nNossa equipe de suporte já está gerando sua lista de acesso e em instantes liberará seu login aqui no chat. 📺🍿`;
+      const autoReply = `🤖 **Olá, ${activeName}!**\n\nRecebemos os dados do seu dispositivo (*${appName}*) para liberação do **Teste Grátis de 3h**! 🎉\n\nNossa equipe de suporte já está gerando sua lista de acesso e em instantes liberará seu login aqui no chat. 📺🍿`;
       await supabase.from('chat_messages').insert({
-        client_code: currentCode,
+        client_code: activeCode,
         client_name: 'Suporte The Best IPTV+',
         sender: 'admin',
         message: autoReply,
@@ -113,16 +152,133 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
     }
   };
 
+  // Cadastra o novo cliente no banco e envia o teste gerando código exclusivo
+  const handleConfirmRegisterAndSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!regName.trim() || regName.trim().length < 2) {
+      setRegError('Por favor, informe seu nome completo.');
+      return;
+    }
+    const cleanDigits = regPhone.replace(/\D/g, '');
+    if (cleanDigits.length < 10) {
+      setRegError('Por favor, informe um número de WhatsApp/telefone válido com DDD.');
+      return;
+    }
+
+    setRegError('');
+    setIsSending(true);
+
+    try {
+      // 1. Gerar código único numérico de 4 dígitos
+      let newCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const { data: existingCodes } = await supabase.from('clients').select('code').eq('code', newCode);
+      if (existingCodes && existingCodes.length > 0) {
+        newCode = Math.floor(10000 + Math.random() * 90000).toString();
+      }
+
+      // 2. Salvar cliente na tabela 'clients' do Supabase (visível no painel do admin)
+      const { data: insertedClient, error: clientInsertErr } = await supabase.from('clients').insert([{
+        name: regName.trim(),
+        phone: regPhone.trim(),
+        code: newCode,
+        canvas_link: 'https://thebestiptv.com'
+      }]).select();
+
+      if (clientInsertErr) {
+        console.error('Erro ao registrar cliente em clients:', clientInsertErr);
+      }
+
+      // 3. Salvar no localStorage para manter a sessão do cliente
+      localStorage.setItem('iptv_access_code_v1', newCode);
+      localStorage.setItem('tbi_active_client_code', newCode);
+      localStorage.setItem('tbi_active_client_name', regName.trim());
+      localStorage.setItem('tbi_client_phone', regPhone.trim());
+
+      // 4. Notificar componente pai (App.tsx)
+      if (onClientRegistered) {
+        onClientRegistered({
+          id: insertedClient?.[0]?.id || Date.now().toString(),
+          name: regName.trim(),
+          code: newCode,
+          phone: regPhone.trim(),
+          canvasLink: 'https://thebestiptv.com',
+          addedAt: new Date().toISOString()
+        });
+      }
+
+      // 5. Formatar mensagem do teste com os dados do cliente e do app
+      const content = pendingContent || selectedSubOption?.content || selectedDevice?.content || {};
+      const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
+      const deviceTitle = selectedDevice?.name || 'Dispositivo';
+
+      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n👤 *Cliente Novo:* ${regName.trim()}\n📱 *WhatsApp:* ${regPhone.trim()}\n🔑 *Código de Acesso:* ${newCode}\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+
+      if (imagePreview && attachedImage) {
+        const payload = {
+          fileName: attachedImage.name,
+          fileSize: `${(attachedImage.size / 1024).toFixed(1)} KB`,
+          fileData: imagePreview,
+          caption: `Foto da tela do ${appName} (Teste Grátis 3h - ${regName.trim()})`
+        };
+        msgText += `\n\n[PIX_COMPROVANTE:${JSON.stringify(payload)}]`;
+      }
+
+      // 6. Inserir mensagem no chat
+      await supabase.from('chat_messages').insert({
+        client_code: newCode,
+        client_name: regName.trim(),
+        sender: 'client',
+        message: msgText,
+        read_by_admin: false,
+        read_by_client: true
+      });
+
+      // 7. Inserir resposta de boas-vindas do suporte técnico
+      const autoReply = `🤖 **Olá, ${regName.trim()}! Seja muito bem-vindo(a) à The Best IPTV!** 🎉\n\n🔑 **Seu Código de Acesso Exclusivo é:** \`${newCode}\`\n*(Guarde este código para acessar suporte e novidades sempre que entrar no app!)*\n\nRecebemos os dados do seu dispositivo (*${appName}*) para liberação do seu **Teste Grátis de 3h**! 🍿📺\n\nNossa equipe já está gerando sua lista de acesso e em instantes liberará seu login e senha aqui no chat.`;
+      await supabase.from('chat_messages').insert({
+        client_code: newCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: autoReply,
+        read_by_admin: true,
+        read_by_client: false
+      });
+
+      setCreatedCode(newCode);
+      setShowRegisterModal(false);
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      console.error('Erro ao cadastrar e enviar teste:', err);
+      setRegError('Erro ao processar: ' + (err.message || 'Tente novamente.'));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (!createdCode) return;
+    navigator.clipboard.writeText(createdCode).then(() => {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    });
+  };
+
   const handleSendTextToSupport = async (customText: string) => {
+    const existingCode = clientCode || localStorage.getItem('iptv_access_code_v1') || localStorage.getItem('tbi_active_client_code');
+    const existingName = clientName || localStorage.getItem('tbi_active_client_name');
+
+    if (!existingCode || !existingName) {
+      setPendingContent({ whatsappText: customText });
+      setShowRegisterModal(true);
+      return;
+    }
+
     if (isSending) return;
     setIsSending(true);
     try {
-      const currentCode = clientCode || localStorage.getItem('tbi_active_client_code') || `VISITANTE_${Date.now().toString().slice(-4)}`;
-      const currentName = clientName || localStorage.getItem('tbi_active_client_name') || 'Cliente';
-
       await supabase.from('chat_messages').insert({
-        client_code: currentCode,
-        client_name: currentName,
+        client_code: existingCode,
+        client_name: existingName,
         sender: 'client',
         message: `🎁 *Teste Grátis 3h:* ${customText}`,
         read_by_admin: false,
@@ -164,6 +320,169 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
 
     return { type: 'video', url };
   };
+
+  const renderModals = () => (
+    <AnimatePresence>
+      {/* Modal 1: Identificação e Cadastro do Novo Cliente */}
+      {showRegisterModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 15 }}
+            className="bg-[#121622] border border-indigo-500/30 p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl relative text-left"
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setShowRegisterModal(false);
+                setRegError('');
+              }}
+              className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-4 shadow-lg shadow-indigo-600/20">
+              <Sparkles size={24} />
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-1.5">
+              Identificação para Teste Grátis
+            </h3>
+            <p className="text-slate-400 text-xs md:text-sm mb-5 leading-relaxed">
+              Preencha seu nome e WhatsApp para gerarmos seu <strong>código de acesso exclusivo</strong> e liberar seu teste no chat.
+            </p>
+
+            <form onSubmit={handleConfirmRegisterAndSend} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">
+                  👤 Seu Nome Completo
+                </label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Carlos Eduardo"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    className="w-full bg-[#0b0e14] border border-slate-700/80 rounded-xl pl-10 pr-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5 uppercase tracking-wider">
+                  📱 WhatsApp / Telefone com DDD
+                </label>
+                <div className="relative">
+                  <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="tel"
+                    required
+                    placeholder="(XX) 99999-9999"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(formatPhoneNumber(e.target.value))}
+                    className="w-full bg-[#0b0e14] border border-slate-700/80 rounded-xl pl-10 pr-4 py-3 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors font-mono"
+                  />
+                </div>
+              </div>
+
+              {regError && (
+                <div className="p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-red-300 text-xs flex items-center gap-2">
+                  <AlertTriangle size={14} className="shrink-0" />
+                  <span>{regError}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSending}
+                className="w-full mt-2 py-3.5 px-6 font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 rounded-xl transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-50"
+              >
+                {isSending ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span>Gerando Código & Enviando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Key size={18} />
+                    <span>Gerar Código & Enviar Dados</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Modal 2: Código Gerado com Sucesso & Confirmação */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 15 }}
+            className="bg-[#121622] border border-emerald-500/40 p-6 md:p-8 rounded-3xl w-full max-w-md shadow-2xl text-center relative"
+          >
+            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+              <CheckCircle2 size={36} />
+            </div>
+
+            <h3 className="text-2xl font-black text-white mb-2">
+              Tudo Pronto, {regName || 'Cliente'}! 🎉
+            </h3>
+            <p className="text-slate-300 text-xs md:text-sm mb-6 leading-relaxed">
+              Seu cadastro foi realizado e seus dados de teste já foram enviados diretamente para o nosso suporte técnico.
+            </p>
+
+            {/* Card do Código de Acesso */}
+            <div className="bg-[#0b0e14] border border-emerald-500/30 rounded-2xl p-4 mb-6 shadow-inner">
+              <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-1">
+                Seu Código de Acesso Exclusivo:
+              </span>
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-3xl font-mono font-black text-emerald-400 tracking-widest">
+                  {createdCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 transition-all text-xs font-bold flex items-center gap-1"
+                  title="Copiar Código"
+                >
+                  {copiedCode ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{copiedCode ? 'Copiado!' : 'Copiar'}</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2">
+                💡 Guarde este código para acessar novidades e suporte sempre que entrar.
+              </p>
+            </div>
+
+            {/* Botão para Abrir o Chat */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowSuccessModal(false);
+                if (onOpenChat) {
+                  onOpenChat();
+                } else {
+                  onClose();
+                }
+              }}
+              className="w-full py-4 px-6 font-bold text-white bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-600 hover:from-emerald-600 hover:to-teal-600 rounded-xl transition-all shadow-xl shadow-teal-500/25 flex items-center justify-center gap-2 text-sm active:scale-[0.99]"
+            >
+              <MessageSquare size={18} />
+              <span>Abrir Chat com o Suporte Agora 🚀</span>
+            </button>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
 
   const renderContentBlock = (content: TrialContentBlock, onBack: () => void, isChangelogOpen?: boolean, toggleChangelog?: () => void) => {
     return (
@@ -387,7 +706,7 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
                 <button
                   type="button"
                   disabled={isSending}
-                  onClick={() => handleSendToSupport(content)}
+                  onClick={() => handleInitiateSend(content)}
                   className="mt-4 flex justify-center items-center gap-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all w-full shadow-lg shadow-emerald-500/25 active:scale-[0.99] disabled:opacity-50"
                 >
                   {isSending ? (
@@ -427,6 +746,8 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
             VOLTAR
           </button>
         </div>
+
+        {renderModals()}
       </motion.div>
     );
   };
@@ -472,6 +793,7 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
             </button>
           </div>
         </div>
+        {renderModals()}
       </motion.div>
     );
   }
@@ -545,6 +867,7 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
             </button>
           </div>
         </div>
+        {renderModals()}
       </motion.div>
     </>
   );

@@ -822,6 +822,10 @@ export default function App() {
           }}
           clientCode={loggedClientCode || undefined}
           clientName={currentClient?.name}
+          onClientRegistered={(newCli) => {
+            setClients((prev) => [newCli, ...prev.filter((c) => c.code !== newCli.code)]);
+            setLoggedClientCode(newCli.code);
+          }}
         />
       );
     }

@@ -18,7 +18,8 @@ import {
   Clock,
   Info,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 
 interface ClientChatWidgetProps {
@@ -264,88 +265,100 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         </motion.button>
       )}
 
-      {/* Janela de Chat Flutuante */}
+      {/* Janela de Chat em TELA CHEIA Completa Sem Bordas */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] sm:w-[460px] h-[660px] max-h-[90vh] bg-[#0e121a] border border-slate-800/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100 font-sans"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 w-full h-[100dvh] bg-[#090c13] rounded-none border-none shadow-none flex flex-col overflow-hidden text-slate-100 font-sans"
           >
-            {/* Header da Janela */}
-            <div className="p-4 bg-gradient-to-r from-indigo-950 via-[#151a28] to-[#0e121a] border-b border-slate-800/80 flex flex-col gap-2 shrink-0">
+            {/* Header da Janela em Tela Cheia */}
+            <div className="w-full bg-gradient-to-r from-indigo-950 via-[#121622] to-[#090c13] border-b border-slate-800/80 px-4 md:px-8 py-3.5 flex flex-col gap-2 shrink-0 shadow-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white transition-all flex items-center justify-center"
+                    title="Voltar / Fechar Chat"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+
                   <div className="relative">
                     <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shadow-md">
-                      <Headphones size={20} />
+                      <Headphones size={22} />
                     </div>
                     <span 
-                      className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#0e121a] ${
+                      className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#090c13] ${
                         businessStatus.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
                       }`}
                     ></span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-white flex items-center gap-1.5 leading-tight">
+                    <h3 className="font-bold text-base md:text-lg text-white flex items-center gap-2 leading-tight">
                       Suporte The Best IPTV+
                     </h3>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className={`text-[11px] font-semibold flex items-center gap-1 ${
+                      <span className={`text-xs font-semibold flex items-center gap-1.5 ${
                         businessStatus.isOnline ? 'text-emerald-400' : 'text-amber-400'
                       }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${businessStatus.isOnline ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}></span>
+                        <span className={`w-2 h-2 rounded-full ${businessStatus.isOnline ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}></span>
                         {businessStatus.statusText}
                       </span>
                       {activeCode && (
-                        <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-slate-700/60">
-                          {activeCode}
+                        <span className="text-xs font-mono text-slate-300 bg-slate-800/90 px-2 py-0.5 rounded-md border border-slate-700">
+                          Código: {activeCode}
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                   {/* Botão de Informações de Horários */}
                   <button
                     type="button"
                     onClick={() => setShowScheduleInfo(!showScheduleInfo)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                    className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-semibold transition-all border ${
                       showScheduleInfo 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-md shadow-indigo-600/30' 
+                        : 'bg-slate-800/70 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60'
                     }`}
                     title="Ver Horários de Funcionamento"
                   >
-                    <Clock size={16} />
+                    <Clock size={15} />
+                    <span className="hidden sm:inline">Horários</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleClose}
-                    className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                    className="p-2 md:px-3.5 md:py-2 rounded-xl bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 flex items-center gap-1.5 transition-all text-xs font-bold"
+                    title="Fechar Chat"
                   >
-                    <ChevronDown size={18} />
+                    <X size={18} />
+                    <span className="hidden sm:inline">Fechar</span>
                   </button>
                 </div>
               </div>
 
               {/* Barra Resumo de Horários no Topo */}
-              <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/80 border border-slate-800/90 rounded-xl text-[11px] text-slate-300">
-                <div className="flex items-center gap-1.5">
-                  <Clock size={13} className={businessStatus.isOnline ? 'text-emerald-400' : 'text-amber-400'} />
-                  <span className="text-slate-400 font-medium">Horários:</span>
-                  <span className="text-slate-200 font-semibold">Seg-Sex: 09h-21h | Sáb: 09h-12h</span>
+              <div className="flex items-center justify-between px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-300">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Clock size={14} className={businessStatus.isOnline ? 'text-emerald-400' : 'text-amber-400'} />
+                  <span className="text-slate-400 font-medium">Expediente:</span>
+                  <span className="text-slate-100 font-semibold">Segunda a Sexta: 09:00 às 21:00 | Sábado: 09:00 às 12:00</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowScheduleInfo(!showScheduleInfo)}
-                  className="text-[10px] text-indigo-400 hover:text-indigo-300 underline font-medium"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 underline font-medium ml-2 shrink-0"
                 >
-                  {showScheduleInfo ? 'Ocultar' : 'Detalhes'}
+                  {showScheduleInfo ? 'Ocultar quadro' : 'Ver quadro completo'}
                 </button>
               </div>
 
@@ -358,48 +371,42 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="p-3 bg-[#131826] border border-indigo-500/30 rounded-2xl text-xs space-y-2 text-slate-200 shadow-inner">
-                      <div className="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
-                        <span className="font-bold text-indigo-300 flex items-center gap-1.5">
-                          <Calendar size={14} className="text-indigo-400" />
-                          Quadro de Horários do Suporte:
+                    <div className="p-4 bg-[#111522] border border-indigo-500/30 rounded-2xl text-xs space-y-2.5 text-slate-200 shadow-inner">
+                      <div className="flex items-center justify-between border-b border-slate-700/60 pb-2">
+                        <span className="font-bold text-indigo-300 text-sm flex items-center gap-2">
+                          <Calendar size={16} className="text-indigo-400" />
+                          Quadro Oficial de Horários de Atendimento:
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${
                           businessStatus.isOnline 
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
                             : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                         }`}>
-                          {businessStatus.isOnline ? 'Ativo Agora' : 'Fechado Agora'}
+                          {businessStatus.isOnline ? '🟢 Aberto Agora' : '🟡 Ausente Agora'}
                         </span>
                       </div>
 
-                      <div className="space-y-1.5 text-[11px]">
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-300">📅 Segunda a Sexta:</span>
-                          <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                            09:00 às 21:00
-                          </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col gap-1">
+                          <span className="text-slate-400 font-medium">Segunda a Sexta</span>
+                          <span className="font-bold text-white text-sm">09:00 às 21:00</span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-300">📅 Sábado:</span>
-                          <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                            09:00 às 12:00 (Meio-dia)
-                          </span>
+                        <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700 flex flex-col gap-1">
+                          <span className="text-slate-400 font-medium">Sábado</span>
+                          <span className="font-bold text-white text-sm">09:00 às 12:00 (Meio-dia)</span>
                         </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-slate-300">📅 Domingos e Feriados:</span>
-                          <span className="font-bold text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/50">
-                            Fechado
-                          </span>
+                        <div className="p-2.5 rounded-xl bg-amber-950/30 border border-amber-900/50 flex flex-col gap-1">
+                          <span className="text-amber-400 font-medium">Domingo / Feriados</span>
+                          <span className="font-bold text-amber-300 text-sm">Fechado</span>
                         </div>
                       </div>
 
-                      <div className="pt-1 border-t border-slate-700/60 text-[10px] text-slate-400 flex items-center gap-1">
-                        <Info size={12} className="text-indigo-400 shrink-0" />
+                      <div className="pt-1.5 border-t border-slate-700/60 text-xs text-slate-300 flex items-center gap-1.5">
+                        <Info size={14} className="text-indigo-400 shrink-0" />
                         <span>
                           {businessStatus.isOnline 
-                            ? 'Suporte online pronto para atender suas solicitações.' 
-                            : `Suporte ausente no momento. Retorno: ${businessStatus.nextOpenText}. As mensagens enviadas agora são registradas e respondidas na reabertura.`
+                            ? 'Nossa equipe está online para responder suas dúvidas e solicitações.' 
+                            : `Suporte ausente no momento. Retorno previsto: ${businessStatus.nextOpenText}. Todas as mensagens enviadas agora ficam salvas no sistema e são respondidas assim que iniciamos.`
                           }
                         </span>
                       </div>
@@ -409,21 +416,21 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Conteúdo do Chat */}
+            {/* Conteúdo do Chat em Tela Cheia */}
             {!activeCode ? (
               /* Caso o cliente ainda não tenha inserido o código */
-              <div className="flex-1 p-6 flex flex-col items-center justify-center text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                  <User size={30} />
+              <div className="flex-1 p-6 flex flex-col items-center justify-center text-center space-y-4 max-w-md mx-auto">
+                <div className="w-20 h-20 rounded-full bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                  <User size={38} />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="font-bold text-white text-base">Identifique-se para conversar</h4>
-                  <p className="text-xs text-slate-400 max-w-xs">
-                    Para falar com o administrador, utilize seu código de cliente ou faça login com seu código de acesso.
+                <div className="space-y-1.5">
+                  <h4 className="font-bold text-white text-xl">Identifique-se para conversar</h4>
+                  <p className="text-sm text-slate-400">
+                    Para falar com o administrador, faça login com seu código de acesso ou utilize seu código de cliente.
                   </p>
                 </div>
 
-                <div className="w-full space-y-3 pt-2">
+                <div className="w-full space-y-3 pt-3">
                   {onOpenCodeLogin && (
                     <button
                       type="button"
@@ -431,43 +438,43 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                         handleClose();
                         onOpenCodeLogin();
                       }}
-                      className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+                      className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
                     >
-                      <Key size={15} /> Digitar Meu Código de Acesso
+                      <Key size={17} /> Digitar Meu Código de Acesso
                     </button>
                   )}
                 </div>
               </div>
             ) : (
               /* Interface de Conversa em Tempo Real */
-              <>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-[#0b0e14]/60">
+              <div className="flex-1 flex flex-col overflow-hidden max-w-5xl w-full mx-auto">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar bg-[#080b11]/80">
                   {/* Aviso de Suporte Ausente (caso esteja fora do horário) */}
                   {!businessStatus.isOnline && (
-                    <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5 shadow-md">
-                      <AlertCircle size={17} className="text-amber-400 shrink-0 mt-0.5" />
+                    <div className="p-3.5 md:p-4 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs md:text-sm flex items-start gap-3 shadow-lg">
+                      <AlertCircle size={20} className="text-amber-400 shrink-0 mt-0.5" />
                       <div className="space-y-1">
                         <p className="font-bold text-amber-300">
                           Suporte Ausente no Momento
                         </p>
-                        <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                          Nosso atendimento funciona de <strong>Seg a Sex (09h às 21h)</strong> e aos <strong>Sábados (09h às 12h)</strong>.
-                          Você pode enviar sua mensagem agora e responderemos assim que retornarmos ({businessStatus.nextOpenText})!
+                        <p className="text-amber-200/90 leading-relaxed text-xs md:text-sm">
+                          Nosso atendimento funciona de <strong>Segunda a Sexta (09:00 às 21:00)</strong> e aos <strong>Sábados (09:00 às 12:00)</strong>.
+                          Você pode enviar sua mensagem agora mesmo e responderemos assim que retornarmos ({businessStatus.nextOpenText})!
                         </p>
                       </div>
                     </div>
                   )}
 
                   {/* Mensagem de Boas-vindas do Suporte */}
-                  <div className="flex items-start gap-2 max-w-[88%]">
-                    <div className="w-6 h-6 rounded-full bg-indigo-600/30 text-indigo-300 text-[10px] font-bold flex items-center justify-center shrink-0 border border-indigo-500/40">
+                  <div className="flex items-start gap-2.5 max-w-[90%] md:max-w-[75%]">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600/30 text-indigo-300 text-xs font-bold flex items-center justify-center shrink-0 border border-indigo-500/40">
                       ADM
                     </div>
-                    <div className="p-3.5 rounded-2xl bg-[#171b26] border border-slate-800 text-slate-200 text-xs leading-relaxed rounded-tl-none shadow-md">
+                    <div className="p-4 rounded-2xl bg-[#151926] border border-slate-800 text-slate-200 text-xs md:text-sm leading-relaxed rounded-tl-none shadow-md">
                       <p>
                         Olá <strong>{clientName || 'Cliente'}</strong>! 👋 {businessStatus.isOnline ? 'Como posso te ajudar hoje? Digite sua mensagem abaixo que responderei o mais breve possível.' : 'Nosso atendimento funciona de Seg a Sex (09h às 21h) e Sábado (09h às 12h). Deixe sua mensagem abaixo que responderemos assim que iniciarmos o expediente!'}
                       </p>
-                      <span className="block text-[9px] text-slate-500 text-right mt-1">
+                      <span className="block text-[10px] text-slate-500 text-right mt-1.5">
                         {businessStatus.isOnline ? 'Atendimento ao Vivo' : 'Atendimento Offline'}
                       </span>
                     </div>
@@ -480,32 +487,32 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                         key={msg.id}
                         className={`flex flex-col ${isClient ? 'items-end' : 'items-start'}`}
                       >
-                        <div className="flex items-end gap-1.5 max-w-[85%]">
+                        <div className={`flex items-end gap-2 max-w-[90%] md:max-w-[75%]`}>
                           {!isClient && (
-                            <div className="w-6 h-6 rounded-full bg-indigo-600/40 text-indigo-300 text-[10px] font-bold flex items-center justify-center shrink-0 border border-indigo-500/40">
+                            <div className="w-8 h-8 rounded-full bg-indigo-600/40 text-indigo-300 text-xs font-bold flex items-center justify-center shrink-0 border border-indigo-500/40">
                               ADM
                             </div>
                           )}
 
                           <div
-                            className={`p-3 rounded-2xl text-xs leading-relaxed break-words ${
+                            className={`p-3.5 md:p-4 rounded-2xl text-xs md:text-sm leading-relaxed break-words ${
                               isClient
                                 ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-600/15'
                                 : msg.message.includes('🤖') || msg.message.includes('fora do horário')
-                                ? 'bg-[#1e1e2d] border border-amber-500/30 text-slate-100 rounded-bl-none shadow-md'
-                                : 'bg-[#1a1f2c] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
+                                ? 'bg-[#1b1e2c] border border-amber-500/30 text-slate-100 rounded-bl-none shadow-md'
+                                : 'bg-[#171b28] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
                             }`}
                           >
                             <p className="whitespace-pre-wrap">{msg.message}</p>
                             <div
-                              className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
+                              className={`flex items-center justify-end gap-1.5 mt-1.5 text-[10px] ${
                                 isClient ? 'text-indigo-200/80' : 'text-slate-500'
                               }`}
                             >
                               <span>{formatTime(msg.created_at)}</span>
                               {isClient && (
                                 <CheckCheck
-                                  size={12}
+                                  size={13}
                                   className={msg.read_by_admin ? 'text-emerald-300' : 'text-indigo-200/80'}
                                 />
                               )}
@@ -518,16 +525,16 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Sugestões Rápidas de Tópicos (2 Colunas com 5 itens cada) */}
-                <div className="p-2.5 bg-[#0f121a] border-t border-slate-800/80 shrink-0">
-                  <div className="flex items-center justify-between mb-1.5 px-1">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                      <Sparkles size={12} className="text-amber-400" />
+                {/* Sugestões Rápidas de Tópicos (2 Colunas) */}
+                <div className="p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-amber-400" />
                       Atalhos Rápidos:
                     </span>
-                    <span className="text-[9px] text-slate-500 font-medium">Toque para enviar</span>
+                    <span className="text-[11px] text-slate-500 font-medium">Clique para enviar rapidamente</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-0.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto custom-scrollbar pr-1">
                     {/* Fileira Esquerda (5) */}
                     <div className="flex flex-col gap-1.5">
                       {CLIENT_TOPICS_LEFT.map((topic, i) => {
@@ -544,14 +551,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                                 handleSendMessage(topic);
                               }
                             }}
-                            className={`text-left text-[11px] p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
+                            className={`text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
                               isExclusiva
                                 ? 'bg-gradient-to-r from-indigo-600/30 to-purple-600/20 hover:from-indigo-600/45 hover:to-purple-600/35 text-indigo-200 border border-indigo-500/50 font-bold'
-                                : 'bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90'
+                                : 'bg-[#151924] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800'
                             }`}
                           >
                             <span className="line-clamp-2">{topic}</span>
-                            {isExclusiva && <ExternalLink size={12} className="text-indigo-300 shrink-0" />}
+                            {isExclusiva && <ExternalLink size={14} className="text-indigo-300 shrink-0" />}
                           </button>
                         );
                       })}
@@ -573,14 +580,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                                 handleSendMessage(topic);
                               }
                             }}
-                            className={`text-left text-[11px] p-2 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
+                            className={`text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1 ${
                               isCanal
                                 ? 'bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold'
-                                : 'bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800/90'
+                                : 'bg-[#151924] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800'
                             }`}
                           >
                             <span className="line-clamp-2">{topic}</span>
-                            {isCanal && <Tv size={12} className="text-sky-300 shrink-0" />}
+                            {isCanal && <Tv size={14} className="text-sky-300 shrink-0" />}
                           </button>
                         );
                       })}
@@ -594,25 +601,26 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     e.preventDefault();
                     handleSendMessage();
                   }}
-                  className="p-3 bg-[#11141e] border-t border-slate-800/80 flex items-center gap-2"
+                  className="p-3 md:p-4 bg-[#0a0d14] border-t border-slate-800/80 flex items-center gap-2 md:gap-3"
                 >
                   <input
                     type="text"
                     placeholder={businessStatus.isOnline ? "Digite sua mensagem para o suporte..." : "Suporte ausente. Deixe sua mensagem aqui..."}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    className="flex-1 bg-[#181d28] border border-slate-700/80 text-white placeholder-slate-500 px-3.5 py-2.5 rounded-2xl text-xs focus:border-indigo-500 outline-none transition-all"
+                    className="flex-1 bg-[#151926] border border-slate-700/80 text-white placeholder-slate-500 px-4 py-3 rounded-2xl text-xs md:text-sm focus:border-indigo-500 outline-none transition-all"
                   />
 
                   <button
                     type="submit"
                     disabled={!inputText.trim() || isSending}
-                    className="p-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center shrink-0 active:scale-95"
+                    className="p-3 md:px-5 md:py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-2xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-1.5 shrink-0 active:scale-95 text-xs md:text-sm"
                   >
-                    <Send size={15} />
+                    <Send size={16} />
+                    <span className="hidden sm:inline">Enviar</span>
                   </button>
                 </form>
-              </>
+              </div>
             )}
           </motion.div>
         )}

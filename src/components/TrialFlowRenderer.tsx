@@ -1,24 +1,145 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronLeft, ChevronRight, X, AlertTriangle } from 'lucide-react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  X, 
+  AlertTriangle, 
+  Send, 
+  Image as ImageIcon, 
+  Trash2, 
+  Loader2, 
+  MessageSquare,
+  UploadCloud
+} from 'lucide-react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from '../types/trial';
+import { supabase } from '../lib/supabase';
 
 interface Props {
   config: TrialConfig;
   onClose: () => void;
+  onOpenChat?: () => void;
+  clientCode?: string;
+  clientName?: string;
 }
 
-export function TrialFlowRenderer({ config, onClose }: Props) {
+export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, clientName }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedSubOptionId, setSelectedSubOptionId] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
   const [macCode, setMacCode] = useState('');
   const [deviceKey, setDeviceKey] = useState('');
+  const [attachedImage, setAttachedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [alertDismissed, setAlertDismissed] = useState(false);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAttachedImage(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setImagePreview(ev.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setAttachedImage(null);
+    setImagePreview(null);
+  };
+
   const selectedDevice = config.devices.find(d => d.id === selectedDeviceId);
   const selectedSubOption = selectedDevice?.subOptions?.find(s => s.id === selectedSubOptionId);
+
+  const handleSendToSupport = async (content: TrialContentBlock) => {
+    if (isSending) return;
+    setIsSending(true);
+
+    try {
+      const currentCode = clientCode || localStorage.getItem('tbi_active_client_code') || `VISITANTE_${Date.now().toString().slice(-4)}`;
+      const currentName = clientName || localStorage.getItem('tbi_active_client_name') || 'Cliente';
+
+      const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
+      const deviceTitle = selectedDevice?.name || 'Dispositivo';
+
+      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+
+      if (imagePreview && attachedImage) {
+        const payload = {
+          fileName: attachedImage.name,
+          fileSize: `${(attachedImage.size / 1024).toFixed(1)} KB`,
+          fileData: imagePreview,
+          caption: `Foto da tela do ${appName} (Teste Grátis 3h)`
+        };
+        msgText += `\n\n[PIX_COMPROVANTE:${JSON.stringify(payload)}]`;
+      }
+
+      // 1. Salvar mensagem do cliente no chat
+      await supabase.from('chat_messages').insert({
+        client_code: currentCode,
+        client_name: currentName,
+        sender: 'client',
+        message: msgText,
+        read_by_admin: false,
+        read_by_client: true
+      });
+
+      // 2. Disparar resposta automática imediata do bot
+      const autoReply = `🤖 **Olá, ${currentName}!**\n\nRecebemos os dados do seu dispositivo (*${appName}*) para liberação do **Teste Grátis de 3h**! 🎉\n\nNossa equipe de suporte já está gerando sua lista de acesso e em instantes liberará seu login aqui no chat. 📺🍿`;
+      await supabase.from('chat_messages').insert({
+        client_code: currentCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: autoReply,
+        read_by_admin: true,
+        read_by_client: false
+      });
+
+      // 3. Abrir o chat para o cliente acompanhar
+      if (onOpenChat) {
+        onOpenChat();
+      } else {
+        onClose();
+      }
+    } catch (err: any) {
+      console.error('Erro ao enviar dados para o suporte:', err);
+      alert('Erro ao enviar para o chat: ' + (err.message || 'Tente novamente.'));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendTextToSupport = async (customText: string) => {
+    if (isSending) return;
+    setIsSending(true);
+    try {
+      const currentCode = clientCode || localStorage.getItem('tbi_active_client_code') || `VISITANTE_${Date.now().toString().slice(-4)}`;
+      const currentName = clientName || localStorage.getItem('tbi_active_client_name') || 'Cliente';
+
+      await supabase.from('chat_messages').insert({
+        client_code: currentCode,
+        client_name: currentName,
+        sender: 'client',
+        message: `🎁 *Teste Grátis 3h:* ${customText}`,
+        read_by_admin: false,
+        read_by_client: true
+      });
+
+      if (onOpenChat) {
+        onOpenChat();
+      } else {
+        onClose();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   const getEmbedUrl = (url: string) => {
     if (!url) return null;
@@ -190,15 +311,18 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
             )}
 
             {content.showMacInput && (
-              <div className="bg-slate-800/50 rounded-xl p-4 mt-6 border border-slate-700/50 space-y-3">
-                <h3 className="font-bold text-white text-sm uppercase text-center">
-                  {content.macAppName ? `Dados do Aplicativo - ${content.macAppName}` : 'Dados do Aplicativo (Opcional)'}
-                </h3>
-                <p className="text-xs text-slate-400 mb-2 text-center">
-                  {content.macAppName ? `Preencha os dados gerados pelo ${content.macAppName} para liberarmos seu teste.` : 'Se o aplicativo pedir, preencha abaixo para liberar.'}
-                </p>
+              <div className="bg-slate-800/50 rounded-2xl p-5 mt-6 border border-slate-700/60 space-y-3.5 shadow-xl">
+                <div className="text-center space-y-1">
+                  <h3 className="font-bold text-white text-sm uppercase tracking-wide">
+                    {content.macAppName ? `Dados do Aplicativo - ${content.macAppName}` : 'Dados do Aplicativo (Opcional)'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {content.macAppName ? `Preencha os dados gerados pelo ${content.macAppName} para liberarmos seu teste.` : 'Preencha os dados abaixo ou anexe uma foto da tela do aplicativo para liberar.'}
+                  </p>
+                </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Código MAC</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">Código MAC</label>
                   <input
                     type="text"
                     value={macCode}
@@ -207,8 +331,9 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
                     className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1 uppercase tracking-wider">Device Key / Código do App</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">Device Key / Código do App</label>
                   <input
                     type="text"
                     value={deviceKey}
@@ -217,30 +342,79 @@ export function TrialFlowRenderer({ config, onClose }: Props) {
                     className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
                   />
                 </div>
-                
-                <a 
-                  href={`https://wa.me/5521959368651?text=${encodeURIComponent(
-                    `Olá, baixei o aplicativo e aqui estão os meus dados para liberação:${content.macAppName ? `\n*Aplicativo:* ${content.macAppName}` : ''}\n\n*Código MAC:* ${macCode.trim() || 'Não informado'}\n*Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`
-                  )}`}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="mt-4 flex justify-center items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors w-full shadow-lg shadow-green-500/20"
+
+                {/* Upload de Foto da Tela do App (Opcional) */}
+                <div className="pt-1">
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+                    📸 Foto da Tela do Aplicativo (Opcional)
+                  </label>
+                  
+                  {imagePreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-indigo-500/40 bg-slate-900/90 p-2 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img src={imagePreview} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-slate-700 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-white truncate">{attachedImage?.name || 'foto_tela.jpg'}</p>
+                          <p className="text-[10px] text-emerald-400 font-semibold">Foto anexada com sucesso</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveImage}
+                        className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 transition-colors shrink-0"
+                        title="Remover foto"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full py-3.5 px-4 border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-xl bg-slate-900/50 hover:bg-indigo-600/5 cursor-pointer transition-all">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                      <div className="flex items-center gap-2 text-slate-400 hover:text-indigo-300 text-xs">
+                        <UploadCloud size={16} className="text-indigo-400" />
+                        <span className="font-semibold">Clique para tirar foto ou anexar imagem da TV</span>
+                      </div>
+                    </label>
+                  )}
+                </div>
+
+                {/* Botão Enviar Dados p/ Suporte */}
+                <button
+                  type="button"
+                  disabled={isSending}
+                  onClick={() => handleSendToSupport(content)}
+                  className="mt-4 flex justify-center items-center gap-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3.5 px-6 rounded-xl transition-all w-full shadow-lg shadow-emerald-500/25 active:scale-[0.99] disabled:opacity-50"
                 >
-                  Enviar Dados p/ WhatsApp
-                </a>
+                  {isSending ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      <span>Enviando para o Suporte...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={18} />
+                      <span>Enviar Dados p/ Suporte</span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
 
             {content.whatsappText && (
               <div className="mt-4 text-center">
-                <a 
-                  href={`https://wa.me/5521959368651?text=${encodeURIComponent(content.whatsappText)}`}
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-block bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors"
+                <button
+                  type="button"
+                  onClick={() => handleSendTextToSupport(content.whatsappText || 'Desejo suporte para ativar meu teste grátis.')}
+                  className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
                 >
-                  Suporte pelo WhatsApp
-                </a>
+                  <MessageSquare size={18} />
+                  <span>Falar com Suporte no Chat</span>
+                </button>
               </div>
             )}
           </div>

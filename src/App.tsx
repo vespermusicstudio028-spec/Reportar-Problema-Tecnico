@@ -812,7 +812,18 @@ export default function App() {
     const currentCode = loggedClientCode || (isAdminLogged ? 'admin' : null);
 
     if (trialState) {
-      return <TrialFlowRenderer config={trialConfig} onClose={() => setTrialState(null)} />;
+      return (
+        <TrialFlowRenderer
+          config={trialConfig}
+          onClose={() => setTrialState(null)}
+          onOpenChat={() => {
+            setTrialState(null);
+            setIsClientChatOpen(true);
+          }}
+          clientCode={loggedClientCode || undefined}
+          clientName={currentClient?.name}
+        />
+      );
     }
 
     return (

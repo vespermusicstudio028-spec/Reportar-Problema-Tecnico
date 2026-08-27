@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { ChatMessage } from '../types/chat';
+import { getSupportBusinessHoursStatus, getAutomatedAbsenceMessage } from '../lib/businessHours';
 import { 
   MessageSquare, 
   X, 
@@ -13,7 +14,11 @@ import {
   Key,
   ChevronDown,
   ExternalLink,
-  Tv
+  Tv,
+  Clock,
+  Info,
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 
 interface ClientChatWidgetProps {
@@ -57,7 +62,17 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [isSending, setIsSending] = useState(false);
   const [tempCodeInput, setTempCodeInput] = useState('');
   const [customClientName, setCustomClientName] = useState('');
+  const [showScheduleInfo, setShowScheduleInfo] = useState(false);
+  const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Atualizar status do horário periodicamente a cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBusinessStatus(getSupportBusinessHoursStatus());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Sincronizar estado externo se fornecido
   useEffect(() => {
@@ -151,9 +166,10 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
 
     setIsSending(true);
     try {
+      const currentClientDisplayName = clientName || customClientName || 'Cliente';
       const { error } = await supabase.from('chat_messages').insert({
         client_code: activeCode,
-        client_name: clientName || customClientName || 'Cliente',
+        client_name: currentClientDisplayName,
         sender: 'client',
         message: text,
         read_by_admin: false,
@@ -162,6 +178,35 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
 
       if (error) throw error;
       setInputText('');
+
+      // Verificar se estamos fora do horário de atendimento para disparar a resposta automática de ausência
+      const currentStatus = getSupportBusinessHoursStatus();
+      if (!currentStatus.isOnline) {
+        const oneHourAgo = Date.now() - 60 * 60 * 1000;
+        const alreadySentAbsence = messages.some(
+          (m) =>
+            m.sender === 'admin' &&
+            m.message.includes('fora do horário de funcionamento') &&
+            new Date(m.created_at).getTime() > oneHourAgo
+        );
+
+        if (!alreadySentAbsence) {
+          setTimeout(async () => {
+            try {
+              await supabase.from('chat_messages').insert({
+                client_code: activeCode,
+                client_name: 'Suporte The Best IPTV+',
+                sender: 'admin',
+                message: getAutomatedAbsenceMessage(currentClientDisplayName),
+                read_by_admin: true,
+                read_by_client: false
+              });
+            } catch (autoErr) {
+              console.error('Erro ao disparar mensagem de ausência automática:', autoErr);
+            }
+          }, 800);
+        }
+      }
     } catch (err: any) {
       alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
     } finally {
@@ -205,6 +250,13 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                 {unreadCount}
               </span>
             )}
+            {/* Ponto indicador de status de atendimento */}
+            <span 
+              className={`absolute -bottom-1 -left-1 w-3.5 h-3.5 rounded-full border-2 border-[#0e121a] ${
+                businessStatus.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+              title={businessStatus.statusText}
+            />
           </div>
           <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap text-xs font-bold font-sans ml-0 group-hover:ml-2">
             Chat Suporte
@@ -220,41 +272,141 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] sm:w-[450px] h-[640px] max-h-[90vh] bg-[#0e121a] border border-slate-800/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100 font-sans"
+            className="fixed bottom-4 right-4 z-50 w-[calc(100vw-32px)] sm:w-[460px] h-[660px] max-h-[90vh] bg-[#0e121a] border border-slate-800/90 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-slate-100 font-sans"
           >
             {/* Header da Janela */}
-            <div className="p-4 bg-gradient-to-r from-indigo-900/90 via-[#151a28] to-[#0e121a] border-b border-slate-800/80 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shadow-md">
-                    <Headphones size={20} />
+            <div className="p-4 bg-gradient-to-r from-indigo-950 via-[#151a28] to-[#0e121a] border-b border-slate-800/80 flex flex-col gap-2 shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-2xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shadow-md">
+                      <Headphones size={20} />
+                    </div>
+                    <span 
+                      className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#0e121a] ${
+                        businessStatus.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                      }`}
+                    ></span>
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#0e121a] animate-pulse"></span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-white flex items-center gap-1.5 leading-tight">
-                    Suporte The Best IPTV+
-                  </h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[11px] text-emerald-400 font-medium">Administrador Online</span>
-                    {activeCode && (
-                      <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-slate-700/60">
-                        {activeCode}
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-1.5 leading-tight">
+                      Suporte The Best IPTV+
+                    </h3>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className={`text-[11px] font-semibold flex items-center gap-1 ${
+                        businessStatus.isOnline ? 'text-emerald-400' : 'text-amber-400'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${businessStatus.isOnline ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'}`}></span>
+                        {businessStatus.statusText}
                       </span>
-                    )}
+                      {activeCode && (
+                        <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-slate-700/60">
+                          {activeCode}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  {/* Botão de Informações de Horários */}
+                  <button
+                    type="button"
+                    onClick={() => setShowScheduleInfo(!showScheduleInfo)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                      showScheduleInfo 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'bg-slate-800/60 hover:bg-slate-800 text-slate-300 hover:text-white'
+                    }`}
+                    title="Ver Horários de Funcionamento"
+                  >
+                    <Clock size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                  >
+                    <ChevronDown size={18} />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1">
+              {/* Barra Resumo de Horários no Topo */}
+              <div className="flex items-center justify-between px-2.5 py-1.5 bg-slate-900/80 border border-slate-800/90 rounded-xl text-[11px] text-slate-300">
+                <div className="flex items-center gap-1.5">
+                  <Clock size={13} className={businessStatus.isOnline ? 'text-emerald-400' : 'text-amber-400'} />
+                  <span className="text-slate-400 font-medium">Horários:</span>
+                  <span className="text-slate-200 font-semibold">Seg-Sex: 09h-21h | Sáb: 09h-12h</span>
+                </div>
                 <button
                   type="button"
-                  onClick={handleClose}
-                  className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+                  onClick={() => setShowScheduleInfo(!showScheduleInfo)}
+                  className="text-[10px] text-indigo-400 hover:text-indigo-300 underline font-medium"
                 >
-                  <ChevronDown size={18} />
+                  {showScheduleInfo ? 'Ocultar' : 'Detalhes'}
                 </button>
               </div>
+
+              {/* Painel Expansível de Detalhes dos Horários */}
+              <AnimatePresence>
+                {showScheduleInfo && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-3 bg-[#131826] border border-indigo-500/30 rounded-2xl text-xs space-y-2 text-slate-200 shadow-inner">
+                      <div className="flex items-center justify-between border-b border-slate-700/60 pb-1.5">
+                        <span className="font-bold text-indigo-300 flex items-center gap-1.5">
+                          <Calendar size={14} className="text-indigo-400" />
+                          Quadro de Horários do Suporte:
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          businessStatus.isOnline 
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}>
+                          {businessStatus.isOnline ? 'Ativo Agora' : 'Fechado Agora'}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300">📅 Segunda a Sexta:</span>
+                          <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                            09:00 às 21:00
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300">📅 Sábado:</span>
+                          <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                            09:00 às 12:00 (Meio-dia)
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300">📅 Domingos e Feriados:</span>
+                          <span className="font-bold text-amber-400 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-900/50">
+                            Fechado
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-1 border-t border-slate-700/60 text-[10px] text-slate-400 flex items-center gap-1">
+                        <Info size={12} className="text-indigo-400 shrink-0" />
+                        <span>
+                          {businessStatus.isOnline 
+                            ? 'Suporte online pronto para atender suas solicitações.' 
+                            : `Suporte ausente no momento. Retorno: ${businessStatus.nextOpenText}. As mensagens enviadas agora são registradas e respondidas na reabertura.`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Conteúdo do Chat */}
@@ -290,6 +442,22 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
               /* Interface de Conversa em Tempo Real */
               <>
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-[#0b0e14]/60">
+                  {/* Aviso de Suporte Ausente (caso esteja fora do horário) */}
+                  {!businessStatus.isOnline && (
+                    <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5 shadow-md">
+                      <AlertCircle size={17} className="text-amber-400 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold text-amber-300">
+                          Suporte Ausente no Momento
+                        </p>
+                        <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                          Nosso atendimento funciona de <strong>Seg a Sex (09h às 21h)</strong> e aos <strong>Sábados (09h às 12h)</strong>.
+                          Você pode enviar sua mensagem agora e responderemos assim que retornarmos ({businessStatus.nextOpenText})!
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Mensagem de Boas-vindas do Suporte */}
                   <div className="flex items-start gap-2 max-w-[88%]">
                     <div className="w-6 h-6 rounded-full bg-indigo-600/30 text-indigo-300 text-[10px] font-bold flex items-center justify-center shrink-0 border border-indigo-500/40">
@@ -297,9 +465,11 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </div>
                     <div className="p-3.5 rounded-2xl bg-[#171b26] border border-slate-800 text-slate-200 text-xs leading-relaxed rounded-tl-none shadow-md">
                       <p>
-                        Olá <strong>{clientName || 'Cliente'}</strong>! 👋 Como posso te ajudar hoje? Digite sua mensagem abaixo que responderei o mais breve possível.
+                        Olá <strong>{clientName || 'Cliente'}</strong>! 👋 {businessStatus.isOnline ? 'Como posso te ajudar hoje? Digite sua mensagem abaixo que responderei o mais breve possível.' : 'Nosso atendimento funciona de Seg a Sex (09h às 21h) e Sábado (09h às 12h). Deixe sua mensagem abaixo que responderemos assim que iniciarmos o expediente!'}
                       </p>
-                      <span className="block text-[9px] text-slate-500 text-right mt-1">Atendimento ao Vivo</span>
+                      <span className="block text-[9px] text-slate-500 text-right mt-1">
+                        {businessStatus.isOnline ? 'Atendimento ao Vivo' : 'Atendimento Offline'}
+                      </span>
                     </div>
                   </div>
 
@@ -321,6 +491,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                             className={`p-3 rounded-2xl text-xs leading-relaxed break-words ${
                               isClient
                                 ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-600/15'
+                                : msg.message.includes('🤖') || msg.message.includes('fora do horário')
+                                ? 'bg-[#1e1e2d] border border-amber-500/30 text-slate-100 rounded-bl-none shadow-md'
                                 : 'bg-[#1a1f2c] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
                             }`}
                           >
@@ -355,7 +527,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[9px] text-slate-500 font-medium">Toque para enviar</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5 max-h-44 overflow-y-auto custom-scrollbar pr-0.5">
+                  <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-0.5">
                     {/* Fileira Esquerda (5) */}
                     <div className="flex flex-col gap-1.5">
                       {CLIENT_TOPICS_LEFT.map((topic, i) => {
@@ -426,7 +598,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                 >
                   <input
                     type="text"
-                    placeholder="Digite sua mensagem para o administrador..."
+                    placeholder={businessStatus.isOnline ? "Digite sua mensagem para o suporte..." : "Suporte ausente. Deixe sua mensagem aqui..."}
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     className="flex-1 bg-[#181d28] border border-slate-700/80 text-white placeholder-slate-500 px-3.5 py-2.5 rounded-2xl text-xs focus:border-indigo-500 outline-none transition-all"

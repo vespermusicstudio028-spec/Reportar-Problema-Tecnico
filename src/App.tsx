@@ -1056,6 +1056,35 @@ export default function App() {
               </button>
             </div>
 
+            {/* Botão Teste Grátis de 3h */}
+            {isTrialEnabled && (
+              <div className="w-full mb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setTrialState('devices')}
+                  className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-2xl shadow-teal-500/20 hover:shadow-teal-500/40 hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+                  <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 md:py-5 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="p-2.5 sm:p-3 rounded-xl bg-white/10 group-hover:scale-110 transition-transform">
+                        <Gift className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-base sm:text-lg md:text-xl tracking-wide text-white leading-tight">
+                          Fazer um teste grátis de 3h
+                        </h3>
+                        <p className="text-[11px] sm:text-xs md:text-sm font-medium text-white/70">
+                          Selecione seu dispositivo
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight size={18} className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                  </div>
+                </button>
+              </div>
+            )}
+
 
           </div>
         </div>
@@ -4147,34 +4176,6 @@ export default function App() {
                  )}
               </button>
             </div>
-            
-            {/* Teste Grátis (Desktop e Mobile) */}
-            {activeView === 'dashboard' && !trialState && !contentType && isTrialEnabled && (
-              <div className="block w-full max-w-[420px] min-w-[200px]">
-                <button
-                  onClick={() => setTrialState('devices')}
-                  className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-xl shadow-teal-500/20 hover:shadow-teal-500/40"
-                >
-                  <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
-                  <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-sm px-3 md:px-6 py-3 md:py-4 rounded-[14px] flex items-center justify-between transition-colors duration-300">
-                    <div className="flex items-center gap-2 md:gap-4">
-                      <div className="p-2 md:p-2.5 rounded-xl transition-transform bg-white/10 group-hover:scale-110">
-                        <Gift className="text-white w-5 h-5 md:w-6 md:h-6" />
-                      </div>
-                      <div className="text-left">
-                        <h3 className="font-bold text-[12px] md:text-[15px] tracking-wide text-white leading-tight">
-                          Fazer um teste grátis de 3h
-                        </h3>
-                        <p className="text-[10px] md:text-xs font-medium text-white/70">
-                          Selecione seu dispositivo
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-white/50 group-hover:text-white group-hover:translate-x-1 transition-all ml-1" />
-                  </div>
-                </button>
-              </div>
-            )}
           </div>
         </header>
 

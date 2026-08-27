@@ -41,7 +41,12 @@ import {
   Film as MovieIcon,
   XCircle,
   Lock,
-  Gift
+  Gift,
+  Download,
+  Smartphone,
+  Monitor,
+  Share2,
+  Sparkles
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -160,6 +165,65 @@ export default function App() {
     return saved !== null ? saved === 'true' : true;
   });
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
+
+  // PWA Install State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isPWAInstalled, setIsPWAInstalled] = useState(false);
+  const [showPWAInstallModal, setShowPWAInstallModal] = useState(false);
+  const [pwaPlatformTab, setPwaPlatformTab] = useState<'android' | 'ios' | 'desktop'>('android');
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    setIsPWAInstalled(Boolean(isStandalone));
+
+    // Detectar plataforma inicial
+    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+    if (/iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream) {
+      setPwaPlatformTab('ios');
+    } else if (/android/i.test(userAgent)) {
+      setPwaPlatformTab('android');
+    } else {
+      setPwaPlatformTab('desktop');
+    }
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsPWAInstalled(true);
+      setDeferredPrompt(null);
+      setShowPWAInstallModal(false);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsPWAInstalled(true);
+          setShowPWAInstallModal(false);
+        }
+        setDeferredPrompt(null);
+      } catch (err) {
+        console.warn('Erro no prompt nativo de instalação:', err);
+        setShowPWAInstallModal(true);
+      }
+    } else {
+      setShowPWAInstallModal(true);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('tbi_trial_enabled', String(isTrialEnabled));
@@ -920,6 +984,49 @@ export default function App() {
           </div>
           
           <div className="flex flex-col gap-3 sm:gap-4 w-full relative z-10">
+            {/* Botão de Atalho para Baixar / Instalar App PWA */}
+            <div className="w-full mb-0.5">
+              <button
+                type="button"
+                onClick={handleInstallPWA}
+                className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 shadow-2xl shadow-blue-500/25 hover:shadow-cyan-500/40 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+                <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 md:py-5 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-white/10 group-hover:scale-110 transition-transform text-white">
+                      {isPWAInstalled ? (
+                        <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+                      ) : (
+                        <Download className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-300 group-hover:animate-bounce" />
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-base sm:text-lg md:text-xl tracking-wide text-white leading-tight">
+                          {isPWAInstalled ? 'Aplicativo Instalado' : 'Baixar Aplicativo (PWA)'}
+                        </h3>
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                          {isPWAInstalled ? 'Ativo' : 'Atalho Rápido'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs md:text-sm font-medium text-white/70">
+                        {isPWAInstalled 
+                          ? 'Você já está usando o aplicativo instalado' 
+                          : 'Instale direto na tela inicial do celular ou PC'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-white/70 group-hover:text-white transition-colors">
+                    <span className="hidden sm:inline text-xs font-semibold">
+                      {isPWAInstalled ? 'Ver Detalhes' : 'Instalar'}
+                    </span>
+                    <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </div>
+              </button>
+            </div>
+
             <div className="w-full mb-0.5">
               {(() => {
                 const isQuotaReached = !isAdminLogged && loggedClientCode ? getClientQuota(loggedClientCode).used >= 2 : false;
@@ -3538,7 +3645,6 @@ export default function App() {
                   <MessageCircle size={14} /> WhatsApp
                 </button>
               </div>
-
             </div>
           </motion.div>
         </motion.div>
@@ -3546,6 +3652,178 @@ export default function App() {
     </AnimatePresence>
   );
 
+  const renderPWAInstallModal = () => (
+    <AnimatePresence>
+      {showPWAInstallModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md"
+          onClick={() => setShowPWAInstallModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-[#0e111a] border border-slate-700/70 w-full max-w-lg rounded-3xl p-6 shadow-2xl relative overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/20">
+                  <Download size={22} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-white">Baixar Aplicativo (PWA)</h3>
+                  <p className="text-xs text-slate-400">Instale na sua tela inicial em segundos</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPWAInstallModal(false)}
+                className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-slate-800 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Ação direta se o prompt nativo estiver pronto */}
+            {deferredPrompt && (
+              <div className="mt-4 p-4 rounded-2xl bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-left">
+                  <p className="text-sm font-bold text-cyan-200">Instalação direta disponível!</p>
+                  <p className="text-xs text-slate-300">Clique para instalar com 1 toque</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleInstallPWA}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-cyan-500/25 transition-all transform hover:scale-105 active:scale-95 shrink-0"
+                >
+                  Instalar Agora
+                </button>
+              </div>
+            )}
+
+            {/* Abas de Plataforma */}
+            <div className="flex items-center justify-between gap-2 mt-4 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPwaPlatformTab('android')}
+                className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  pwaPlatformTab === 'android'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                }`}
+              >
+                <Smartphone size={14} /> Android / Chrome
+              </button>
+              <button
+                type="button"
+                onClick={() => setPwaPlatformTab('ios')}
+                className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  pwaPlatformTab === 'ios'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                }`}
+              >
+                <Smartphone size={14} /> iPhone / iOS
+              </button>
+              <button
+                type="button"
+                onClick={() => setPwaPlatformTab('desktop')}
+                className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                  pwaPlatformTab === 'desktop'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                }`}
+              >
+                <Monitor size={14} /> Computador
+              </button>
+            </div>
+
+            {/* Passo a Passo */}
+            <div className="mt-4 p-4 rounded-2xl bg-[#141724]/90 border border-slate-800 text-slate-300 text-xs space-y-3.5">
+              {pwaPlatformTab === 'android' && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-emerald-500/30">1</span>
+                    <p><strong className="text-white">Abra o menu</strong> dos 3 pontinhos (<span className="text-emerald-400 font-bold">⋮</span>) no canto superior do navegador (Chrome, Brave ou Samsung Internet).</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-emerald-500/30">2</span>
+                    <p>Toque na opção <strong className="text-white">"Instalar aplicativo"</strong> ou <strong className="text-white">"Adicionar à tela inicial"</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0 border border-emerald-500/30">3</span>
+                    <p>Toque em <strong className="text-white">"Instalar"</strong>. O aplicativo será adicionado à tela inicial com ícone próprio!</p>
+                  </div>
+                </>
+              )}
+
+              {pwaPlatformTab === 'ios' && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center shrink-0 border border-blue-500/30">1</span>
+                    <p>No navegador <strong className="text-white">Safari</strong> do iPhone/iPad, toque no botão de <strong className="text-white">Compartilhar</strong> (quadrado com seta <Share2 size={13} className="inline text-blue-400" />) na barra inferior.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center shrink-0 border border-blue-500/30">2</span>
+                    <p>Role o menu para baixo e selecione <strong className="text-white">"Adicionar à Tela de Início"</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center shrink-0 border border-blue-500/30">3</span>
+                    <p>Toque em <strong className="text-white">"Adicionar"</strong> no canto superior direito para concluir.</p>
+                  </div>
+                </>
+              )}
+
+              {pwaPlatformTab === 'desktop' && (
+                <>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center shrink-0 border border-purple-500/30">1</span>
+                    <p>No Chrome, Brave ou Edge no computador, olhe no <strong className="text-white">canto direito da barra de endereços</strong>.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center shrink-0 border border-purple-500/30">2</span>
+                    <p>Clique no ícone de <strong className="text-white">Instalar Aplicativo</strong> (ou menu ⋮ &gt; "Instalar aplicativo").</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <span className="w-6 h-6 rounded-full bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center shrink-0 border border-purple-500/30">3</span>
+                    <p>Confirme clicando em <strong className="text-white">Instalar</strong> para abrir em janela exclusiva e criar atalho no desktop.</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Vantagens */}
+            <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+              <div className="flex items-center gap-1.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                <Sparkles size={13} className="text-amber-400 shrink-0" />
+                <span>Super leve e rápido</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+                <Bell size={13} className="text-cyan-400 shrink-0" />
+                <span>Notificações em tempo real</span>
+              </div>
+            </div>
+
+            {/* Botão Fechar */}
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setShowPWAInstallModal(false)}
+                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm transition-all"
+              >
+                Entendi / Fechar
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   return (
     <div className="flex h-[100dvh] w-full text-[#e2e8f0] font-sans overflow-hidden relative">
@@ -3598,6 +3876,16 @@ export default function App() {
           
           <div className="flex flex-col items-end gap-3 w-full md:w-auto mt-2 md:mt-0">
             <div className="flex items-center gap-2 md:gap-3 text-sm text-slate-400 w-full md:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleInstallPWA}
+                className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 rounded-lg text-cyan-300 hover:text-cyan-200 font-bold transition-all h-9"
+                title="Baixar aplicativo PWA para celular e PC"
+              >
+                {isPWAInstalled ? <CheckCircle2 size={15} className="text-emerald-400" /> : <Download size={15} />}
+                <span className="hidden sm:inline">{isPWAInstalled ? 'App Instalado' : 'Baixar App'}</span>
+                <span className="sm:hidden">{isPWAInstalled ? 'App' : 'Baixar'}</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setShowUpdatesModal(true)}
@@ -3701,6 +3989,7 @@ export default function App() {
       {renderUpdatesModal()}
       {renderLoginModal()}
       {renderAdminPage()}
+      {renderPWAInstallModal()}
 
       {/* Widget de Chat dos Clientes */}
       {!isAdminLogged && (

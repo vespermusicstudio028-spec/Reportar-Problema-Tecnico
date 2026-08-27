@@ -6,6 +6,7 @@ import { TrialAdminPanel } from './components/TrialAdminPanel';
 import { TrialFlowRenderer } from './components/TrialFlowRenderer';
 import { AdminChatPanel } from './components/AdminChatPanel';
 import { ClientChatWidget } from './components/ClientChatWidget';
+import { AnnouncementMediaCarousel } from './components/AnnouncementMediaCarousel';
 import { 
   RefreshCcw,
   Tv, 
@@ -15,6 +16,7 @@ import {
   CheckCircle2, 
   Loader2, 
   ChevronRight, 
+  ChevronLeft,
   ChevronDown,
   History,
   User,
@@ -46,7 +48,9 @@ import {
   Smartphone,
   Monitor,
   Share2,
-  Sparkles
+  Sparkles,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -150,6 +154,7 @@ interface Announcement {
   message: string;
   expiryDate: string;
   mediaUrl?: string;
+  mediaUrls?: string[];
   mediaType?: 'image' | 'video' | null;
   pollOptions?: PollOption[] | null;
   createdAt?: string;
@@ -281,11 +286,41 @@ export default function App() {
       }
 
       const { data: ann } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
-      if (ann) setAnnouncements(ann.map((a: any) => ({
-        id: a.id, category: a.category, name: a.name, status: a.status, 
-        message: a.message, expiryDate: a.expiry_date, mediaUrl: a.media_url, mediaType: a.media_type,
-        pollOptions: a.poll_options, createdAt: a.created_at
-      })));
+      if (ann) setAnnouncements(ann.map((a: any) => {
+        let mediaUrls: string[] = [];
+        let singleMediaUrl = a.media_url || undefined;
+        if (a.media_url) {
+          try {
+            if (typeof a.media_url === 'string' && a.media_url.trim().startsWith('[') && a.media_url.trim().endsWith(']')) {
+              const parsed = JSON.parse(a.media_url);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                mediaUrls = parsed;
+                singleMediaUrl = parsed[0];
+              } else {
+                mediaUrls = [a.media_url];
+              }
+            } else {
+              mediaUrls = [a.media_url];
+            }
+          } catch {
+            mediaUrls = [a.media_url];
+          }
+        }
+
+        return {
+          id: a.id, 
+          category: a.category, 
+          name: a.name, 
+          status: a.status, 
+          message: a.message, 
+          expiryDate: a.expiry_date, 
+          mediaUrl: singleMediaUrl, 
+          mediaUrls: mediaUrls,
+          mediaType: a.media_type,
+          pollOptions: a.poll_options, 
+          createdAt: a.created_at
+        };
+      }));
 
       const { data: votes } = await supabase.from('poll_votes').select('*');
       if (votes) setPollVotes(votes);
@@ -406,8 +441,8 @@ export default function App() {
   const [annStatus, setAnnStatus] = useState('Problemas Técnicos');
   const [annMessage, setAnnMessage] = useState('');
   const [annExpiry, setAnnExpiry] = useState('');
-  const [annMedia, setAnnMedia] = useState<File | null>(null);
-  const [annMediaName, setAnnMediaName] = useState('');
+  const [annMediaFiles, setAnnMediaFiles] = useState<File[]>([]);
+  const [galleryModal, setGalleryModal] = useState<{ urls: string[]; index: number } | null>(null);
 
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
@@ -827,25 +862,15 @@ export default function App() {
                           <h4 className={`font-bold leading-tight ${ann.status === 'Problema Resolvido' ? 'text-emerald-50' : 'text-amber-50'}`}>{ann.name} <span className={`font-normal text-xs ml-2 ${ann.status === 'Problema Resolvido' ? 'text-emerald-400/80' : 'text-amber-400/80'}`}>({ann.status})</span></h4>
                           <p className={`text-sm mt-1 leading-snug ${ann.status === 'Problema Resolvido' ? 'text-emerald-200/80' : 'text-amber-200/80'}`}>{ann.message}</p>
                           <p className={`text-[10px] mt-2 font-mono ${ann.status === 'Problema Resolvido' ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>Expira em: {new Date(ann.expiryDate).toLocaleString()}</p>
-                          {ann.mediaUrl && (
-                            <div className="mt-3 rounded-xl overflow-hidden border border-white/5 shadow-2xl relative group">
-                              {ann.mediaType === 'image' ? (
-                                <img 
-                                  src={ann.mediaUrl} 
-                                  alt="Evidência" 
-                                  className="w-full max-h-64 object-cover cursor-zoom-in hover:scale-110 transition-transform duration-500"
-                                  onClick={() => {
-                                    setSelectedImage(ann.mediaUrl);
-                                    handleRegisterView(ann.id);
-                                  }}
-                                />
-                              ) : (
-                                <video src={ann.mediaUrl} className="w-full max-h-64 object-cover" controls />
-                              )}
-                              <div className="absolute top-2 right-2 px-2 py-1 bg-black/40 backdrop-blur-md rounded-md text-[10px] font-bold text-white/70 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                {ann.mediaType === 'image' ? 'CLIQUE PARA AMPLIAR' : 'VÍDEO'}
-                              </div>
-                            </div>
+                          {((ann.mediaUrls && ann.mediaUrls.length > 0) || ann.mediaUrl) && (
+                            <AnnouncementMediaCarousel 
+                              mediaUrls={ann.mediaUrls && ann.mediaUrls.length > 0 ? ann.mediaUrls : [ann.mediaUrl!]}
+                              mediaType={ann.mediaType}
+                              onImageClick={(_, allUrls, index) => {
+                                setGalleryModal({ urls: allUrls, index });
+                              }}
+                              onRegisterView={() => handleRegisterView(ann.id)}
+                            />
                           )}
                           {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
                             const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
@@ -1630,6 +1655,42 @@ export default function App() {
     }
   };
 
+  // Utilitário para comprimir fotos antes do envio
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const MAX_DIM = 1200;
+          if (width > height && width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.8));
+          } else {
+            resolve((e.target?.result as string) || '');
+          }
+        };
+        img.onerror = () => resolve((e.target?.result as string) || '');
+        img.src = (e.target?.result as string) || '';
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleAddAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     const isServiceDown = annCategory === 'Serviço de Streaming' && annStatus === 'Problemas Técnicos';
@@ -1639,16 +1700,27 @@ export default function App() {
     if (!isServiceDown && !isEnqueteEvento && !annName) return;
     if (!annMessage || !annExpiry) return;
 
-    let mediaUrl: string | undefined = undefined;
+    let mediaUrls: string[] = [];
     let mediaType: 'image' | 'video' | null = null;
 
-    if (annMedia) {
-      mediaType = annMedia.type.startsWith('image/') ? 'image' : 'video';
-      mediaUrl = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(annMedia);
-      });
+    if (annMediaFiles.length > 0) {
+      mediaType = annMediaFiles.some(f => f.type.startsWith('image/')) ? 'image' : 'video';
+      
+      // Processar e comprimir cada arquivo selecionado (até 10 fotos)
+      const processed = await Promise.all(
+        annMediaFiles.map(async (file) => {
+          if (file.type.startsWith('image/')) {
+            return await compressImage(file);
+          } else {
+            return await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.readAsDataURL(file);
+            });
+          }
+        })
+      );
+      mediaUrls = processed.filter(url => Boolean(url));
     }
 
     let finalPollOptions = null;
@@ -1663,13 +1735,19 @@ export default function App() {
     }
 
     try {
+      const payloadMediaUrl = mediaUrls.length === 0 
+        ? null 
+        : mediaUrls.length === 1 
+          ? mediaUrls[0] 
+          : JSON.stringify(mediaUrls);
+
       const { error } = await supabase.from('announcements').insert([{
         category: annCategory,
         name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
         status: annStatus,
         message: annMessage,
         expiry_date: new Date(annExpiry).toISOString(),
-        media_url: mediaUrl,
+        media_url: payloadMediaUrl,
         media_type: mediaType,
         poll_options: finalPollOptions
       }]);
@@ -1682,8 +1760,7 @@ export default function App() {
       setAnnName('');
       setAnnMessage('');
       setAnnExpiry('');
-      setAnnMedia(null);
-      setAnnMediaName('');
+      setAnnMediaFiles([]);
       setPollOptionsInput(['', '']);
     } catch (err: any) {
       alert('Erro inesperado ao publicar: ' + err.message);
@@ -2387,44 +2464,86 @@ export default function App() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Anexo de Foto ou Vídeo (Opcional)</label>
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2">
-                          <label className="flex-1 flex items-center justify-center h-12 border border-dashed border-slate-700 bg-[#151922] rounded-xl cursor-pointer hover:border-indigo-500 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                          Anexo de Foto ou Vídeo (Opcional · Até 10 fotos)
+                        </label>
+                        <span className="text-[11px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                          {annMediaFiles.length} / 10 fotos
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-2.5">
+                        {annMediaFiles.length < 10 && (
+                          <label className="w-full flex items-center justify-center h-14 border border-dashed border-slate-700 bg-[#151922] hover:bg-[#1a202d] rounded-xl cursor-pointer hover:border-indigo-500 transition-all group shadow-inner">
                             <input 
                               type="file" 
                               accept="image/*,video/*"
+                              multiple
                               className="hidden"
                               onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
                               onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  setAnnMedia(e.target.files[0]);
-                                  setAnnMediaName(e.target.files[0].name);
+                                if (e.target.files) {
+                                  const newFiles = Array.from(e.target.files);
+                                  setAnnMediaFiles(prev => {
+                                    const combined = [...prev, ...newFiles];
+                                    if (combined.length > 10) {
+                                      alert('Você pode selecionar no máximo 10 arquivos.');
+                                      return combined.slice(0, 10);
+                                    }
+                                    return combined;
+                                  });
                                 }
                               }}
                             />
-                            <span className="text-xs md:text-sm text-slate-400 font-medium truncate px-4">
-                              {annMediaName ? `📎 ${annMediaName}` : "Clique para selecionar uma foto ou vídeo"}
-                            </span>
+                            <div className="flex items-center gap-2 text-xs md:text-sm text-slate-300 font-medium group-hover:text-indigo-300 transition-colors">
+                              <Upload size={16} className="text-indigo-400" />
+                              <span>Clique para selecionar até 10 fotos ou vídeos</span>
+                            </div>
                           </label>
-                          {annMedia && (
-                            <button 
-                              type="button" 
-                              onClick={() => { setAnnMedia(null); setAnnMediaName(''); }}
-                              className="p-3 text-red-500 hover:text-red-400 bg-red-500/10 rounded-xl transition-colors"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          )}
-                        </div>
-                        
-                        {annMedia && (
-                          <div className="mt-2 rounded-2xl overflow-hidden border border-slate-700 bg-black/40 relative max-w-md mx-auto">
-                            {annMedia.type.startsWith('image/') ? (
-                              <img src={URL.createObjectURL(annMedia)} alt="Preview" className="w-full max-h-60 object-contain" />
-                            ) : (
-                              <video src={URL.createObjectURL(annMedia)} className="w-full max-h-60 object-contain" controls />
-                            )}
+                        )}
+
+                        {/* Grid de Previews das fotos selecionadas */}
+                        {annMediaFiles.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] text-slate-400 font-medium">Fotos anexadas para publicação:</span>
+                              <button
+                                type="button"
+                                onClick={() => setAnnMediaFiles([])}
+                                className="text-[11px] text-red-400 hover:text-red-300 font-medium"
+                              >
+                                Limpar todas
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-3 bg-[#0d1017] rounded-2xl border border-slate-800">
+                              {annMediaFiles.map((file, idx) => {
+                                const isImg = file.type.startsWith('image/');
+                                const previewUrl = URL.createObjectURL(file);
+                                return (
+                                  <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-700 bg-black/50 aspect-square flex items-center justify-center">
+                                    {isImg ? (
+                                      <img src={previewUrl} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <video src={previewUrl} className="w-full h-full object-cover" />
+                                    )}
+                                    <span className="absolute bottom-1 left-1 bg-black/80 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">
+                                      #{idx + 1}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setAnnMediaFiles(prev => prev.filter((_, i) => i !== idx));
+                                      }}
+                                      className="absolute top-1 right-1 p-1.5 bg-red-600/90 hover:bg-red-600 text-white rounded-lg opacity-90 group-hover:opacity-100 transition-all shadow-md"
+                                      title="Remover foto"
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2548,18 +2667,16 @@ export default function App() {
                             
                             <p className="text-slate-300 text-sm leading-relaxed">{ann.message}</p>
                             
-                            {ann.mediaUrl && (
-                              <div className="rounded-xl overflow-hidden border border-slate-800 bg-black/30 max-w-sm">
-                                {ann.mediaType === 'image' ? (
-                                  <img 
-                                    src={ann.mediaUrl} 
-                                    alt="Anexo" 
-                                    className="w-full h-36 object-cover cursor-zoom-in" 
-                                    onClick={() => setSelectedImage(ann.mediaUrl!)}
-                                  />
-                                ) : (
-                                  <video src={ann.mediaUrl} className="w-full h-36 object-cover" controls />
-                                )}
+                            {((ann.mediaUrls && ann.mediaUrls.length > 0) || ann.mediaUrl) && (
+                              <div className="max-w-md">
+                                <AnnouncementMediaCarousel 
+                                  mediaUrls={ann.mediaUrls && ann.mediaUrls.length > 0 ? ann.mediaUrls : [ann.mediaUrl!]}
+                                  mediaType={ann.mediaType}
+                                  maxHeightClass="max-h-48"
+                                  onImageClick={(_, allUrls, index) => {
+                                    setGalleryModal({ urls: allUrls, index });
+                                  }}
+                                />
                               </div>
                             )}
 
@@ -4029,30 +4146,95 @@ export default function App() {
         </button>
       )}
 
-      {/* Image Viewer Modal */}
+      {/* Image Viewer / Multi-Photo Gallery Modal */}
       <AnimatePresence>
-        {selectedImage && (
+        {galleryModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-            onClick={() => setSelectedImage(null)}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md select-none"
+            onClick={() => setGalleryModal(null)}
           >
+            {/* Botão Fechar */}
             <button 
-              className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors z-[101]"
+              className="absolute top-6 right-6 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition-colors z-[110] flex items-center justify-center"
               onClick={(e) => {
                 e.stopPropagation();
-                setSelectedImage(null);
+                setGalleryModal(null);
               }}
+              title="Fechar (ESC)"
             >
               <X size={24} />
             </button>
-            <img 
-              src={selectedImage} 
-              alt="Ampliada" 
-              className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-[0_0_50px_rgba(0,0,0,0.5)] cursor-zoom-out" 
-            />
+
+            {/* Imagem Ampliada com Efeito */}
+            <div 
+              className="relative max-w-5xl w-full flex items-center justify-center p-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img 
+                src={galleryModal.urls[galleryModal.index]} 
+                alt={`Foto ${galleryModal.index + 1}`} 
+                className="max-w-full max-h-[82vh] object-contain rounded-2xl shadow-[0_0_60px_rgba(0,0,0,0.8)] border border-white/10" 
+              />
+
+              {/* Botões de navegação no modal (se houver mais de 1 foto) */}
+              {galleryModal.urls.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setGalleryModal(prev => {
+                        if (!prev) return null;
+                        const total = prev.urls.length;
+                        return { ...prev, index: (prev.index - 1 + total) % total };
+                      });
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-md shadow-2xl transition-transform hover:scale-110 active:scale-95"
+                    title="Foto Anterior"
+                  >
+                    <ChevronLeft size={28} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setGalleryModal(prev => {
+                        if (!prev) return null;
+                        const total = prev.urls.length;
+                        return { ...prev, index: (prev.index + 1) % total };
+                      });
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center border border-white/20 backdrop-blur-md shadow-2xl transition-transform hover:scale-110 active:scale-95"
+                    title="Próxima Foto"
+                  >
+                    <ChevronRight size={28} />
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Contador / Indicadores no rodapé do modal */}
+            {galleryModal.urls.length > 1 && (
+              <div 
+                className="mt-4 flex items-center gap-2 px-4 py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-xs text-white font-bold"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span>Foto {galleryModal.index + 1} de {galleryModal.urls.length}</span>
+                <div className="flex gap-1.5 ml-2">
+                  {galleryModal.urls.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setGalleryModal(prev => prev ? { ...prev, index: i } : null)}
+                      className={`w-2 h-2 rounded-full transition-all ${i === galleryModal.index ? 'w-5 bg-amber-400' : 'bg-white/40 hover:bg-white/70'}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

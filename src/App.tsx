@@ -94,13 +94,7 @@ interface UserReport {
 }
 
 const BACKGROUNDS = [
-  'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2094&auto=format&fit=crop', // default dark/blue
-  'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop', // neon/cyberpunk
-  'https://images.unsplash.com/photo-1550684376-efcbd6e3f031?q=80&w=2070&auto=format&fit=crop', // green matrix
-  'https://images.unsplash.com/photo-1509653087866-91f6c2ab5a42?q=80&w=2070&auto=format&fit=crop', // steampunk/gears
-  'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?q=80&w=1974&auto=format&fit=crop', // digital retro
-  'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1925&auto=format&fit=crop', // cinema retro
-  'https://images.unsplash.com/photo-1608222351212-18fe0ec7b13b?q=80&w=1974&auto=format&fit=crop', // comic book style
+  '/bg-app.png',
 ];
 
 const ISSUE_TYPES = [
@@ -4196,13 +4190,13 @@ export default function App() {
     <div className="flex h-[100dvh] w-full text-[#e2e8f0] font-sans overflow-hidden relative">
       {/* Background Image & Overlay */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-1000 ease-in-out"
-        style={{ backgroundImage: `url('${BACKGROUNDS[bgIndex]}')` }}
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: `url('/bg-app.png')` }}
       />
-      <div className="absolute inset-0 z-0 bg-gradient-to-br from-[#090b0e]/70 via-[#151828]/60 to-[#040507]/90 backdrop-blur-md" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#030611]/25 via-transparent to-[#020409]/40 pointer-events-none" />
 
       {/* Sidebar - Hidden on mobile, visible on md+ screens */}
-      <aside className="hidden md:flex w-64 border-r border-slate-800/50 bg-[#0c0e12]/80 backdrop-blur-xl flex-col p-6 relative z-10">
+      <aside className="hidden md:flex w-64 border-r border-slate-800/50 bg-[#0c0e12]/75 backdrop-blur-2xl flex-col p-6 relative z-10">
         <button
           type="button"
           onClick={handleGoHome}
@@ -4226,79 +4220,61 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col p-3 sm:p-6 md:p-8 pb-4 sm:pb-6 md:pb-8 overflow-hidden relative">
-        <header className="flex justify-between items-start md:items-center mb-4 md:mb-6 shrink-0 pt-1 md:pt-0">
-          <div className="flex items-center gap-3 md:gap-4">
-             <button
-               type="button"
-               onClick={handleGoHome}
-               className="md:hidden flex items-center justify-center drop-shadow-md mr-1 cursor-pointer hover:scale-105 transition-transform active:scale-95 focus:outline-none"
-               title="Voltar para a tela inicial"
-             >
-               <img src="/logo.png?v=2" alt="Logo" className="w-12 h-12 object-contain" />
-             </button>
-             <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight leading-tight">
-               Reportar <br className="md:hidden" />Problema Técnico
+        <header className="flex justify-between items-center mb-3 md:mb-6 shrink-0 pt-1 md:pt-0">
+          <div className="flex items-center gap-2.5 md:gap-4">
+             <h1 className="text-sm sm:text-base md:text-2xl font-bold text-white tracking-tight leading-tight">
+               Reportar <br className="sm:hidden" />Problema Técnico
              </h1>
           </div>
           
-          <div className="flex flex-col items-end gap-3 w-full md:w-auto mt-2 md:mt-0">
-            <div className="flex items-center gap-2 md:gap-3 text-sm text-slate-400 w-full md:w-auto justify-end">
-              <button
-                type="button"
-                onClick={handleInstallPWA}
-                className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 rounded-lg text-cyan-300 hover:text-cyan-200 font-bold transition-all h-9"
-                title="Baixar aplicativo PWA para celular e PC"
-              >
-                {isPWAInstalled ? <CheckCircle2 size={15} className="text-emerald-400" /> : <Download size={15} />}
-                <span className="hidden sm:inline">{isPWAInstalled ? 'App Instalado' : 'Baixar App'}</span>
-                <span className="sm:hidden">{isPWAInstalled ? 'App' : 'Baixar'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowUpdatesModal(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 rounded-lg text-emerald-300 hover:text-emerald-200 font-bold transition-all h-9"
-              >
-                <Clapperboard size={15} />
-                <span className="hidden sm:inline">Atualizações</span>
-              </button>
-              <button
-                id="tour-access-code"
-                type="button"
-                onClick={() => {
-                  if (loggedClientCode || isAdminLogged) {
-                    setActiveView(activeView === 'profile' ? 'dashboard' : 'profile');
-                  } else {
-                    setShowCodeModal(true);
-                  }
-                }}
-                className="flex items-center gap-2 px-3 py-2 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/30 rounded-lg text-indigo-300 hover:text-indigo-200 font-bold transition-all h-9"
-              >
-                {(loggedClientCode || isAdminLogged) ? (
-                  activeView === 'profile' ? <LayoutDashboard size={14} /> : <User size={14} />
-                ) : (
-                  <Key size={14} />
-                )}
-                <span className="hidden sm:inline">
-                  {(loggedClientCode || isAdminLogged)
-                    ? (activeView === 'profile' ? 'Início' : 'Meu Perfil')
-                    : 'Acessar com meu código'}
-                </span>
-                <span className="sm:hidden">
-                  {(loggedClientCode || isAdminLogged)
-                    ? (activeView === 'profile' ? 'Início' : 'Perfil')
-                    : 'Código'}
-                </span>
-              </button>
-              <button 
-                onClick={() => setShowLoginModal(true)}
-                className="w-9 h-9 shrink-0 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center hover:bg-slate-700 transition-colors relative"
-              >
-                 <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
-                 {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0 || unreadChatCount > 0)) && (
-                   <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
-                 )}
-              </button>
-            </div>
+          <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 text-sm text-slate-400 justify-end">
+            <button
+              type="button"
+              onClick={handleInstallPWA}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/35 rounded-xl text-teal-300 hover:text-teal-200 font-bold transition-all text-xs h-9 shadow-lg shadow-teal-500/10 active:scale-95"
+              title="Baixar aplicativo PWA para celular e PC"
+            >
+              <CheckCircle2 size={14} className="text-teal-400" />
+              <span>App</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowUpdatesModal(true)}
+              className="flex items-center justify-center p-2.5 bg-slate-800/60 hover:bg-slate-700/70 border border-slate-700/60 rounded-xl text-teal-300 hover:text-teal-200 transition-all h-9 w-9 active:scale-95"
+              title="Atualizações de Filmes e Séries"
+            >
+              <Clapperboard size={16} />
+            </button>
+            <button
+              id="tour-access-code"
+              type="button"
+              onClick={() => {
+                if (loggedClientCode || isAdminLogged) {
+                  setActiveView(activeView === 'profile' ? 'dashboard' : 'profile');
+                } else {
+                  setShowCodeModal(true);
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/35 rounded-xl text-indigo-200 hover:text-white font-bold transition-all text-xs h-9 shadow-lg shadow-indigo-600/10 active:scale-95"
+            >
+              <User size={14} className="text-indigo-300" />
+              <span className="hidden sm:inline">
+                {(loggedClientCode || isAdminLogged)
+                  ? (activeView === 'profile' ? 'Início' : 'Meu Perfil')
+                  : 'Meu Perfil'}
+              </span>
+              <span className="sm:hidden">Perfil</span>
+            </button>
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="w-9 h-9 shrink-0 rounded-full bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 flex items-center justify-center transition-all relative active:scale-95"
+              title="Painel do Administrador"
+            >
+               <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
+               {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0 || unreadChatCount > 0)) && (
+                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
+               )}
+            </button>
           </div>
         </header>
 

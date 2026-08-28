@@ -50,7 +50,9 @@ import {
   Share2,
   Sparkles,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Wifi,
+  ExternalLink
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -1099,6 +1101,41 @@ export default function App() {
                 </button>
               </div>
             )}
+
+            {/* Botão Teste de Conexão (Velocidade da Internet) */}
+            <div className="w-full mb-0.5">
+              <a
+                href="https://fast.com/pt/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full block relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 shadow-2xl shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />
+                <div className="relative bg-slate-900/90 group-hover:bg-transparent backdrop-blur-md px-4 sm:px-6 py-3.5 sm:py-4 md:py-5 rounded-[14px] flex items-center justify-between transition-colors duration-300">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="p-2.5 sm:p-3 rounded-xl bg-white/10 group-hover:scale-110 transition-transform">
+                      <Wifi className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-300" />
+                    </div>
+                    <div className="text-left">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-base sm:text-lg md:text-xl tracking-wide text-white leading-tight">
+                          Teste de Conexão
+                        </h3>
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          Fast.com
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs md:text-sm font-medium text-white/70">
+                        Testar a velocidade da sua internet
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-white/50 group-hover:text-white transition-colors">
+                    <ExternalLink size={18} className="group-hover:scale-110 transition-transform" />
+                  </div>
+                </div>
+              </a>
+            </div>
 
 
           </div>

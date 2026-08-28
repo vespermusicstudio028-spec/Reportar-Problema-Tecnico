@@ -4292,6 +4292,23 @@ export default function App() {
                   : 'Meu Perfil'}
               </span>
             </button>
+            {isAdminLogged && (
+              <button
+                type="button"
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold transition-all text-xs sm:text-sm h-11 sm:h-12 rounded-2xl shadow-lg shadow-amber-600/25 border border-amber-500/40 active:scale-95 shrink-0 relative"
+                title="Abrir Painel do Administrador"
+              >
+                <Shield size={18} className="text-white sm:w-5 sm:h-5" />
+                <span className="tracking-wide">
+                  <span className="hidden sm:inline">Painel Admin</span>
+                  <span className="sm:hidden">Painel</span>
+                </span>
+                {(newRequestsCount > 0 || newReportsCount > 0 || unreadChatCount > 0) && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-400 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
+                )}
+              </button>
+            )}
           </div>
         </header>
 

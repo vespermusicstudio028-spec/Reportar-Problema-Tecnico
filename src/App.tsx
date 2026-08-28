@@ -1655,17 +1655,15 @@ export default function App() {
     </motion.div>
   );
 
-  const currentClient = clients.find(c => c.code === loggedClientCode);
-
-  // Se o código no localStorage não corresponde a nenhum cliente real, limpa a sessão órfã
-  if (loggedClientCode && !currentClient && !isAdminLogged) {
-    localStorage.removeItem('iptv_access_code_v1');
-    localStorage.removeItem('tbi_active_client_code');
-    localStorage.removeItem('tbi_active_client_name');
-    localStorage.removeItem('tbi_client_phone');
-    if (loggedClientCode) setLoggedClientCode('');
-    if (loggedClientName) setLoggedClientName('');
-  }
+  const currentClient = (loggedClientCode 
+    ? clients.find(c => c.code.trim().toUpperCase() === loggedClientCode.trim().toUpperCase()) 
+    : null) || (loggedClientCode ? {
+      id: 'local_client',
+      name: loggedClientName || localStorage.getItem('tbi_active_client_name') || 'Cliente',
+      code: loggedClientCode,
+      canvasLink: 'https://thebestiptv.com',
+      addedAt: new Date().toISOString()
+    } : null);
 
   const renderProfileView = () => {
     const isAdminSession = isAdminLogged;
@@ -2307,10 +2305,15 @@ export default function App() {
 
   const handleAccessWithCode = (e: React.FormEvent) => {
     e.preventDefault();
-    const foundClient = clients.find(c => c.code === accessCode);
+    const cleanCode = accessCode.trim().toUpperCase();
+    const foundClient = clients.find(c => c.code.trim().toUpperCase() === cleanCode);
     if (foundClient) {
-      localStorage.setItem('iptv_access_code_v1', accessCode);
-      setLoggedClientCode(accessCode);
+      localStorage.setItem('iptv_access_code_v1', foundClient.code);
+      localStorage.setItem('tbi_active_client_code', foundClient.code);
+      localStorage.setItem('tbi_active_client_name', foundClient.name);
+      if (foundClient.phone) localStorage.setItem('tbi_client_phone', foundClient.phone);
+      setLoggedClientCode(foundClient.code);
+      setLoggedClientName(foundClient.name);
       setShowCodeModal(false);
       setAccessCode('');
       setAccessCodeError('');

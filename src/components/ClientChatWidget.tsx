@@ -21,7 +21,10 @@ import {
   AlertCircle,
   ArrowLeft,
   Paperclip,
-  FileText
+  FileText,
+  RefreshCcw,
+  Smartphone,
+  Radio
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
@@ -281,9 +284,95 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           read_by_client: false
         });
       } catch (autoErr) {
-        console.error('Erro ao disparar resposta automática de Pix:', autoErr);
+        console.error('Erro ao enviar confirmação automática de Pix:', autoErr);
       }
     }, 600);
+  };
+
+  // Iniciar fluxo de Renovação
+  const handleInitiateRenewal = async () => {
+    if (!activeCode || isSending) return;
+    setIsSending(true);
+    try {
+      const currentClientDisplayName = clientName || customClientName || 'Cliente';
+
+      // 1. Enviar mensagem do cliente solicitando renovação
+      await supabase.from('chat_messages').insert({
+        client_code: activeCode,
+        client_name: currentClientDisplayName,
+        sender: 'client',
+        message: '🔄 Gostaria de fazer uma renovação.',
+        read_by_admin: false,
+        read_by_client: true
+      });
+
+      // 2. Disparar resposta automática do bot com as opções
+      setTimeout(async () => {
+        try {
+          await supabase.from('chat_messages').insert({
+            client_code: activeCode,
+            client_name: 'Suporte The Best IPTV+',
+            sender: 'admin',
+            message: '🤖 *Central de Renovações:*\nQual renovação você deseja realizar?\n\n👉 Selecione uma das opções abaixo:',
+            read_by_admin: true,
+            read_by_client: false
+          });
+        } catch (botErr) {
+          console.error('Erro ao enviar opções de renovação:', botErr);
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Erro ao iniciar renovação:', err);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  // Selecionar opção de renovação (Sinal ou Aplicativo)
+  const handleSelectRenewalOption = async (option: 'sinal' | 'app') => {
+    if (!activeCode || isSending) return;
+    setIsSending(true);
+    try {
+      const currentClientDisplayName = clientName || customClientName || 'Cliente';
+      const isSinal = option === 'sinal';
+      const clientMsg = isSinal
+        ? '📡 *Renovação:* Gostaria de renovar o *Sinal do Streaming* (Lista de Canais, Filmes e Séries).'
+        : '📱 *Renovação:* Gostaria de renovar a licença/ativação do *Aplicativo*.';
+
+      // 1. Enviar escolha do cliente
+      await supabase.from('chat_messages').insert({
+        client_code: activeCode,
+        client_name: currentClientDisplayName,
+        sender: 'client',
+        message: clientMsg,
+        read_by_admin: false,
+        read_by_client: true
+      });
+
+      // 2. Resposta do bot de confirmação
+      setTimeout(async () => {
+        try {
+          const botConfirm = isSinal
+            ? '✅ Perfeito! Sua solicitação de renovação do *Sinal do Streaming* foi registrada com sucesso. O administrador já foi notificado!\n\n💡 Se você já fez o pagamento, utilize o botão 📎 para anexar o Comprovante Pix.'
+            : '✅ Perfeito! Sua solicitação de renovação do *Aplicativo* foi registrada com sucesso. O administrador já foi notificado!\n\n💡 Por favor, envie uma foto ou o código/MAC do aplicativo para agilizar a ativação.';
+
+          await supabase.from('chat_messages').insert({
+            client_code: activeCode,
+            client_name: 'Suporte The Best IPTV+',
+            sender: 'admin',
+            message: botConfirm,
+            read_by_admin: true,
+            read_by_client: false
+          });
+        } catch (botErr) {
+          console.error('Erro ao enviar confirmação de renovação:', botErr);
+        }
+      }, 600);
+    } catch (err) {
+      console.error('Erro ao selecionar opção de renovação:', err);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleClose = () => {
@@ -625,7 +714,50 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                                 isClientSender={isClient}
                               />
                             ) : (
-                              <p className="whitespace-pre-wrap">{msg.message}</p>
+                              <>
+                                <p className="whitespace-pre-wrap">{msg.message}</p>
+                                
+                                {/* Opções interativas de Renovação */}
+                                {!isClient && msg.message.includes('Central de Renovações') && (
+                                  <div className="mt-3 pt-3 border-t border-slate-700/60 flex flex-col gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectRenewalOption('sinal')}
+                                      disabled={isSending}
+                                      className="w-full p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-blue-600/35 to-indigo-600/25 hover:from-blue-600/50 hover:to-indigo-600/40 border border-blue-500/50 text-left transition-all active:scale-[0.98] flex items-center justify-between gap-2 text-white group shadow-md"
+                                    >
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="p-2 rounded-lg bg-blue-500/20 text-blue-300">
+                                          <Radio size={16} />
+                                        </div>
+                                        <div>
+                                          <span className="font-bold text-xs sm:text-sm block text-blue-200 group-hover:text-white">📡 Sinal do Streaming</span>
+                                          <span className="text-[10px] sm:text-xs text-blue-300/80">Canais, Filmes e Séries</span>
+                                        </div>
+                                      </div>
+                                      <span className="text-xs font-bold text-blue-300 group-hover:translate-x-1 transition-transform">Escolher →</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSelectRenewalOption('app')}
+                                      disabled={isSending}
+                                      className="w-full p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-emerald-600/35 to-teal-600/25 hover:from-emerald-600/50 hover:to-teal-600/40 border border-emerald-500/50 text-left transition-all active:scale-[0.98] flex items-center justify-between gap-2 text-white group shadow-md"
+                                    >
+                                      <div className="flex items-center gap-2.5">
+                                        <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300">
+                                          <Smartphone size={16} />
+                                        </div>
+                                        <div>
+                                          <span className="font-bold text-xs sm:text-sm block text-emerald-200 group-hover:text-white">📱 Aplicativo</span>
+                                          <span className="text-[10px] sm:text-xs text-emerald-300/80">Ativação / Licença do App</span>
+                                        </div>
+                                      </div>
+                                      <span className="text-xs font-bold text-emerald-300 group-hover:translate-x-1 transition-transform">Escolher →</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
                             )}
 
                             <div
@@ -649,7 +781,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Sugestões Rápidas de Tópicos (4 Colunas Responsivas) */}
+                {/* Sugestões Rápidas de Tópicos (Responsivas) */}
                 <div className="p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">
                   <div className="flex items-center justify-between mb-2 px-1">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
@@ -658,8 +790,19 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">Clique para enviar rapidamente</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {/* Atalho 1: Minha Área Exclusiva */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {/* Atalho 1: Renovar */}
+                    <button
+                      type="button"
+                      onClick={handleInitiateRenewal}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-amber-600/35 to-orange-600/25 hover:from-amber-600/50 hover:to-orange-600/40 text-amber-200 border border-amber-500/60 font-bold"
+                      title="Solicitar renovação de sinal ou aplicativo"
+                    >
+                      <span className="truncate">🔄 Renovar</span>
+                      <RefreshCcw size={13} className="text-amber-300 shrink-0" />
+                    </button>
+
+                    {/* Atalho 2: Minha Área Exclusiva */}
                     <button
                       type="button"
                       onClick={() => {
@@ -672,7 +815,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <ExternalLink size={13} className="text-indigo-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 2: O conteúdo não está carregando */}
+                    {/* Atalho 3: O conteúdo não está carregando */}
                     <button
                       type="button"
                       onClick={() => {
@@ -689,7 +832,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <Tv size={13} className="text-sky-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 3: Pedir Conteúdos */}
+                    {/* Atalho 4: Pedir Conteúdos */}
                     <button
                       type="button"
                       onClick={() => {
@@ -705,11 +848,11 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <span className="truncate">🎬 Pedir Conteúdo</span>
                     </button>
 
-                    {/* Atalho 4: Enviar Comprovante Pix (PDF) */}
+                    {/* Atalho 5: Enviar Comprovante Pix (PDF) */}
                     <button
                       type="button"
                       onClick={() => setShowPixUploadModal(true)}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold"
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold col-span-2 sm:col-span-1"
                     >
                       <span className="truncate">📄 Comprovante Pix</span>
                       <FileText size={13} className="text-emerald-300 shrink-0" />

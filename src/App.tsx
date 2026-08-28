@@ -1626,152 +1626,254 @@ export default function App() {
 
   const currentClient = clients.find(c => c.code === loggedClientCode);
 
-  const renderProfileView = () => (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="flex flex-col h-full"
-    >
-      <div className="mb-8 border-b border-white/5 pb-4">
-        <h2 className="text-2xl font-bold text-white tracking-tight">Meu Perfil</h2>
-        <p className="text-slate-400 text-sm">Gerencie suas informações de acesso</p>
-      </div>
+  // Se o código no localStorage não corresponde a nenhum cliente real, limpa a sessão órfã
+  if (loggedClientCode && !currentClient && !isAdminLogged) {
+    localStorage.removeItem('iptv_access_code_v1');
+    localStorage.removeItem('tbi_active_client_code');
+    localStorage.removeItem('tbi_active_client_name');
+    localStorage.removeItem('tbi_client_phone');
+    if (loggedClientCode) setLoggedClientCode('');
+    if (loggedClientName) setLoggedClientName('');
+  }
 
-      <div className="space-y-6 flex-1 overflow-y-auto pr-1 pb-4">
-        <div className="bg-gradient-to-br from-indigo-600 to-indigo-800 p-8 rounded-3xl relative overflow-hidden shadow-2xl shadow-indigo-600/20">
-          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-            <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 shadow-inner">
-              <User size={48} className="text-white" />
-            </div>
-            <div className="text-center md:text-left space-y-1">
-              <h3 className="text-2xl font-bold text-white tracking-tight">{currentClient ? currentClient.name : 'Usuário The Best IPTV'}</h3>
-              <p className="text-indigo-200/80 font-medium">{currentClient ? 'Cliente Final' : 'Conta Padrão'}</p>
-              <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
-                <span className={`w-2 h-2 rounded-full animate-pulse ${currentClient ? 'bg-emerald-400' : 'bg-slate-400'}`}></span>
-                <span className="text-xs text-white/70 font-semibold uppercase tracking-widest">{currentClient ? 'Acesso Ativo' : 'Não Logado'}</span>
-              </div>
-            </div>
-          </div>
-          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
-          <div className="absolute -top-10 -left-10 w-40 h-40 bg-black/10 rounded-full blur-3xl" />
+  const renderProfileView = () => {
+    const isAdminSession = isAdminLogged;
+    const isClientSession = !!currentClient;
+    const displayName = isAdminSession ? 'Administrador The Best IPTV+' : isClientSession ? currentClient!.name : 'Você não está conectado';
+    const displayRole = isAdminSession ? 'Painel Administrativo Completo' : isClientSession ? 'Cliente The Best IPTV+' : 'Nenhuma conta autenticada';
+    const displayActive = isAdminSession || isClientSession;
+    const headerGradient = isAdminSession
+      ? 'from-amber-600 via-orange-600 to-amber-800'
+      : isClientSession
+      ? 'from-indigo-600 to-indigo-800'
+      : 'from-slate-800 via-[#181d28] to-slate-900';
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -20 }}
+        className="flex flex-col h-full"
+      >
+        <div className="mb-8 border-b border-white/5 pb-4">
+          <h2 className="text-2xl font-bold text-white tracking-tight">Meu Perfil</h2>
+          <p className="text-slate-400 text-sm">Gerencie suas informações de acesso e credenciais</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#15181e] border border-slate-800 p-6 rounded-2xl space-y-4">
-            <h4 className="text-white font-bold flex items-center gap-2">
-              <Info size={18} className="text-indigo-400" /> Sobre esta conta
-            </h4>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
-                <span className="text-slate-500 text-sm">Tipo de Acesso</span>
-                <span className="text-slate-300 text-sm font-medium">Cliente Final</span>
+        <div className="space-y-6 flex-1 overflow-y-auto pr-1 pb-4">
+          {/* Card Principal de Identificação */}
+          <div className={`bg-gradient-to-br ${headerGradient} p-8 rounded-3xl relative overflow-hidden shadow-2xl border border-white/10`}>
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+              <div className="w-24 h-24 bg-white/15 backdrop-blur-md rounded-full flex items-center justify-center border border-white/25 shadow-inner">
+                {isAdminSession ? (
+                  <Shield size={46} className="text-white" />
+                ) : isClientSession ? (
+                  <User size={46} className="text-white" />
+                ) : (
+                  <Key size={46} className="text-slate-300" />
+                )}
               </div>
-              <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
-                <span className="text-slate-500 text-sm">Status da Sessão</span>
-                <span className="text-emerald-500 text-sm font-bold uppercase tracking-wider">OK</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-slate-500 text-sm">Local Storage ID</span>
-                <span className="text-slate-400 text-[10px] font-mono">iptv_user_v1</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#15181e] border border-slate-800 p-6 rounded-2xl space-y-4">
-            <h4 className="text-white font-bold flex items-center gap-2">
-              <HelpCircle size={18} className="text-indigo-400" /> Suporte & Ajuda
-            </h4>
-            <div className="space-y-3">
-              <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                Caso precise de auxílio além dos reportes técnicos, você pode entrar em contato com nossa central de atendimento especializada.
-              </p>
-              <button 
-                onClick={() => setIsClientChatOpen(true)}
-                className="w-full py-3 bg-violet-600/15 hover:bg-violet-600/25 border border-violet-500/30 text-violet-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-600/10"
-              >
-                <MessageSquare size={18} /> 💬 Chat ao Vivo com Administrador
-              </button>
-              {currentClient ? (
-                <>
-                  <button 
-                    onClick={() => window.open(currentClient.canvasLink, '_blank')}
-                    className="w-full py-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                  >
-                    <Tv size={18} /> Minha Área Exclusiva
-                  </button>
-                  <button 
-                    onClick={() => {
-                      localStorage.removeItem('iptv_access_code_v1');
-                      setLoggedClientCode('');
-                      setActiveView('dashboard');
-                    }}
-                    className="w-full py-3 bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                  >
-                    <LogOut size={18} /> Sair da Conta
-                  </button>
-                </>
-              ) : (
-                <button 
-                  onClick={() => setShowCodeModal(true)}
-                  className="w-full py-3 bg-indigo-600/10 hover:bg-indigo-600/20 border border-indigo-500/20 text-indigo-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
-                >
-                  <Key size={18} /> Fazer Login (Código)
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-4">
-          <AlertTriangle className="text-amber-500 shrink-0" size={24} />
-          <div>
-            <h5 className="text-amber-500 font-bold text-sm mb-1 uppercase tracking-wider">Segurança dos Dados</h5>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Suas informações de reporte são armazenadas localmente em seu navegador para seu controle privado. Ao limpar o cache do navegador ou trocar de dispositivo, o histórico local será removido.
-            </p>
-          </div>
-        </div>
-
-        {/* Bloco de Notificações Push */}
-        {'Notification' in window && (
-          <div className="p-6 bg-indigo-500/5 border border-indigo-500/15 rounded-2xl space-y-3">
-            <h4 className="text-white font-bold flex items-center gap-2">
-              <Bell size={18} className="text-indigo-400" /> Notificações Push
-            </h4>
-            {pushPermission === 'granted' ? (
-              <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <div>
-                  <p className="text-emerald-300 font-semibold text-sm">Notificações ativadas!</p>
-                  <p className="text-emerald-500/70 text-xs">Você receberá avisos quando o admin publicar um novo informe.</p>
+              <div className="text-center md:text-left space-y-1.5">
+                <h3 className="text-2xl font-black text-white tracking-tight">{displayName}</h3>
+                <p className="text-white/80 font-medium text-sm">{displayRole}</p>
+                <div className="flex items-center justify-center md:justify-start gap-2 mt-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${displayActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                  <span className="text-xs text-white/90 font-bold uppercase tracking-widest">
+                    {isAdminSession ? 'Administrador Conectado' : isClientSession ? `Código: ${currentClient!.code}` : 'Desconectado'}
+                  </span>
                 </div>
               </div>
-            ) : pushPermission === 'denied' ? (
-              <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
-                <AlertTriangle size={16} className="text-red-400 shrink-0" />
-                <p className="text-red-300 text-xs">Notificações bloqueadas. Desbloqueie nas configurações do navegador.</p>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Ative para receber alertas no seu celular/PC sempre que um novo informe ou evento for publicado — mesmo com o app fechado!
-                </p>
-                <button
-                  onClick={requestPushPermission}
-                  disabled={isPushLoading}
-                  className="w-full py-3 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {isPushLoading ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
-                  {isPushLoading ? 'Ativando...' : '🔔 Ativar Notificações'}
-                </button>
-              </>
-            )}
+            </div>
+            <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute -top-10 -left-10 w-48 h-48 bg-black/20 rounded-full blur-3xl" />
           </div>
-        )}
-      </div>
-    </motion.div>
-  );
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Sobre esta conta */}
+            <div className="bg-[#15181e] border border-slate-800 p-6 rounded-2xl space-y-4">
+              <h4 className="text-white font-bold flex items-center gap-2">
+                <Info size={18} className="text-indigo-400" /> Informações da Conta
+              </h4>
+              <div className="space-y-3.5">
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                  <span className="text-slate-500 text-sm">Tipo de Acesso</span>
+                  <span className="text-slate-200 text-sm font-semibold">
+                    {isAdminSession ? '🛡️ Administrador' : isClientSession ? '👤 Cliente Final' : '🔒 Visitante'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                  <span className="text-slate-500 text-sm">Status da Sessão</span>
+                  <span className={`text-sm font-bold uppercase tracking-wider ${displayActive ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    {displayActive ? 'Conectado' : 'Desconectado'}
+                  </span>
+                </div>
+                {isClientSession && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-500 text-sm">Código de Acesso</span>
+                    <span className="text-indigo-400 text-sm font-mono font-black">{currentClient!.code}</span>
+                  </div>
+                )}
+                {isAdminSession && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-500 text-sm">Nível de Permissão</span>
+                    <span className="text-amber-400 text-sm font-bold">Acesso Total</span>
+                  </div>
+                )}
+                {!displayActive && (
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-500 text-sm">Autenticação</span>
+                    <span className="text-slate-400 text-xs">Nenhum login realizado</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ações e Suporte */}
+            <div className="bg-[#15181e] border border-slate-800 p-6 rounded-2xl space-y-4">
+              <h4 className="text-white font-bold flex items-center gap-2">
+                <HelpCircle size={18} className="text-indigo-400" /> Opções e Acesso
+              </h4>
+              <div className="space-y-3">
+                {/* ADMIN LOGADO */}
+                {isAdminSession && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginModal(true)}
+                      className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-600/20 active:scale-[0.99]"
+                    >
+                      <Shield size={18} /> Abrir Painel do Administrador
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.removeItem('iptv_admin_logged');
+                        setIsAdminLogged(false);
+                        setActiveView('dashboard');
+                      }}
+                      className="w-full py-3 bg-red-600/15 hover:bg-red-600/25 border border-red-500/30 text-red-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <LogOut size={18} /> Sair do Painel Admin
+                    </button>
+                  </>
+                )}
+
+                {/* CLIENTE LOGADO */}
+                {isClientSession && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => window.open(currentClient!.canvasLink, '_blank')}
+                      className="w-full py-3 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <Tv size={18} /> Minha Área Exclusiva
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsClientChatOpen(true)}
+                      className="w-full py-3 bg-violet-600/15 hover:bg-violet-600/25 border border-violet-500/30 text-violet-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <MessageSquare size={18} /> Chat com o Suporte
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.removeItem('iptv_access_code_v1');
+                        localStorage.removeItem('tbi_active_client_code');
+                        localStorage.removeItem('tbi_active_client_name');
+                        localStorage.removeItem('tbi_client_phone');
+                        setLoggedClientCode('');
+                        setLoggedClientName('');
+                        setActiveView('dashboard');
+                      }}
+                      className="w-full py-3 bg-red-600/15 hover:bg-red-600/25 border border-red-500/30 text-red-400 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <LogOut size={18} /> Sair da Conta
+                    </button>
+                  </>
+                )}
+
+                {/* NÃO LOGADO (VISITANTE) */}
+                {!isAdminSession && !isClientSession && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setShowCodeModal(true)}
+                      className="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-[0.99]"
+                    >
+                      <Key size={18} /> Fazer Login (Código de Acesso)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginModal(true)}
+                      className="w-full py-3 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <Shield size={18} /> Login Admin (Exclusivo)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsClientChatOpen(true)}
+                      className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
+                    >
+                      <MessageSquare size={18} /> Suporte Técnico no Chat
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-start gap-4">
+            <AlertTriangle className="text-amber-500 shrink-0" size={24} />
+            <div>
+              <h5 className="text-amber-500 font-bold text-sm mb-1 uppercase tracking-wider">Segurança dos Dados</h5>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Suas informações de reporte são armazenadas localmente em seu navegador para seu controle privado. Ao limpar o cache do navegador ou trocar de dispositivo, o histórico local será removido.
+              </p>
+            </div>
+          </div>
+
+          {/* Bloco de Notificações Push */}
+          {'Notification' in window && (
+            <div className="p-6 bg-indigo-500/5 border border-indigo-500/15 rounded-2xl space-y-3">
+              <h4 className="text-white font-bold flex items-center gap-2">
+                <Bell size={18} className="text-indigo-400" /> Notificações Push
+              </h4>
+              {pushPermission === 'granted' ? (
+                <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <div>
+                    <p className="text-emerald-300 font-semibold text-sm">Notificações ativadas!</p>
+                    <p className="text-emerald-500/70 text-xs">Você receberá avisos quando o admin publicar um novo informe.</p>
+                  </div>
+                </div>
+              ) : pushPermission === 'denied' ? (
+                <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+                  <AlertTriangle size={16} className="text-red-400 shrink-0" />
+                  <p className="text-red-300 text-xs">Notificações bloqueadas. Desbloqueie nas configurações do navegador.</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Ative para receber alertas no seu celular/PC sempre que um novo informe ou evento for publicado — mesmo com o app fechado!
+                  </p>
+                  <button
+                    type="button"
+                    onClick={requestPushPermission}
+                    disabled={isPushLoading}
+                    className="w-full py-3 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isPushLoading ? <Loader2 size={18} className="animate-spin" /> : <Bell size={18} />}
+                    {isPushLoading ? 'Ativando...' : '🔔 Ativar Notificações'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
 
   const renderDashboard = () => (
     <AnimatePresence mode="wait">

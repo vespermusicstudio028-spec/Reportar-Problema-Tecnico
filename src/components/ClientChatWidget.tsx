@@ -30,6 +30,7 @@ import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } from '../lib/pixUtils';
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
+import { renderFormattedChatMessageText } from '../lib/chatFormat';
 
 interface ClientChatWidgetProps {
   clientCode?: string;
@@ -715,7 +716,9 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                               />
                             ) : (
                               <>
-                                <p className="whitespace-pre-wrap">{msg.message}</p>
+                                <div className="break-words">
+                                  {renderFormattedChatMessageText(msg.message, isClient)}
+                                </div>
                                 
                                 {/* Opções interativas de Renovação */}
                                 {!isClient && msg.message.includes('Central de Renovações') && (

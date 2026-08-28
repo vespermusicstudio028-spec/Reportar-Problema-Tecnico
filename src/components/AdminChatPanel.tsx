@@ -30,6 +30,7 @@ import {
   getAutomatedTurnReachedMessage, 
   getAutomatedFinishAttendanceMessage 
 } from '../lib/supportQueue';
+import { renderFormattedChatMessageText } from '../lib/chatFormat';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -668,7 +669,9 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                                   isClientSender={!isAdmin}
                                 />
                               ) : (
-                                <p className="whitespace-pre-wrap break-words pr-6">{msg.message}</p>
+                                <div className="break-words pr-6">
+                                  {renderFormattedChatMessageText(msg.message, isAdmin)}
+                                </div>
                               )}
 
                               {/* Botão de Copiar */}

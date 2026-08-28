@@ -4264,20 +4264,11 @@ export default function App() {
              </h1>
           </div>
           
-          <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 text-sm text-slate-400 justify-end">
-            <button
-              type="button"
-              onClick={handleInstallPWA}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/35 rounded-xl text-teal-300 hover:text-teal-200 font-bold transition-all text-xs h-9 shadow-lg shadow-teal-500/10 active:scale-95"
-              title="Baixar aplicativo PWA para celular e PC"
-            >
-              <CheckCircle2 size={14} className="text-teal-400" />
-              <span>App</span>
-            </button>
+          <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 text-sm text-slate-400 justify-end">
             <button
               type="button"
               onClick={() => setShowUpdatesModal(true)}
-              className="flex items-center justify-center p-2.5 bg-slate-800/60 hover:bg-slate-700/70 border border-slate-700/60 rounded-xl text-teal-300 hover:text-teal-200 transition-all h-9 w-9 active:scale-95"
+              className="flex items-center justify-center p-2.5 bg-slate-800/60 hover:bg-slate-700/70 border border-slate-700/60 rounded-xl text-teal-300 hover:text-teal-200 transition-all h-9 w-9 active:scale-95 shadow-md"
               title="Atualizações de Filmes e Séries"
             >
               <Clapperboard size={16} />
@@ -4301,16 +4292,6 @@ export default function App() {
                   : 'Meu Perfil'}
               </span>
               <span className="sm:hidden">Perfil</span>
-            </button>
-            <button 
-              onClick={() => setShowLoginModal(true)}
-              className="w-9 h-9 shrink-0 rounded-full bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 flex items-center justify-center transition-all relative active:scale-95"
-              title="Painel do Administrador"
-            >
-               <User size={16} className={isAdminLogged ? "text-indigo-400" : "text-slate-400"} />
-               {(isAdminLogged && (newRequestsCount > 0 || newReportsCount > 0 || unreadChatCount > 0)) && (
-                 <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-indigo-500 rounded-full border-2 border-[#0d0f18] animate-pulse"></span>
-               )}
             </button>
           </div>
         </header>

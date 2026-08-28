@@ -4264,14 +4264,14 @@ export default function App() {
              </h1>
           </div>
           
-          <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3 text-sm text-slate-400 justify-end">
+          <div className="flex items-center gap-2.5 sm:gap-3 text-sm text-slate-400 justify-end">
             <button
               type="button"
               onClick={() => setShowUpdatesModal(true)}
-              className="flex items-center justify-center p-2.5 bg-slate-800/60 hover:bg-slate-700/70 border border-slate-700/60 rounded-xl text-teal-300 hover:text-teal-200 transition-all h-9 w-9 active:scale-95 shadow-md"
+              className="flex items-center justify-center bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 rounded-2xl text-teal-300 hover:text-teal-200 transition-all h-11 w-11 sm:h-12 sm:w-12 active:scale-95 shadow-lg shadow-black/30 shrink-0"
               title="Atualizações de Filmes e Séries"
             >
-              <Clapperboard size={16} />
+              <Clapperboard size={20} className="sm:w-[22px] sm:h-[22px]" />
             </button>
             <button
               id="tour-access-code"
@@ -4283,15 +4283,14 @@ export default function App() {
                   setShowCodeModal(true);
                 }
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/35 rounded-xl text-indigo-200 hover:text-white font-bold transition-all text-xs h-9 shadow-lg shadow-indigo-600/10 active:scale-95"
+              className="flex items-center gap-2 px-4 sm:px-5 bg-indigo-600/25 hover:bg-indigo-600/35 border border-indigo-500/40 rounded-2xl text-white font-bold transition-all text-xs sm:text-sm h-11 sm:h-12 shadow-lg shadow-indigo-600/20 active:scale-95 shrink-0"
             >
-              <User size={14} className="text-indigo-300" />
-              <span className="hidden sm:inline">
+              <User size={18} className="text-indigo-300 sm:w-5 sm:h-5" />
+              <span className="tracking-wide">
                 {(loggedClientCode || isAdminLogged)
                   ? (activeView === 'profile' ? 'Início' : 'Meu Perfil')
                   : 'Meu Perfil'}
               </span>
-              <span className="sm:hidden">Perfil</span>
             </button>
           </div>
         </header>

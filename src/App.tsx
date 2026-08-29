@@ -4439,6 +4439,8 @@ export default function App() {
           clientCode={loggedClientCode}
           clientName={currentClient?.name}
           canvasLink={currentClient?.canvasLink}
+          clientPlan={currentClient?.plan}
+          clientPrice={currentClient?.price}
           onOpenCodeLogin={() => setShowCodeModal(true)}
           isOpenExternal={isClientChatOpen}
           onCloseExternal={() => setIsClientChatOpen(false)}

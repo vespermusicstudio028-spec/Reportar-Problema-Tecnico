@@ -30,12 +30,14 @@ import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } from '../lib/pixUtils';
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
-import { renderFormattedChatMessageText } from '../lib/chatFormat';
+import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 
 interface ClientChatWidgetProps {
   clientCode?: string;
   clientName?: string;
   canvasLink?: string;
+  clientPlan?: string;
+  clientPrice?: number;
   onOpenCodeLogin?: () => void;
   isOpenExternal?: boolean;
   onCloseExternal?: () => void;
@@ -47,6 +49,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   clientCode,
   clientName,
   canvasLink,
+  clientPlan,
+  clientPrice,
   onOpenCodeLogin,
   isOpenExternal,
   onCloseExternal,
@@ -350,12 +354,42 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         read_by_client: true
       });
 
-      // 2. Resposta do bot de confirmação
+      // 2. Determinar link de pagamento com base no plano do cliente
+      let payLink = '';
+      let payLabel = '';
+      let payValue = '';
+
+      if (isSinal) {
+        // Usar o plano cadastrado pelo admin, senão fallback para R$ 40
+        if (clientPrice === 35) {
+          payLink = 'https://mpago.la/2UJjaQb';
+          payLabel = 'Pagar R$ 35,00 via Mercado Pago';
+          payValue = 'R$ 35,00';
+        } else {
+          // Padrão: R$ 40,00
+          payLink = 'https://mpago.la/1FqmoD4';
+          payLabel = 'Pagar R$ 40,00 via Mercado Pago';
+          payValue = clientPrice ? `R$ ${Number(clientPrice).toFixed(2).replace('.', ',')}` : 'R$ 40,00';
+        }
+      } else {
+        // Renovação do Aplicativo
+        payLink = 'https://mpago.la/31zU6D3';
+        payLabel = 'Pagar Renovação do Aplicativo';
+        payValue = 'Ver valor no link';
+      }
+
+      const paymentMarker = `[PAYMENT_LINK:${payLink}:${payLabel}:${payValue}]`;
+
+      // 3. Resposta do bot com link de pagamento
       setTimeout(async () => {
         try {
+          const planInfo = isSinal
+            ? (clientPlan ? `*${clientPlan}*` : '*Sinal do Streaming*')
+            : '*Aplicativo*';
+
           const botConfirm = isSinal
-            ? '✅ Perfeito! Sua solicitação de renovação do *Sinal do Streaming* foi registrada com sucesso. O administrador já foi notificado!\n\n💡 Se você já fez o pagamento, utilize o botão 📎 para anexar o Comprovante Pix.'
-            : '✅ Perfeito! Sua solicitação de renovação do *Aplicativo* foi registrada com sucesso. O administrador já foi notificado!\n\n💡 Por favor, envie uma foto ou o código/MAC do aplicativo para agilizar a ativação.';
+            ? `✅ Certo! Sua solicitação de renovação do *Sinal do Streaming* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para realizar o pagamento de forma rápida e segura:\n\n${paymentMarker}\n\n📎 Após o pagamento, anexe o comprovante usando o botão de clipe.`
+            : `✅ Certo! Sua solicitação de renovação do *Aplicativo* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para pagar a renovação do aplicativo:\n\n${paymentMarker}\n\n📎 Após o pagamento, envie uma foto ou o código/MAC do seu aplicativo.`;
 
           await supabase.from('chat_messages').insert({
             client_code: activeCode,
@@ -719,6 +753,18 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                                 <div className="break-words">
                                   {renderFormattedChatMessageText(msg.message, isClient)}
                                 </div>
+
+                                {/* Card de Pagamento Mercado Pago */}
+                                {!isClient && (() => {
+                                  const payData = extractPaymentLink(msg.message);
+                                  return payData ? (
+                                    <PaymentLinkCard
+                                      url={payData.url}
+                                      label={payData.label}
+                                      value={payData.value}
+                                    />
+                                  ) : null;
+                                })()}
                                 
                                 {/* Opções interativas de Renovação */}
                                 {!isClient && msg.message.includes('Central de Renovações') && (

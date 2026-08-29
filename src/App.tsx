@@ -52,7 +52,10 @@ import {
   Upload,
   Image as ImageIcon,
   Wifi,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  Check,
+  Building2
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -339,6 +342,8 @@ export default function App() {
       if (cli) setClients(cli.map((c: any) => ({
         id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
         plan: c.plan || '', price: c.price ?? undefined,
+        activeApp: c.active_app || '',
+        accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
         addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
       })));
 
@@ -447,7 +452,12 @@ export default function App() {
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
-  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | null>(null);
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | null>(null);
+  const [copiedCrmLogin, setCopiedCrmLogin] = useState(false);
+  const [copiedCrmPassword, setCopiedCrmPassword] = useState(false);
+  const [showCrmPassword, setShowCrmPassword] = useState(false);
+  const [copiedClientDataId, setCopiedClientDataId] = useState<string | null>(null);
+  const [copiedEditClientData, setCopiedEditClientData] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [isClientChatOpen, setIsClientChatOpen] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
@@ -486,6 +496,19 @@ export default function App() {
     return localStorage.getItem('tbi_active_client_name') || '';
   });
 
+  interface AccessPointScreen {
+    screenNumber: number;
+    appName?: string;
+    appIcon?: string;
+    authType?: 'mac' | 'login';
+    macAddress?: string;
+    deviceKey?: string;
+    username?: string;
+    password?: string;
+    expiresAt?: string;
+    isLifetime?: boolean;
+  }
+
   interface Client {
     id: string;
     name: string;
@@ -495,11 +518,14 @@ export default function App() {
     phone?: string;
     plan?: string;
     price?: number;
+    activeApp?: string;
+    accessPoints?: AccessPointScreen[];
     addedAt: string;
     lastRecoveryAt?: string;
   }
   const [clients, setClients] = useState<Client[]>([]);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [activeScreenTab, setActiveScreenTab] = useState<number>(1);
 
   useEffect(() => {
     if (adminTab === 'clientes' && !clientCode) {
@@ -2202,6 +2228,8 @@ export default function App() {
           phone: updatedClient.phone,
           plan: updatedClient.plan || null,
           price: updatedClient.price ?? null,
+          access_points: updatedClient.accessPoints || [],
+          active_app: updatedClient.activeApp || updatedClient.accessPoints?.[0]?.appName || null,
         })
         .eq('id', updatedClient.id);
 
@@ -2446,6 +2474,15 @@ export default function App() {
                         badge: unreadChatCount > 0 ? unreadChatCount : null,
                         badgePulse: unreadChatCount > 0,
                       },
+                      {
+                        id: 'crm-tbi' as const,
+                        icon: <Globe size={22} />,
+                        title: '🌐 TBI Clientes CRM',
+                        subtitle: 'Sistema externo de clientes',
+                        accent: 'from-cyan-500/20 to-blue-500/10 border-cyan-500/30 hover:border-cyan-400/60 text-cyan-400',
+                        iconBg: 'bg-cyan-500/20 text-cyan-300',
+                        badge: 'CRM',
+                      },
                      {
                        id: 'suporte' as const,
                        icon: <AlertTriangle size={22} />,
@@ -2588,6 +2625,7 @@ export default function App() {
       'atualizacoes': { title: 'Atualizações de Conteúdo', subtitle: 'Catálogo de novos filmes e séries', icon: <RefreshCcw size={24} />, color: 'amber' },
       'pedidos': { title: 'Pedidos de Conteúdo', subtitle: 'Solicitações de filmes e séries enviadas pelos clientes', icon: <Clapperboard size={24} />, color: 'pink' },
       'chat': { title: '💬 Central de Chat & Atendimento', subtitle: 'Converse em tempo real com seus clientes', icon: <MessageSquare size={24} />, color: 'indigo' },
+      'crm-tbi': { title: '🌐 TBI Clientes — CRM', subtitle: 'Acesso ao portal externo e dados dos clientes', icon: <Globe size={24} />, color: 'cyan' },
       'suporte': { title: '🛠️ Suporte Técnico', subtitle: 'Chamados e problemas relatados pelos clientes', icon: <AlertTriangle size={24} />, color: 'red' },
     }[adminTab];
 
@@ -3072,7 +3110,10 @@ export default function App() {
                         {clients.map(client => (
                           <div 
                             key={client.id} 
-                            onClick={() => setEditingClient(client)}
+                            onClick={() => {
+                              setEditingClient(client);
+                              setActiveScreenTab(client.accessPoints?.length ? Math.min(5, Math.max(1, client.accessPoints.length)) : 1);
+                            }}
                             className="p-5 rounded-2xl border bg-[#0f131c] border-slate-800 hover:border-blue-500/40 hover:bg-[#141924] cursor-pointer transition-all flex justify-between items-center gap-4 group shadow-xl"
                           >
                             <div className="min-w-0">
@@ -3406,6 +3447,29 @@ export default function App() {
                               </div>
                             </div>
 
+                            {/* Informações do Aplicativo e Tela do Cliente */}
+                            {(reportClient?.activeApp || (reportClient?.accessPoints && reportClient.accessPoints.length > 0)) && (
+                              <div className="p-3 bg-sky-950/20 border border-sky-500/30 rounded-xl flex items-center justify-between gap-3 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-base">📱</span>
+                                  <div>
+                                    <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wider block">Aplicativo & Ponto de Acesso:</span>
+                                    <span className="text-xs font-bold text-white">
+                                      {reportClient.activeApp || reportClient.accessPoints?.[0]?.appName || 'Aplicativo Cadastrado'}
+                                    </span>
+                                  </div>
+                                </div>
+                                {reportClient.accessPoints?.[0]?.macAddress && (
+                                  <div className="text-right">
+                                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Endereço MAC:</span>
+                                    <span className="text-xs font-mono font-bold text-sky-300">
+                                      {reportClient.accessPoints[0].macAddress}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {report.description && (
                               <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800">
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Descrição do Cliente:</p>
@@ -3453,6 +3517,184 @@ export default function App() {
               {adminTab === 'chat' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                   <AdminChatPanel clientsList={clients} />
+                </div>
+              )}
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: TBI CLIENTES CRM              */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'crm-tbi' && (
+                <div className="space-y-6">
+                  {/* Banner / Card de Credenciais do Administrador */}
+                  <div className="p-6 md:p-8 rounded-3xl bg-gradient-to-br from-[#0f172a] to-[#0d1322] border border-cyan-500/30 shadow-2xl space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center border border-cyan-500/30 shadow-lg shadow-cyan-500/10 shrink-0">
+                          <Globe size={26} />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            TBI Clientes — CRM
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-semibold">
+                              Portal Externo
+                            </span>
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Sistema de gestão de clientes: <span className="text-cyan-300 font-mono">https://tbi-clientes-ltda.vercel.app/#</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <a
+                        href="https://tbi-clientes-ltda.vercel.app/#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-5 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-lg shadow-cyan-600/30 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0"
+                      >
+                        <ExternalLink size={16} /> Abrir Sistema Externo ↗
+                      </a>
+                    </div>
+
+                    {/* Cartões de Credenciais de Acesso Rápido */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Login */}
+                      <div className="p-4 rounded-2xl bg-[#131b2e] border border-slate-700/80 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">👤 Login / E-mail de Acesso</span>
+                          <span className="text-sm md:text-base font-mono font-bold text-cyan-200 truncate block">
+                            tbiclientesltda@gmail.com
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText('tbiclientesltda@gmail.com');
+                            setCopiedCrmLogin(true);
+                            setTimeout(() => setCopiedCrmLogin(false), 2000);
+                          }}
+                          className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-1.5 shrink-0"
+                        >
+                          {copiedCrmLogin ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                          {copiedCrmLogin ? 'Copiado!' : 'Copiar'}
+                        </button>
+                      </div>
+
+                      {/* Senha */}
+                      <div className="p-4 rounded-2xl bg-[#131b2e] border border-slate-700/80 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">🔑 Senha de Acesso</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm md:text-base font-mono font-bold text-cyan-200 block">
+                              {showCrmPassword ? '#Senhasecreta2e' : '••••••••••••••••'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowCrmPassword(!showCrmPassword)}
+                              className="text-slate-400 hover:text-white transition-colors"
+                              title={showCrmPassword ? "Ocultar senha" : "Ver senha"}
+                            >
+                              {showCrmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText('#Senhasecreta2e');
+                            setCopiedCrmPassword(true);
+                            setTimeout(() => setCopiedCrmPassword(false), 2000);
+                          }}
+                          className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 flex items-center gap-1.5 shrink-0"
+                        >
+                          {copiedCrmPassword ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                          {copiedCrmPassword ? 'Copiado!' : 'Copiar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Visualizador Integrado / Iframe */}
+                  <div className="p-4 bg-[#0f131c] rounded-3xl border border-slate-800 space-y-3 shadow-2xl">
+                    <div className="flex items-center justify-between px-2">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <Monitor size={15} className="text-cyan-400" /> Acesso Embutido ao CRM
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href="https://tbi-clientes-ltda.vercel.app/#"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
+                        >
+                          Abrir em tela cheia ↗
+                        </a>
+                      </div>
+                    </div>
+                    <div className="w-full h-[600px] rounded-2xl overflow-hidden border border-slate-800 bg-[#020617] relative">
+                      <iframe
+                        src="https://tbi-clientes-ltda.vercel.app/#"
+                        title="TBI Clientes CRM"
+                        className="w-full h-full border-0"
+                        allow="clipboard-read; clipboard-write"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Lista de Clientes com Exportação para o CRM */}
+                  <div className="p-6 bg-[#0f131c] rounded-3xl border border-slate-800 space-y-4 shadow-2xl">
+                    <h3 className="text-white font-bold text-lg flex items-center justify-between border-b border-slate-800 pb-3">
+                      <span className="flex items-center gap-2">
+                        <User size={20} className="text-cyan-400" /> Dados dos Clientes p/ Cadastro no CRM ({clients.length})
+                      </span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {clients.map(client => {
+                        const clientDataText = `👤 Nome: ${client.name}\n🔑 Código: ${client.code}\n📱 Telefone: ${client.phone || 'Não informado'}\n✉️ E-mail: ${client.email || 'Não informado'}\n💰 Plano: ${client.price ? `R$ ${Number(client.price).toFixed(2).replace('.', ',')}` : 'R$ 40,00'}${client.plan ? ` (${client.plan})` : ''}\n🌐 Canva: ${client.canvasLink}`;
+                        const isCopied = copiedClientDataId === client.id;
+
+                        return (
+                          <div key={client.id} className="p-4 rounded-2xl bg-[#141926] border border-slate-800 flex flex-col justify-between gap-3">
+                            <div>
+                              <div className="flex items-center justify-between gap-2">
+                                <h4 className="font-bold text-white text-base truncate">{client.name}</h4>
+                                <span className="text-xs px-2 py-0.5 rounded-lg bg-cyan-900/40 text-cyan-300 font-mono font-bold border border-cyan-700/40">
+                                  {client.code}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap text-xs text-slate-400">
+                                {client.phone && <span>📱 {client.phone}</span>}
+                                {client.price && <span className="text-emerald-400 font-semibold">💰 R$ {Number(client.price).toFixed(2).replace('.', ',')}</span>}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(clientDataText);
+                                  setCopiedClientDataId(client.id);
+                                  setTimeout(() => setCopiedClientDataId(null), 2000);
+                                }}
+                                className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold text-xs rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 transition-all"
+                              >
+                                {isCopied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                                {isCopied ? 'Dados Copiados!' : 'Copiar Dados p/ CRM'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingClient(client)}
+                                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold border border-slate-700"
+                                title="Editar cliente"
+                              >
+                                <Pencil size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -3705,6 +3947,261 @@ export default function App() {
                 />
               </div>
 
+              {/* ───────────────────────────────────────────────────────────── */}
+              {/* PONTOS DE ACESSO (TELAS) & APLICATIVO DO CLIENTE              */}
+              {/* ───────────────────────────────────────────────────────────── */}
+              {(() => {
+                const currentScreens: AccessPointScreen[] = [1, 2, 3, 4, 5].map(num => {
+                  const existing = editingClient.accessPoints?.find(s => s.screenNumber === num);
+                  return existing || {
+                    screenNumber: num,
+                    appName: 'NEW HYBRID',
+                    authType: 'mac' as const,
+                    macAddress: '',
+                    deviceKey: '',
+                    username: '',
+                    password: '',
+                    expiresAt: '',
+                    isLifetime: false
+                  };
+                });
+
+                const selectedCount = activeScreenTab; // Quantidade de telas ativas (1 a 5)
+
+                const updateScreenByNumber = (screenNum: number, updates: Partial<AccessPointScreen>) => {
+                  const updatedScreens = currentScreens.map(s => {
+                    if (s.screenNumber === screenNum) {
+                      return { ...s, ...updates };
+                    }
+                    return s;
+                  });
+
+                  setEditingClient({
+                    ...editingClient,
+                    accessPoints: updatedScreens.slice(0, selectedCount),
+                    activeApp: updatedScreens[0]?.appName || editingClient.activeApp
+                  });
+                };
+
+                return (
+                  <div className="pt-2 border-t border-slate-800 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <span>📱</span> Pontos de Acesso (Telas)
+                      </label>
+                      <span className="text-[11px] text-slate-400 font-medium">Selecione a quantidade de telas</span>
+                    </div>
+
+                    {/* Botões de Seleção da Quantidade de Telas (1 a 5) */}
+                    <div className="grid grid-cols-5 gap-2">
+                      {[1, 2, 3, 4, 5].map((screenNum) => {
+                        const isSelected = selectedCount === screenNum;
+                        return (
+                          <button
+                            key={screenNum}
+                            type="button"
+                            onClick={() => {
+                              setActiveScreenTab(screenNum);
+                              setEditingClient({
+                                ...editingClient,
+                                accessPoints: currentScreens.slice(0, screenNum),
+                              });
+                            }}
+                            className={`py-3 rounded-2xl font-black text-base transition-all relative flex items-center justify-center border-2 ${
+                              isSelected
+                                ? 'bg-sky-500 border-sky-400 text-white shadow-[0_0_18px_rgba(14,165,233,0.45)] scale-[1.02]'
+                                : 'bg-[#0f172a] border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                            }`}
+                          >
+                            <span>{screenNum}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Lista de Telas Selecionadas (Ex: se for 2 telas, renderiza Tela 1 e Tela 2) */}
+                    <div className="space-y-4">
+                      {Array.from({ length: selectedCount }, (_, i) => i + 1).map((screenNum) => {
+                        const screen = currentScreens.find(s => s.screenNumber === screenNum) || {
+                          screenNumber: screenNum,
+                          appName: 'NEW HYBRID',
+                          authType: 'mac' as const,
+                          macAddress: '',
+                          deviceKey: '',
+                          username: '',
+                          password: '',
+                          expiresAt: '',
+                          isLifetime: false
+                        };
+
+                        return (
+                          <div
+                            key={screenNum}
+                            className="p-4 sm:p-5 bg-[#0e1626] border border-slate-800/90 rounded-2xl shadow-xl space-y-3"
+                          >
+                            <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
+                              {/* Foto / Ícone do Aplicativo */}
+                              <div className="flex flex-col items-center gap-1.5 shrink-0">
+                                <label className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-b from-[#1b1923] to-[#111016] border border-amber-500/30 p-2 flex flex-col items-center justify-center text-center shadow-lg relative overflow-hidden group cursor-pointer hover:border-amber-400 transition-all">
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => {
+                                          if (ev.target?.result) {
+                                            updateScreenByNumber(screenNum, { appIcon: ev.target.result as string });
+                                          }
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                  />
+                                  {screen.appIcon ? (
+                                    <img src={screen.appIcon} alt="App Logo" className="w-full h-full object-contain rounded-xl" />
+                                  ) : (
+                                    <div className="text-amber-400 font-bold tracking-tight leading-tight uppercase flex flex-col items-center justify-center h-full">
+                                      <span className="text-2xl">🦋</span>
+                                      <span className="font-black text-[9px] text-amber-300 truncate max-w-[75px] mt-0.5">
+                                        {screen.appName || 'NEW HYBRID'}
+                                      </span>
+                                      <span className="text-[7px] text-amber-400/60 font-sans tracking-widest block scale-90">STREAM WITHOUT LIMITS</span>
+                                    </div>
+                                  )}
+                                </label>
+                                <span className="text-[10px] text-slate-400 text-center max-w-[90px] leading-tight block">
+                                  Toque para adicionar foto do App
+                                </span>
+                              </div>
+
+                              {/* Campos de Acesso e Configuração da Tela */}
+                              <div className="flex-1 space-y-3 min-w-0 w-full">
+                                {/* Top: ACESSO TELA X + Toggle MAC / LOGIN */}
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-bold text-sky-400 uppercase tracking-wider">
+                                    ACESSO TELA {screenNum}
+                                  </span>
+                                  <div className="flex items-center gap-1 bg-[#131b2c] p-1 rounded-lg border border-slate-700/80">
+                                    <button
+                                      type="button"
+                                      onClick={() => updateScreenByNumber(screenNum, { authType: 'mac' })}
+                                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded transition-colors ${
+                                        screen.authType !== 'login'
+                                          ? 'bg-sky-500 text-white shadow-sm'
+                                          : 'text-slate-400 hover:text-white'
+                                      }`}
+                                    >
+                                      MAC
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateScreenByNumber(screenNum, { authType: 'login' })}
+                                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded transition-colors ${
+                                        screen.authType === 'login'
+                                          ? 'bg-sky-500 text-white shadow-sm'
+                                          : 'text-slate-400 hover:text-white'
+                                      }`}
+                                    >
+                                      LOGIN
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Input de MAC ou Login */}
+                                {screen.authType !== 'login' ? (
+                                  <div className="space-y-2">
+                                    <input
+                                      type="text"
+                                      value={screen.macAddress || ''}
+                                      onChange={(e) => updateScreenByNumber(screenNum, { macAddress: e.target.value })}
+                                      placeholder="9d:10:68:d9:be:91"
+                                      className="w-full bg-[#0a101d] border border-slate-700/80 rounded-xl px-4 py-2.5 text-white font-mono text-sm focus:border-sky-500 outline-none transition-colors"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={screen.deviceKey || ''}
+                                      onChange={(e) => updateScreenByNumber(screenNum, { deviceKey: e.target.value })}
+                                      placeholder="Device Key / Código de Ativação (Opcional)"
+                                      className="w-full bg-[#0a101d] border border-slate-700/80 rounded-xl px-4 py-2 text-slate-300 text-xs focus:border-sky-500 outline-none transition-colors"
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      type="text"
+                                      value={screen.username || ''}
+                                      onChange={(e) => updateScreenByNumber(screenNum, { username: e.target.value })}
+                                      placeholder="Usuário"
+                                      className="w-full bg-[#0a101d] border border-slate-700/80 rounded-xl px-3 py-2 text-white text-xs focus:border-sky-500 outline-none"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={screen.password || ''}
+                                      onChange={(e) => updateScreenByNumber(screenNum, { password: e.target.value })}
+                                      placeholder="Senha"
+                                      className="w-full bg-[#0a101d] border border-slate-700/80 rounded-xl px-3 py-2 text-white text-xs focus:border-sky-500 outline-none"
+                                    />
+                                  </div>
+                                )}
+
+                                {/* EXPIRA EM */}
+                                <div className="space-y-1.5 pt-1">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-sky-400 uppercase tracking-wider">
+                                      EXPIRA EM
+                                    </span>
+                                    {screen.isLifetime && (
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                        VITALÍCIO ATIVO
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="datetime-local"
+                                      disabled={screen.isLifetime}
+                                      value={screen.expiresAt || ''}
+                                      onChange={(e) => updateScreenByNumber(screenNum, { expiresAt: e.target.value, isLifetime: false })}
+                                      className="flex-1 bg-[#0a101d] border border-slate-700/80 rounded-xl px-3 py-2 text-white text-xs focus:border-sky-500 outline-none disabled:opacity-50"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const now = new Date();
+                                        now.setFullYear(now.getFullYear() + 1);
+                                        const iso = now.toISOString().slice(0, 16);
+                                        updateScreenByNumber(screenNum, { expiresAt: iso, isLifetime: false });
+                                      }}
+                                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-700 shrink-0"
+                                    >
+                                      1 ANO
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => updateScreenByNumber(screenNum, { isLifetime: !screen.isLifetime, expiresAt: screen.isLifetime ? '' : 'VITALÍCIO' })}
+                                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 ${
+                                        screen.isLifetime
+                                          ? 'bg-emerald-600 text-white border-emerald-500 shadow-md shadow-emerald-600/30'
+                                          : 'bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/50 border-emerald-700/50'
+                                      }`}
+                                    >
+                                      VITALÍCIO
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Valor do Plano */}
               <div className="pt-2 border-t border-slate-800">
                 <label className="block text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
@@ -3781,6 +4278,36 @@ export default function App() {
                     </div>
                   );
                 })()}
+              </div>
+
+              {/* Atalhos do TBI Clientes CRM */}
+              <div className="p-3.5 bg-cyan-950/20 border border-cyan-500/30 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                    <Globe size={14} className="text-cyan-400" /> TBI Clientes — CRM
+                  </span>
+                  <a
+                    href="https://tbi-clientes-ltda.vercel.app/#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[11px] font-bold text-cyan-400 hover:underline flex items-center gap-1"
+                  >
+                    Abrir CRM ↗
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const clientDataText = `👤 Nome: ${editingClient.name}\n🔑 Código: ${editingClient.code}\n📱 Telefone: ${editingClient.phone || 'Não informado'}\n✉️ E-mail: ${editingClient.email || 'Não informado'}\n💰 Plano: ${editingClient.price ? `R$ ${Number(editingClient.price).toFixed(2).replace('.', ',')}` : 'R$ 40,00'}${editingClient.plan ? ` (${editingClient.plan})` : ''}\n🌐 Canva: ${editingClient.canvasLink}`;
+                    navigator.clipboard.writeText(clientDataText);
+                    setCopiedEditClientData(true);
+                    setTimeout(() => setCopiedEditClientData(false), 2000);
+                  }}
+                  className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-cyan-200 font-bold text-xs rounded-lg border border-slate-700 flex items-center justify-center gap-1.5 transition-all"
+                >
+                  {copiedEditClientData ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                  {copiedEditClientData ? 'Dados Copiados!' : 'Copiar Dados do Cliente p/ CRM'}
+                </button>
               </div>
 
               <button

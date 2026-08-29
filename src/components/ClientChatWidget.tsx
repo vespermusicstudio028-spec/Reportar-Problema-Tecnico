@@ -378,7 +378,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         payValue = 'Ver valor no link';
       }
 
-      const paymentMarker = `[PAYMENT_LINK:${payLink}:${payLabel}:${payValue}]`;
+      const paymentMarker = `[PAYMENT_LINK:${payLink}|||${payLabel}|||${payValue}]`;
 
       // 3. Resposta do bot com link de pagamento
       setTimeout(async () => {

@@ -47,13 +47,27 @@ export function renderFormattedChatMessageText(text: string, isSenderSelf: boole
  * Formato: [PAYMENT_LINK:url:label:value]
  */
 export function extractPaymentLink(text: string): { url: string; label: string; value: string } | null {
-  const match = text.match(/\[PAYMENT_LINK:([^:]+):([^:]+):([^\]]+)\]/);
-  if (!match) return null;
-  return {
-    url: match[1],
-    label: match[2],
-    value: match[3],
-  };
+  // Novo formato seguro com delimitador '|||'
+  const match = text.match(/\[PAYMENT_LINK:(.+?)\|\|\|(.+?)\|\|\|([^\]]+)\]/);
+  if (match) {
+    return {
+      url: match[1].trim(),
+      label: match[2].trim(),
+      value: match[3].trim(),
+    };
+  }
+
+  // Compatibilidade caso haja mensagens legadas no banco
+  const matchOld = text.match(/\[PAYMENT_LINK:(https:\/\/[^:\s\]]+):?([^:]*):?([^\]]*)\]/i);
+  if (matchOld) {
+    return {
+      url: matchOld[1].trim(),
+      label: matchOld[2]?.trim() || 'Pagar via Mercado Pago',
+      value: matchOld[3]?.trim() || '',
+    };
+  }
+
+  return null;
 }
 
 /**

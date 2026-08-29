@@ -30,7 +30,7 @@ import {
   getAutomatedTurnReachedMessage, 
   getAutomatedFinishAttendanceMessage 
 } from '../lib/supportQueue';
-import { renderFormattedChatMessageText } from '../lib/chatFormat';
+import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -671,6 +671,18 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                               ) : (
                                 <div className="break-words pr-6">
                                   {renderFormattedChatMessageText(msg.message, isAdmin)}
+
+                                  {/* Card de Pagamento Mercado Pago */}
+                                  {(() => {
+                                    const payData = extractPaymentLink(msg.message);
+                                    return payData ? (
+                                      <PaymentLinkCard
+                                        url={payData.url}
+                                        label={payData.label}
+                                        value={payData.value}
+                                      />
+                                    ) : null;
+                                  })()}
                                 </div>
                               )}
 

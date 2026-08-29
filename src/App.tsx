@@ -3875,27 +3875,45 @@ export default function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-3 sm:p-4 md:p-6 overflow-hidden"
           onClick={() => setEditingClient(null)}
         >
           <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
-            className="bg-[#0c0e12] border border-slate-700 w-full max-w-lg rounded-2xl p-6 relative shadow-2xl"
+            className="bg-[#0c0e12] border border-slate-700 w-full max-w-xl max-h-[92vh] sm:max-h-[88vh] rounded-3xl relative shadow-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              onClick={() => setEditingClient(null)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-xl transition-colors"
+            {/* Header Fixo do Modal */}
+            <div className="px-5 sm:px-6 py-4 border-b border-slate-800 bg-[#0f131c] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold border border-indigo-500/30">
+                  <User size={20} />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-white leading-tight">Informações do Cliente</h2>
+                  <p className="text-[11px] text-slate-400">Edite dados, pontos de acesso e valores</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingClient(null)}
+                className="p-2 text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl transition-colors border border-slate-700"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Formulário com Scroll Interno Fluido */}
+            <form
+              id="editClientForm"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveClient(editingClient);
+              }}
+              className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-6 space-y-4 text-left"
             >
-              <X size={20} />
-            </button>
-            <h2 className="text-xl font-bold text-white mb-6">Informações do Cliente</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleSaveClient(editingClient);
-            }} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-400 mb-1">Nome</label>
                 <input
@@ -4309,14 +4327,18 @@ export default function App() {
                   {copiedEditClientData ? 'Dados Copiados!' : 'Copiar Dados do Cliente p/ CRM'}
                 </button>
               </div>
+            </form>
 
+            {/* Rodapé Fixo com Botão de Salvar */}
+            <div className="p-4 sm:p-5 border-t border-slate-800 bg-[#0f131c] shrink-0">
               <button
                 type="submit"
-                className="w-full py-3 mt-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center"
+                form="editClientForm"
+                className="w-full py-3.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center text-sm active:scale-[0.99]"
               >
                 Salvar Alterações
               </button>
-            </form>
+            </div>
           </motion.div>
         </motion.div>
       </AnimatePresence>

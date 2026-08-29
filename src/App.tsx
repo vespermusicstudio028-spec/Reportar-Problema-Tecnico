@@ -337,7 +337,9 @@ export default function App() {
 
       const { data: cli } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
       if (cli) setClients(cli.map((c: any) => ({
-        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone, addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
+        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
+        plan: c.plan || '', price: c.price ?? undefined,
+        addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
       })));
 
       const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
@@ -491,6 +493,8 @@ export default function App() {
     canvasLink: string;
     email?: string;
     phone?: string;
+    plan?: string;
+    price?: number;
     addedAt: string;
     lastRecoveryAt?: string;
   }
@@ -2196,6 +2200,8 @@ export default function App() {
           canvas_link: updatedClient.canvasLink,
           email: updatedClient.email,
           phone: updatedClient.phone,
+          plan: updatedClient.plan || null,
+          price: updatedClient.price ?? null,
         })
         .eq('id', updatedClient.id);
 
@@ -3074,6 +3080,12 @@ export default function App() {
                               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                 <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-mono border border-slate-700">Código: {client.code}</span>
                                 {client.phone && <span className="text-xs text-slate-400">{client.phone}</span>}
+                                {client.price !== undefined && client.price !== null && (
+                                  <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-900/40 text-emerald-300 font-bold border border-emerald-700/40">
+                                    💰 R$ {Number(client.price).toFixed(2).replace('.', ',')}
+                                    {client.plan ? ` – ${client.plan}` : ''}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <div className="flex items-center shrink-0 gap-1.5">
@@ -3692,10 +3704,88 @@ export default function App() {
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
-              
+
+              {/* Valor do Plano */}
+              <div className="pt-2 border-t border-slate-800">
+                <label className="block text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+                  <span>💰</span> Valor do Plano
+                </label>
+                <div className="grid grid-cols-1 gap-2">
+                  {([
+                    { label: '📡 Plano R$ 40,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 40, link: 'https://mpago.la/1FqmoD4', color: 'indigo' },
+                    { label: '📡 Plano R$ 35,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 35, link: 'https://mpago.la/2UJjaQb', color: 'blue' },
+                    { label: '📱 Renovação do Aplicativo', plan: 'Aplicativo', price: 0, link: 'https://mpago.la/31zU6D3', color: 'emerald' },
+                  ] as const).map((opt) => {
+                    const isSelected = editingClient.price === opt.price && editingClient.plan === opt.plan;
+                    const borderColor = opt.color === 'indigo' ? 'border-indigo-500' : opt.color === 'blue' ? 'border-blue-500' : 'border-emerald-500';
+                    const bgColor = opt.color === 'indigo' ? 'bg-indigo-600/20' : opt.color === 'blue' ? 'bg-blue-600/20' : 'bg-emerald-600/20';
+                    const textColor = opt.color === 'indigo' ? 'text-indigo-300' : opt.color === 'blue' ? 'text-blue-300' : 'text-emerald-300';
+                    return (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        onClick={() => setEditingClient({ ...editingClient, plan: opt.plan, price: opt.price })}
+                        className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-between gap-3 ${
+                          isSelected ? `${borderColor} ${bgColor}` : 'border-slate-700 bg-slate-900 hover:border-slate-500'
+                        }`}
+                      >
+                        <span className={`font-bold text-sm ${isSelected ? textColor : 'text-slate-300'}`}>{opt.label}</span>
+                        {isSelected && <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-white/10 text-white">✓ Selecionado</span>}
+                      </button>
+                    );
+                  })}
+                  {/* Opção personalizada */}
+                  <div className="flex gap-2 mt-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Valor personalizado (R$)"
+                      value={editingClient.price !== undefined && ![40, 35, 0].includes(editingClient.price) ? editingClient.price : ''}
+                      onChange={(e) => setEditingClient({ ...editingClient, price: e.target.value ? parseFloat(e.target.value) : undefined, plan: 'Personalizado' })}
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all placeholder-slate-500"
+                    />
+                    {editingClient.price !== undefined && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingClient({ ...editingClient, price: undefined, plan: '' })}
+                        className="px-3 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded-xl text-xs border border-red-800/50 transition-all"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Link de pagamento automático */}
+                {editingClient.price !== undefined && (() => {
+                  let payLink = '';
+                  let payLabel = '';
+                  if (editingClient.price === 40) { payLink = 'https://mpago.la/1FqmoD4'; payLabel = 'Link Pix R$ 40,00'; }
+                  else if (editingClient.price === 35) { payLink = 'https://mpago.la/2UJjaQb'; payLabel = 'Link Pix R$ 35,00'; }
+                  else if (editingClient.price === 0 && editingClient.plan === 'Aplicativo') { payLink = 'https://mpago.la/31zU6D3'; payLabel = 'Link Renovação App'; }
+                  if (!payLink) return null;
+                  return (
+                    <div className="mt-3 p-3 bg-emerald-900/20 border border-emerald-700/40 rounded-xl flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-emerald-400 font-bold">{payLabel}</p>
+                        <p className="text-[11px] text-emerald-300/70 font-mono truncate max-w-[200px]">{payLink}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => window.open(payLink, '_blank')}
+                        className="shrink-0 px-3 py-1.5 bg-emerald-700/30 hover:bg-emerald-700/50 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-600/40 transition-all"
+                      >
+                        Abrir 🔗
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+
               <button
                 type="submit"
-                className="w-full py-3 mt-6 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center"
+                className="w-full py-3 mt-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center"
               >
                 Salvar Alterações
               </button>

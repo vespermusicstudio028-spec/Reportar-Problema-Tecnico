@@ -4990,6 +4990,7 @@ export default function App() {
           canvasLink={currentClient?.canvasLink}
           clientPlan={currentClient?.plan}
           clientPrice={currentClient?.price}
+          accessPoints={currentClient?.accessPoints}
           onOpenCodeLogin={() => setShowCodeModal(true)}
           isOpenExternal={isClientChatOpen}
           onCloseExternal={() => setIsClientChatOpen(false)}

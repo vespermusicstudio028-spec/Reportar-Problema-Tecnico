@@ -32,12 +32,26 @@ import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } f
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 
+export interface AccessPointScreen {
+  screenNumber: number;
+  appName?: string;
+  appIcon?: string;
+  authType?: 'mac' | 'login';
+  macAddress?: string;
+  deviceKey?: string;
+  username?: string;
+  password?: string;
+  expiresAt?: string;
+  isLifetime?: boolean;
+}
+
 interface ClientChatWidgetProps {
   clientCode?: string;
   clientName?: string;
   canvasLink?: string;
   clientPlan?: string;
   clientPrice?: number;
+  accessPoints?: AccessPointScreen[];
   onOpenCodeLogin?: () => void;
   isOpenExternal?: boolean;
   onCloseExternal?: () => void;
@@ -51,6 +65,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   canvasLink,
   clientPlan,
   clientPrice,
+  accessPoints,
   onOpenCodeLogin,
   isOpenExternal,
   onCloseExternal,
@@ -294,19 +309,24 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     }, 600);
   };
 
-  // Iniciar fluxo de Renovação
+  // Iniciar fluxo de renovação pelo botão de atalho rápido
   const handleInitiateRenewal = async () => {
     if (!activeCode || isSending) return;
     setIsSending(true);
     try {
       const currentClientDisplayName = clientName || customClientName || 'Cliente';
+      const screensCount = (accessPoints && accessPoints.length > 0) ? accessPoints.length : 1;
 
       // 1. Enviar mensagem do cliente solicitando renovação
+      const clientMsg = screensCount > 1
+        ? `🔄 Gostaria de renovar os meus *${screensCount} pontos (telas)*.`
+        : '🔄 Gostaria de fazer uma renovação.';
+
       await supabase.from('chat_messages').insert({
         client_code: activeCode,
         client_name: currentClientDisplayName,
         sender: 'client',
-        message: '🔄 Gostaria de fazer uma renovação.',
+        message: clientMsg,
         read_by_admin: false,
         read_by_client: true
       });
@@ -340,8 +360,47 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     try {
       const currentClientDisplayName = clientName || customClientName || 'Cliente';
       const isSinal = option === 'sinal';
+
+      // Buscar pontos de acesso atualizados do cliente se necessário
+      let currentScreens = accessPoints;
+      if (!currentScreens || currentScreens.length === 0) {
+        try {
+          const { data: cliData } = await supabase
+            .from('clients')
+            .select('access_points, plan, price')
+            .eq('code', activeCode)
+            .maybeSingle();
+
+          if (cliData?.access_points) {
+            currentScreens = Array.isArray(cliData.access_points) 
+              ? cliData.access_points 
+              : JSON.parse(cliData.access_points);
+          }
+        } catch (e) {
+          console.error('Erro ao buscar telas do cliente:', e);
+        }
+      }
+
+      const validScreens: AccessPointScreen[] = (currentScreens && currentScreens.length > 0)
+        ? (currentScreens as AccessPointScreen[])
+        : [{
+            screenNumber: 1,
+            appName: 'NEW HYBRID',
+            authType: 'mac' as const,
+            macAddress: '',
+            deviceKey: '',
+            username: '',
+            password: '',
+            expiresAt: '',
+            isLifetime: false
+          }];
+
+      const screensCount = validScreens.length;
+
       const clientMsg = isSinal
-        ? '📡 *Renovação:* Gostaria de renovar o *Sinal do Streaming* (Lista de Canais, Filmes e Séries).'
+        ? (screensCount > 1 
+            ? `📡 *Renovação:* Gostaria de renovar o *Sinal do Streaming* para os meus *${screensCount} pontos (telas)*.`
+            : '📡 *Renovação:* Gostaria de renovar o *Sinal do Streaming* (Lista de Canais, Filmes e Séries).')
         : '📱 *Renovação:* Gostaria de renovar a licença/ativação do *Aplicativo*.';
 
       // 1. Enviar escolha do cliente
@@ -380,15 +439,39 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
 
       const paymentMarker = `[PAYMENT_LINK:${payLink}|||${payLabel}|||${payValue}]`;
 
-      // 3. Resposta do bot com link de pagamento
+      // 3. Montar resumo detalhado das telas / pontos de acesso
+      let screensInfoText = '';
+      if (screensCount === 1) {
+        const s = validScreens[0];
+        const authDetails = s.authType === 'login'
+          ? (s.username ? `\n• *Usuário:* ${s.username}${s.password ? ` | *Senha:* ${s.password}` : ''}` : '')
+          : (s.macAddress ? `\n• *Endereço MAC:* \`${s.macAddress}\`` : '');
+        const keyDetails = s.deviceKey ? `\n• *Device Key:* ${s.deviceKey}` : '';
+        const expDetails = s.isLifetime 
+          ? '\n• *Validade do Ponto:* Vitalício 🌟' 
+          : (s.expiresAt ? `\n• *Expira em:* ${new Date(s.expiresAt).toLocaleDateString('pt-BR')}` : '');
+
+        screensInfoText = `📱 *Informações do seu Ponto de Acesso (1 Tela):*\n• *Aplicativo:* ${s.appName || 'NEW HYBRID'}${authDetails}${keyDetails}${expDetails}`;
+      } else {
+        const screensList = validScreens.map((s: AccessPointScreen) => {
+          const authDetails = s.authType === 'login'
+            ? (s.username ? ` | Usuário: ${s.username}${s.password ? ` (Senha: ${s.password})` : ''}` : '')
+            : (s.macAddress ? ` | MAC: \`${s.macAddress}\`` : '');
+          const keyDetails = s.deviceKey ? ` | Key: ${s.deviceKey}` : '';
+          const expDetails = s.isLifetime 
+            ? ' | Vitalício 🌟' 
+            : (s.expiresAt ? ` | Exp: ${new Date(s.expiresAt).toLocaleDateString('pt-BR')}` : '');
+          return `🔹 *Tela ${s.screenNumber}:* ${s.appName || 'NEW HYBRID'}${authDetails}${keyDetails}${expDetails}`;
+        }).join('\n');
+
+        screensInfoText = `📱 *Informações dos seus Pontos de Acesso (${screensCount} Telas):*\n${screensList}`;
+      }
+
+      // 4. Resposta do bot com informações completas e link de pagamento
       setTimeout(async () => {
         try {
-          const planInfo = isSinal
-            ? (clientPlan ? `*${clientPlan}*` : '*Sinal do Streaming*')
-            : '*Aplicativo*';
-
           const botConfirm = isSinal
-            ? `✅ Certo! Sua solicitação de renovação do *Sinal do Streaming* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para realizar o pagamento de forma rápida e segura:\n\n${paymentMarker}\n\n📎 Após o pagamento, anexe o comprovante usando o botão de clipe.`
+            ? `✅ Certo! Sua solicitação de renovação do *Sinal do Streaming* (${screensCount > 1 ? `*${screensCount} Telas/Pontos*` : '*1 Tela/Ponto*'}) foi registrada. O administrador já foi notificado!\n\n${screensInfoText}\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para realizar o pagamento de forma rápida e segura:\n\n${paymentMarker}\n\n📎 Após o pagamento, anexe o comprovante usando o botão de clipe.`
             : `✅ Certo! Sua solicitação de renovação do *Aplicativo* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para pagar a renovação do aplicativo:\n\n${paymentMarker}\n\n📎 Após o pagamento, envie uma foto ou o código/MAC do seu aplicativo.`;
 
           await supabase.from('chat_messages').insert({
@@ -847,7 +930,11 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-amber-600/35 to-orange-600/25 hover:from-amber-600/50 hover:to-orange-600/40 text-amber-200 border border-amber-500/60 font-bold"
                       title="Solicitar renovação de sinal ou aplicativo"
                     >
-                      <span className="truncate">🔄 Renovar</span>
+                      <span className="truncate">
+                        {accessPoints && accessPoints.length > 1
+                          ? `🔄 Renovar os ${accessPoints.length} pontos`
+                          : '🔄 Renovar'}
+                      </span>
                       <RefreshCcw size={13} className="text-amber-300 shrink-0" />
                     </button>
 

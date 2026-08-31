@@ -853,6 +853,15 @@ export default function App() {
     const activeAnnouncements = announcements.filter(a => new Date() <= new Date(a.expiryDate));
     const currentCode = loggedClientCode || (isAdminLogged ? 'admin' : null);
 
+    const hasEvento = activeAnnouncements.some(a => a.status === 'Evento');
+    const hasEnquete = activeAnnouncements.some(a => a.status === 'Enquete');
+    const announcementTitle = hasEvento
+      ? 'Eventos de Hoje!'
+      : hasEnquete
+      ? 'Participe da Nossa Enquete!'
+      : 'Avisos Importantes';
+    const announcementEmoji = hasEvento ? '🎉' : hasEnquete ? '📊' : null;
+
     if (trialState) {
       return (
         <TrialFlowRenderer
@@ -888,9 +897,9 @@ export default function App() {
           >
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
-                <AlertTriangle size={18} />
+                {announcementEmoji ? <span className="text-base">{announcementEmoji}</span> : <AlertTriangle size={18} />}
               </div>
-              <span className="text-sm md:text-base font-bold">Avisos Importantes</span>
+              <span className="text-sm md:text-base font-bold">{announcementTitle}</span>
               {activeAnnouncements.length > 0 && <span className="bg-amber-500/20 text-amber-300 text-xs px-2.5 py-0.5 rounded-full font-bold">{activeAnnouncements.length}</span>}
             </div>
             <ChevronDown size={20} className={`min-w-5 shrink-0 transition-transform text-slate-400 ${isAnnouncementsOpen ? 'rotate-180 text-white' : ''}`} />

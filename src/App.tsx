@@ -1305,7 +1305,7 @@ export default function App() {
           <Tv size={32} className="animate-pulse" />
         </div>
         <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white drop-shadow-md">
-          O que não está carregando?
+          Deseja suporte para qual conteúdo de Streaming?
         </h2>
         <p className="text-slate-300 font-medium text-xs sm:text-sm md:text-base drop-shadow-md max-w-sm">
           Selecione o tipo de conteúdo com problema para relatar ao suporte:

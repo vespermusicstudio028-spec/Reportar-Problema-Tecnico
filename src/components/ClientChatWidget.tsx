@@ -1023,7 +1023,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       }}
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-pink-600/30 to-purple-600/20 hover:from-pink-600/45 hover:to-purple-600/35 text-pink-200 border border-pink-500/50 font-bold"
                     >
-                      <span className="truncate">🎬 Pedir</span>
+                      <span className="truncate">🎬 Pedir Conteúdo</span>
                     </button>
                   </div>
                 </div>

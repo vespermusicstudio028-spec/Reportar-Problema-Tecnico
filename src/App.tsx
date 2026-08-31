@@ -5065,6 +5065,29 @@ export default function App() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md select-none"
             onClick={() => setGalleryModal(null)}
+            onTouchStart={(e) => {
+              const touch = e.touches[0];
+              (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);
+            }}
+            onTouchEnd={(e) => {
+              const startX = Number((e.currentTarget as HTMLElement).dataset.touchStartX ?? 0);
+              const endX = e.changedTouches[0].clientX;
+              const diff = startX - endX;
+              if (Math.abs(diff) < 50) return;
+              if (diff > 0) {
+                // swipe para esquerda → próxima foto
+                setGalleryModal(prev => {
+                  if (!prev) return null;
+                  return { ...prev, index: (prev.index + 1) % prev.urls.length };
+                });
+              } else {
+                // swipe para direita → foto anterior
+                setGalleryModal(prev => {
+                  if (!prev) return null;
+                  return { ...prev, index: (prev.index - 1 + prev.urls.length) % prev.urls.length };
+                });
+              }
+            }}
           >
             {/* Botão Fechar */}
             <button 

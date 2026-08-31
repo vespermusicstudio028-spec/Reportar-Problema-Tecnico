@@ -24,7 +24,8 @@ import {
   FileText,
   RefreshCcw,
   Smartphone,
-  Radio
+  Radio,
+  PlusCircle
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
@@ -57,6 +58,7 @@ interface ClientChatWidgetProps {
   onCloseExternal?: () => void;
   onSelectCanal?: () => void;
   onPedirConteudo?: () => void;
+  onAddPoint?: () => void;
 }
 
 export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
@@ -70,7 +72,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   isOpenExternal,
   onCloseExternal,
   onSelectCanal,
-  onPedirConteudo
+  onPedirConteudo,
+  onAddPoint,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -931,7 +934,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">Clique para enviar rapidamente</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                     {/* Atalho 1: Renovar */}
                     <button
                       type="button"
@@ -941,7 +944,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     >
                       <span className="truncate">
                         {accessPoints && accessPoints.length > 1
-                          ? `🔄 Renovar os ${accessPoints.length} pontos`
+                          ? `🔄 Renovar ${accessPoints.length} telas`
                           : '🔄 Renovar'}
                       </span>
                       <RefreshCcw size={13} className="text-amber-300 shrink-0" />
@@ -953,11 +956,31 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       onClick={() => setShowPixUploadModal(true)}
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold"
                     >
-                      <span className="truncate">📄 Enviar Comprovante</span>
+                      <span className="truncate">📄 Comprovante</span>
                       <FileText size={13} className="text-emerald-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 3: Suporte */}
+                    {/* Atalho 3: + 1 Ponto de Acesso */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!activeCode) {
+                          if (onOpenCodeLogin) onOpenCodeLogin();
+                          return;
+                        }
+                        if (onAddPoint) {
+                          onAddPoint();
+                          setIsOpen(false);
+                        }
+                      }}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-purple-600/35 to-violet-600/25 hover:from-purple-600/50 hover:to-violet-600/40 text-purple-200 border border-purple-500/60 font-bold"
+                      title="Adicionar mais 1 ponto de acesso (tela adicional)"
+                    >
+                      <span className="truncate">➕ 1 Ponto</span>
+                      <PlusCircle size={13} className="text-purple-300 shrink-0" />
+                    </button>
+
+                    {/* Atalho 4: Suporte */}
                     <button
                       type="button"
                       onClick={() => {
@@ -974,7 +997,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <Tv size={13} className="text-sky-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 4: Minha Área Exclusiva */}
+                    {/* Atalho 5: Minha Área Exclusiva */}
                     <button
                       type="button"
                       onClick={() => {
@@ -987,7 +1010,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <ExternalLink size={13} className="text-indigo-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 5: Pedir Conteúdos */}
+                    {/* Atalho 6: Pedir Conteúdos */}
                     <button
                       type="button"
                       onClick={() => {
@@ -998,9 +1021,9 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                           handleSendMessage('Gostaria de pedir um filme ou série.');
                         }
                       }}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-pink-600/30 to-purple-600/20 hover:from-pink-600/45 hover:to-purple-600/35 text-pink-200 border border-pink-500/50 font-bold col-span-2 sm:col-span-1"
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-pink-600/30 to-purple-600/20 hover:from-pink-600/45 hover:to-purple-600/35 text-pink-200 border border-pink-500/50 font-bold"
                     >
-                      <span className="truncate">🎬 Pedir Conteúdo</span>
+                      <span className="truncate">🎬 Pedir</span>
                     </button>
                   </div>
                 </div>

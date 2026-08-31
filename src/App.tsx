@@ -866,6 +866,7 @@ export default function App() {
       return (
         <TrialFlowRenderer
           config={trialConfig}
+          mode={trialState === 'add_point' ? 'add_point' : 'trial'}
           onClose={() => setTrialState(null)}
           onOpenChat={() => {
             setTrialState(null);
@@ -877,6 +878,9 @@ export default function App() {
             setClients((prev) => [newCli, ...prev.filter((c) => c.code !== newCli.code)]);
             setLoggedClientCode(newCli.code);
             setLoggedClientName(newCli.name);
+          }}
+          onPointAdded={(updatedCli) => {
+            setClients((prev) => prev.map((c) => (c.id === updatedCli.id || c.code === updatedCli.code ? { ...c, ...updatedCli } : c)));
           }}
         />
       );
@@ -5011,6 +5015,11 @@ export default function App() {
             setIsPedirConteudoOpen(true);
             setIsReportContentOpen(false);
             setContentType(null);
+            setIsClientChatOpen(false);
+          }}
+          onAddPoint={() => {
+            setActiveView('dashboard');
+            setTrialState('add_point');
             setIsClientChatOpen(false);
           }}
         />

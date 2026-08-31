@@ -24,6 +24,7 @@ import { supabase } from '../lib/supabase';
 
 interface Props {
   config: TrialConfig;
+  mode?: 'trial' | 'add_point';
   onClose: () => void;
   onOpenChat?: () => void;
   clientCode?: string;
@@ -41,9 +42,10 @@ interface Props {
     activeApp?: string;
     accessPoints?: any[];
   }) => void;
+  onPointAdded?: (client: any) => void;
 }
 
-export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, clientName, onClientRegistered }: Props) {
+export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat, clientCode, clientName, onClientRegistered, onPointAdded }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedSubOptionId, setSelectedSubOptionId] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
@@ -93,11 +95,129 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
   const selectedDevice = config.devices.find(d => d.id === selectedDeviceId);
   const selectedSubOption = selectedDevice?.subOptions?.find(s => s.id === selectedSubOptionId);
 
+  // Adiciona +1 ponto de acesso (tela) diretamente ao cliente existente no Supabase
+  const handleAddPointDirectly = async (content: TrialContentBlock, activeCode: string, activeName: string) => {
+    if (isSending) return;
+    setIsSending(true);
+
+    try {
+      const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
+      const deviceTitle = selectedDevice?.name || 'Dispositivo';
+
+      // 1. Buscar dados atuais do cliente no Supabase
+      const { data: clientData, error: clientFetchErr } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('code', activeCode)
+        .maybeSingle();
+
+      if (clientFetchErr) throw clientFetchErr;
+
+      let existingScreens: any[] = [];
+      if (clientData?.access_points) {
+        existingScreens = Array.isArray(clientData.access_points)
+          ? clientData.access_points
+          : JSON.parse(clientData.access_points);
+      }
+
+      const newScreenNumber = (existingScreens.length || 0) + 1;
+      const newPoint = {
+        screenNumber: newScreenNumber,
+        appName: appName,
+        authType: (macCode.trim() ? 'mac' : (deviceKey.trim() ? 'key' : 'login')),
+        macAddress: macCode.trim() || '',
+        deviceKey: deviceKey.trim() || '',
+        username: '',
+        password: '',
+        expiresAt: '',
+        isLifetime: false
+      };
+
+      const updatedScreens = [...existingScreens, newPoint];
+
+      // 2. Atualizar cliente com +1 ponto e mudar plano para R$ 70,00 (Sinal do Streaming)
+      const { error: updateErr } = await supabase
+        .from('clients')
+        .update({
+          access_points: updatedScreens,
+          plan: 'Sinal do Streaming',
+          price: 70
+        })
+        .eq('code', activeCode);
+
+      if (updateErr) {
+        console.error('Erro ao atualizar cliente com novo ponto:', updateErr);
+      }
+
+      // 3. Montar mensagem do cliente com o link de pagamento da ativação (R$ 35,00)
+      const payLink = 'https://mpago.la/2UJjaQb';
+      const payLabel = 'Pagar Ativação de +1 Ponto (R$ 35,00)';
+      const payValue = 'R$ 35,00';
+      const paymentMarker = `[PAYMENT_LINK:${payLink}|||${payLabel}|||${payValue}]`;
+
+      let msgText = `➕ *Solicitação de Ponto Adicional (+1 Tela)*\n\n👤 *Cliente:* ${activeName}\n🔑 *Código:* ${activeCode}\n\n📺 *Novo Ponto (Tela ${newScreenNumber}):* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}\n\n💰 *Taxa de Ativação do Ponto Adicional:* R$ 35,00\n💰 *Valor das Próximas Renovações:* R$ 70,00 (${updatedScreens.length} Telas)\n\n${paymentMarker}`;
+
+      if (imagePreview && attachedImage) {
+        const payload = {
+          fileName: attachedImage.name,
+          fileSize: `${(attachedImage.size / 1024).toFixed(1)} KB`,
+          fileData: imagePreview,
+          caption: `Foto da tela do ${appName} (Novo Ponto - Tela ${newScreenNumber})`
+        };
+        msgText += `\n\n[PIX_COMPROVANTE:${JSON.stringify(payload)}]`;
+      }
+
+      // 4. Salvar mensagem do cliente no chat
+      await supabase.from('chat_messages').insert({
+        client_code: activeCode,
+        client_name: activeName,
+        sender: 'client',
+        message: msgText,
+        read_by_admin: false,
+        read_by_client: true
+      });
+
+      // 5. Salvar resposta automática do bot
+      const autoReply = `🤖 **Novo Ponto Adicionado com Sucesso!** 🎉\n\nRecebemos os dados do seu novo aparelho (*${appName} - Tela ${newScreenNumber}*).\n\n💳 Para liberar o acesso deste novo ponto, realize o pagamento da taxa de ativação de **R$ 35,00** clicando no botão acima.\n\n✨ Seu plano foi atualizado para **R$ 70,00** (${updatedScreens.length} Telas) para as próximas renovações! Em instantes nosso suporte ativará seu novo aparelho. 🍿📺`;
+      await supabase.from('chat_messages').insert({
+        client_code: activeCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: autoReply,
+        read_by_admin: true,
+        read_by_client: false
+      });
+
+      if (onPointAdded && clientData) {
+        onPointAdded({
+          ...clientData,
+          plan: 'Sinal do Streaming',
+          price: 70,
+          access_points: updatedScreens,
+          accessPoints: updatedScreens
+        });
+      }
+
+      // 6. Abrir o chat
+      if (onOpenChat) {
+        onOpenChat();
+      } else {
+        onClose();
+      }
+    } catch (err: any) {
+      console.error('Erro ao adicionar ponto adicional:', err);
+      alert('Erro ao solicitar ponto adicional: ' + (err.message || 'Tente novamente.'));
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   // Ponto de entrada ao clicar em "Enviar Dados p/ Suporte"
   const handleInitiateSend = (content: TrialContentBlock) => {
-    // No fluxo de Teste Grátis, sempre pede identificação.
-    // Isso garante que cada pessoa que solicita o teste precisa confirmar quem é,
-    // evitando enviar com dados de sessões antigas de outros clientes.
+    if (mode === 'add_point' && clientCode) {
+      handleAddPointDirectly(content, clientCode, clientName || 'Cliente');
+      return;
+    }
     setPendingContent(content);
     setShowRegisterModal(true);
   };

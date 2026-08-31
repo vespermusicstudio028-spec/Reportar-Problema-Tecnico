@@ -453,7 +453,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         const keyDetails = s.deviceKey ? `\n• *Device Key:* ${s.deviceKey}` : '';
         const expDetails = s.isLifetime 
           ? '\n• *Validade do Ponto:* Vitalício 🌟' 
-          : (s.expiresAt ? `\n• *Expira em:* ${new Date(s.expiresAt).toLocaleDateString('pt-BR')}` : '');
+          : (s.expiresAt ? `\n• *Expiração do Aplicativo:* ${new Date(s.expiresAt).toLocaleDateString('pt-BR')}` : '');
 
         screensInfoText = `📱 *Informações do seu Ponto de Acesso (1 Tela):*\n• *Aplicativo:* ${s.appName || 'NEW HYBRID'}${authDetails}${keyDetails}${expDetails}`;
       } else {

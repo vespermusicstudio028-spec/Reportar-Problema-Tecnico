@@ -419,8 +419,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       let payValue = '';
 
       if (isSinal) {
-        // Usar o plano cadastrado pelo admin, senão fallback para R$ 40
-        if (clientPrice === 35) {
+        // Usar o plano cadastrado pelo admin
+        if (clientPrice === 70) {
+          payLink = 'https://mpago.la/1ZESpNJ';
+          payLabel = 'Pagar R$ 70,00 via Mercado Pago';
+          payValue = 'R$ 70,00';
+        } else if (clientPrice === 35) {
           payLink = 'https://mpago.la/2UJjaQb';
           payLabel = 'Pagar R$ 35,00 via Mercado Pago';
           payValue = 'R$ 35,00';

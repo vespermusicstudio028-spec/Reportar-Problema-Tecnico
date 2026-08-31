@@ -4239,14 +4239,15 @@ export default function App() {
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   {([
+                    { label: '📡 Plano R$ 70,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 70, link: 'https://mpago.la/1ZESpNJ', color: 'purple' },
                     { label: '📡 Plano R$ 40,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 40, link: 'https://mpago.la/1FqmoD4', color: 'indigo' },
                     { label: '📡 Plano R$ 35,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 35, link: 'https://mpago.la/2UJjaQb', color: 'blue' },
                     { label: '📱 Renovação do Aplicativo', plan: 'Aplicativo', price: 0, link: 'https://mpago.la/31zU6D3', color: 'emerald' },
                   ] as const).map((opt) => {
                     const isSelected = editingClient.price === opt.price && editingClient.plan === opt.plan;
-                    const borderColor = opt.color === 'indigo' ? 'border-indigo-500' : opt.color === 'blue' ? 'border-blue-500' : 'border-emerald-500';
-                    const bgColor = opt.color === 'indigo' ? 'bg-indigo-600/20' : opt.color === 'blue' ? 'bg-blue-600/20' : 'bg-emerald-600/20';
-                    const textColor = opt.color === 'indigo' ? 'text-indigo-300' : opt.color === 'blue' ? 'text-blue-300' : 'text-emerald-300';
+                    const borderColor = opt.color === 'purple' ? 'border-purple-500' : opt.color === 'indigo' ? 'border-indigo-500' : opt.color === 'blue' ? 'border-blue-500' : 'border-emerald-500';
+                    const bgColor = opt.color === 'purple' ? 'bg-purple-600/20' : opt.color === 'indigo' ? 'bg-indigo-600/20' : opt.color === 'blue' ? 'bg-blue-600/20' : 'bg-emerald-600/20';
+                    const textColor = opt.color === 'purple' ? 'text-purple-300' : opt.color === 'indigo' ? 'text-indigo-300' : opt.color === 'blue' ? 'text-blue-300' : 'text-emerald-300';
                     return (
                       <button
                         key={opt.label}
@@ -4268,7 +4269,7 @@ export default function App() {
                       min="0"
                       step="0.01"
                       placeholder="Valor personalizado (R$)"
-                      value={editingClient.price !== undefined && ![40, 35, 0].includes(editingClient.price) ? editingClient.price : ''}
+                      value={editingClient.price !== undefined && ![70, 40, 35, 0].includes(editingClient.price) ? editingClient.price : ''}
                       onChange={(e) => setEditingClient({ ...editingClient, price: e.target.value ? parseFloat(e.target.value) : undefined, plan: 'Personalizado' })}
                       className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all placeholder-slate-500"
                     />
@@ -4288,7 +4289,8 @@ export default function App() {
                 {editingClient.price !== undefined && (() => {
                   let payLink = '';
                   let payLabel = '';
-                  if (editingClient.price === 40) { payLink = 'https://mpago.la/1FqmoD4'; payLabel = 'Link Pix R$ 40,00'; }
+                  if (editingClient.price === 70) { payLink = 'https://mpago.la/1ZESpNJ'; payLabel = 'Link Pix R$ 70,00'; }
+                  else if (editingClient.price === 40) { payLink = 'https://mpago.la/1FqmoD4'; payLabel = 'Link Pix R$ 40,00'; }
                   else if (editingClient.price === 35) { payLink = 'https://mpago.la/2UJjaQb'; payLabel = 'Link Pix R$ 35,00'; }
                   else if (editingClient.price === 0 && editingClient.plan === 'Aplicativo') { payLink = 'https://mpago.la/31zU6D3'; payLabel = 'Link Renovação App'; }
                   if (!payLink) return null;

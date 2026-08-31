@@ -994,7 +994,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       onClick={() => setShowPixUploadModal(true)}
                       className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold col-span-2 sm:col-span-1"
                     >
-                      <span className="truncate">📄 Comprovante Pix</span>
+                      <span className="truncate">📄 Enviar Comprovante</span>
                       <FileText size={13} className="text-emerald-300 shrink-0" />
                     </button>
                   </div>

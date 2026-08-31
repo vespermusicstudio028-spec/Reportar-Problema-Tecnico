@@ -4317,35 +4317,7 @@ export default function App() {
                 })()}
               </div>
 
-              {/* Atalhos do TBI Clientes CRM */}
-              <div className="p-3.5 bg-cyan-950/20 border border-cyan-500/30 rounded-xl space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
-                    <Globe size={14} className="text-cyan-400" /> TBI Clientes — CRM
-                  </span>
-                  <a
-                    href="https://tbi-clientes-ltda.vercel.app/#"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[11px] font-bold text-cyan-400 hover:underline flex items-center gap-1"
-                  >
-                    Abrir CRM ↗
-                  </a>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const clientDataText = `👤 Nome: ${editingClient.name}\n🔑 Código: ${editingClient.code}\n📱 Telefone: ${editingClient.phone || 'Não informado'}\n✉️ E-mail: ${editingClient.email || 'Não informado'}\n💰 Plano: ${editingClient.price ? `R$ ${Number(editingClient.price).toFixed(2).replace('.', ',')}` : 'R$ 40,00'}${editingClient.plan ? ` (${editingClient.plan})` : ''}\n🌐 Canva: ${editingClient.canvasLink}`;
-                    navigator.clipboard.writeText(clientDataText);
-                    setCopiedEditClientData(true);
-                    setTimeout(() => setCopiedEditClientData(false), 2000);
-                  }}
-                  className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-cyan-200 font-bold text-xs rounded-lg border border-slate-700 flex items-center justify-center gap-1.5 transition-all"
-                >
-                  {copiedEditClientData ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                  {copiedEditClientData ? 'Dados Copiados!' : 'Copiar Dados do Cliente p/ CRM'}
-                </button>
-              </div>
+
             </form>
 
             {/* Rodapé Fixo com Botão de Salvar */}

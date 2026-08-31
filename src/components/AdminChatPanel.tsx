@@ -37,11 +37,12 @@ interface AdminChatPanelProps {
 }
 
 const QUICK_REPLIES = [
-  'Olá! Tudo bem? Como posso te ajudar hoje? 😊',
-  'Recebi sua mensagem. Já estou verificando para você!',
-  'Seu sinal/acesso foi atualizado. Poderia testar novamente?',
-  'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?',
-  'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀'
+  { label: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊', message: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊' },
+  { label: 'Recebi sua mensagem...', message: 'Recebi sua mensagem. Já estou verificando para você!' },
+  { label: 'Sinal atualizado ✅', message: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?' },
+  { label: 'Qual aparelho?', message: 'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?' },
+  { label: '🧪 Teste iniciado', message: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.' },
+  { label: 'Tudo funcionando 🚀', message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀' },
 ];
 
 export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [] }) => {
@@ -735,10 +736,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   <button
                     key={i}
                     type="button"
-                    onClick={() => handleSendMessage(reply)}
+                    onClick={() => handleSendMessage(reply.message)}
                     className="text-xs bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-300 border border-slate-800 px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap"
                   >
-                    {reply}
+                    {reply.label}
                   </button>
                 ))}
               </div>

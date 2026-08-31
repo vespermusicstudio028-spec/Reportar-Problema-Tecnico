@@ -1968,6 +1968,13 @@ export default function App() {
       setLoginError('');
       setLoginEmail('');
       setLoginPassword('');
+      setShowLoginModal(false);
+      setActiveView('dashboard');
+      setAdminTab(null);
+      setIsReportContentOpen(false);
+      setIsPedirConteudoOpen(false);
+      setContentType(null);
+      setTrialState(null);
     } else {
       setLoginError('Credenciais inválidas!');
     }
@@ -2364,7 +2371,12 @@ export default function App() {
       setShowCodeModal(false);
       setAccessCode('');
       setAccessCodeError('');
-      setActiveView('profile'); // Redireciona para o perfil para ele ver que logou
+      setActiveView('dashboard');
+      setAdminTab(null);
+      setIsReportContentOpen(false);
+      setIsPedirConteudoOpen(false);
+      setContentType(null);
+      setTrialState(null);
     } else {
       setAccessCodeError('Código inválido ou não encontrado.');
     }

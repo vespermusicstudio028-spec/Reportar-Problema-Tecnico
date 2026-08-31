@@ -4058,7 +4058,7 @@ export default function App() {
                             className="p-4 sm:p-5 bg-[#0e1626] border border-slate-800/90 rounded-2xl shadow-xl space-y-3"
                           >
                             <div className="flex flex-col sm:flex-row gap-4 items-center sm:items-start">
-                              {/* Foto / Ícone do Aplicativo */}
+                              {/* Foto / Ícone do Aplicativo e Nome do App */}
                               <div className="flex flex-col items-center gap-1.5 shrink-0">
                                 <label className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-b from-[#1b1923] to-[#111016] border border-amber-500/30 p-2 flex flex-col items-center justify-center text-center shadow-lg relative overflow-hidden group cursor-pointer hover:border-amber-400 transition-all">
                                   <input
@@ -4093,6 +4093,18 @@ export default function App() {
                                 <span className="text-[10px] text-slate-400 text-center max-w-[90px] leading-tight block">
                                   Toque para adicionar foto do App
                                 </span>
+
+                                {/* Input para digitar o Nome do Aplicativo */}
+                                <div className="w-full mt-1">
+                                  <input
+                                    type="text"
+                                    value={screen.appName || ''}
+                                    onChange={(e) => updateScreenByNumber(screenNum, { appName: e.target.value })}
+                                    placeholder="Nome do App"
+                                    className="w-24 sm:w-28 bg-[#0a101d] border border-slate-700/80 rounded-xl px-2 py-1.5 text-xs text-center text-amber-300 font-bold focus:border-amber-400 focus:ring-1 focus:ring-amber-400 outline-none transition-all placeholder:text-slate-500 shadow-inner"
+                                    title="Digite o nome do aplicativo (ex: DUPLEX PLAY, NEW HYBRID)"
+                                  />
+                                </div>
                               </div>
 
                               {/* Campos de Acesso e Configuração da Tela */}

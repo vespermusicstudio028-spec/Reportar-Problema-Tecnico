@@ -947,7 +947,34 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <RefreshCcw size={13} className="text-amber-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 2: Minha Área Exclusiva */}
+                    {/* Atalho 2: Enviar Comprovante Pix (PDF) - ao lado de Renovar */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPixUploadModal(true)}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold"
+                    >
+                      <span className="truncate">📄 Enviar Comprovante</span>
+                      <FileText size={13} className="text-emerald-300 shrink-0" />
+                    </button>
+
+                    {/* Atalho 3: Suporte */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onSelectCanal) {
+                          onSelectCanal();
+                          setIsOpen(false);
+                        } else {
+                          handleSendMessage('Gostaria de solicitar suporte técnico.');
+                        }
+                      }}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold"
+                    >
+                      <span className="truncate">🛠️ Suporte</span>
+                      <Tv size={13} className="text-sky-300 shrink-0" />
+                    </button>
+
+                    {/* Atalho 4: Minha Área Exclusiva */}
                     <button
                       type="button"
                       onClick={() => {
@@ -960,24 +987,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <ExternalLink size={13} className="text-indigo-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 3: O conteúdo não está carregando */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (onSelectCanal) {
-                          onSelectCanal();
-                          setIsOpen(false);
-                        } else {
-                          handleSendMessage('O conteúdo não está carregando.');
-                        }
-                      }}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-sky-600/30 to-indigo-600/20 hover:from-sky-600/45 hover:to-indigo-600/35 text-sky-200 border border-sky-500/50 font-bold"
-                    >
-                      <span className="truncate">📺 Não carrega</span>
-                      <Tv size={13} className="text-sky-300 shrink-0" />
-                    </button>
-
-                    {/* Atalho 4: Pedir Conteúdos */}
+                    {/* Atalho 5: Pedir Conteúdos */}
                     <button
                       type="button"
                       onClick={() => {
@@ -988,19 +998,9 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                           handleSendMessage('Gostaria de pedir um filme ou série.');
                         }
                       }}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-pink-600/30 to-purple-600/20 hover:from-pink-600/45 hover:to-purple-600/35 text-pink-200 border border-pink-500/50 font-bold"
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-pink-600/30 to-purple-600/20 hover:from-pink-600/45 hover:to-purple-600/35 text-pink-200 border border-pink-500/50 font-bold col-span-2 sm:col-span-1"
                     >
                       <span className="truncate">🎬 Pedir Conteúdo</span>
-                    </button>
-
-                    {/* Atalho 5: Enviar Comprovante Pix (PDF) */}
-                    <button
-                      type="button"
-                      onClick={() => setShowPixUploadModal(true)}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold col-span-2 sm:col-span-1"
-                    >
-                      <span className="truncate">📄 Enviar Comprovante</span>
-                      <FileText size={13} className="text-emerald-300 shrink-0" />
                     </button>
                   </div>
                 </div>

@@ -1064,8 +1064,8 @@ export default function App() {
             >
               <img src="/logo.png?v=2" alt="The Best IPTV" className="w-24 h-24 sm:w-28 sm:h-28 md:w-36 md:h-36 object-contain mb-2 drop-shadow-2xl" />
             </button>
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white drop-shadow-md">O que precisa de suporte?</h2>
-            <p className="text-slate-300 font-medium text-xs sm:text-sm md:text-base drop-shadow-md">Selecione o tipo de conteúdo com problema</p>
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-white drop-shadow-md">The Best IPTV Plus</h2>
+            <p className="text-slate-300 font-medium text-xs sm:text-sm md:text-base drop-shadow-md">Sua experiência, nossa prioridade.</p>
           </div>
           
           <div className="flex flex-col gap-3 sm:gap-4 w-full relative z-10">

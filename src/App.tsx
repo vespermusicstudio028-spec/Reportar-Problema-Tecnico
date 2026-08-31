@@ -2483,15 +2483,7 @@ export default function App() {
                         badge: unreadChatCount > 0 ? unreadChatCount : null,
                         badgePulse: unreadChatCount > 0,
                       },
-                      {
-                        id: 'crm-tbi' as const,
-                        icon: <Globe size={22} />,
-                        title: '🌐 TBI Clientes CRM',
-                        subtitle: 'Sistema externo de clientes',
-                        accent: 'from-cyan-500/20 to-blue-500/10 border-cyan-500/30 hover:border-cyan-400/60 text-cyan-400',
-                        iconBg: 'bg-cyan-500/20 text-cyan-300',
-                        badge: 'CRM',
-                      },
+
                      {
                        id: 'suporte' as const,
                        icon: <AlertTriangle size={22} />,

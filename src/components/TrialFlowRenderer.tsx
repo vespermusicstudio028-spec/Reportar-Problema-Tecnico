@@ -28,7 +28,19 @@ interface Props {
   onOpenChat?: () => void;
   clientCode?: string;
   clientName?: string;
-  onClientRegistered?: (client: { id: string; name: string; code: string; canvasLink: string; addedAt: string; phone?: string; email?: string }) => void;
+  onClientRegistered?: (client: {
+    id: string;
+    name: string;
+    code: string;
+    canvasLink: string;
+    addedAt: string;
+    phone?: string;
+    email?: string;
+    plan?: string;
+    price?: number;
+    activeApp?: string;
+    accessPoints?: any[];
+  }) => void;
 }
 
 export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, clientName, onClientRegistered }: Props) {
@@ -171,25 +183,53 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
         newCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
       }
 
-      // 2. Salvar cliente na tabela 'clients' do Supabase (visível no painel do admin)
+      // 2. Determinar se o dispositivo é Celular ou outro
+      const content = pendingContent || selectedSubOption?.content || selectedDevice?.content || {};
+      const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
+      const deviceTitle = selectedDevice?.name || 'Dispositivo';
+
+      const isCelular = (selectedDevice?.id?.toLowerCase() === 'celular') ||
+                        (selectedDevice?.name?.toLowerCase().includes('celular')) ||
+                        (deviceTitle.toLowerCase().includes('celular')) ||
+                        (selectedSubOption?.name?.toLowerCase().includes('celular'));
+      const calculatedPrice = isCelular ? 35 : 40;
+      const calculatedPlan = 'Sinal do Streaming';
+
+      const clientAccessPoints = [{
+        screenNumber: 1,
+        appName: appName,
+        authType: (macCode.trim() ? 'mac' : (deviceKey.trim() ? 'key' : 'login')),
+        macAddress: macCode.trim() || '',
+        deviceKey: deviceKey.trim() || '',
+        username: '',
+        password: '',
+        expiresAt: '',
+        isLifetime: false
+      }];
+
+      // 3. Salvar cliente na tabela 'clients' do Supabase (visível no painel do admin)
       const { data: insertedClient, error: clientInsertErr } = await supabase.from('clients').insert([{
         name: regName.trim(),
         phone: regPhone.trim(),
         code: newCode,
-        canvas_link: 'https://thebestiptv.com'
+        canvas_link: 'https://thebestiptv.com',
+        plan: calculatedPlan,
+        price: calculatedPrice,
+        active_app: appName,
+        access_points: clientAccessPoints
       }]).select();
 
       if (clientInsertErr) {
         console.error('Erro ao registrar cliente em clients:', clientInsertErr);
       }
 
-      // 3. Salvar no localStorage para manter a sessão do cliente
+      // 4. Salvar no localStorage para manter a sessão do cliente
       localStorage.setItem('iptv_access_code_v1', newCode);
       localStorage.setItem('tbi_active_client_code', newCode);
       localStorage.setItem('tbi_active_client_name', regName.trim());
       localStorage.setItem('tbi_client_phone', regPhone.trim());
 
-      // 4. Notificar componente pai (App.tsx)
+      // 5. Notificar componente pai (App.tsx)
       if (onClientRegistered) {
         onClientRegistered({
           id: insertedClient?.[0]?.id || Date.now().toString(),
@@ -197,16 +237,16 @@ export function TrialFlowRenderer({ config, onClose, onOpenChat, clientCode, cli
           code: newCode,
           phone: regPhone.trim(),
           canvasLink: 'https://thebestiptv.com',
+          plan: calculatedPlan,
+          price: calculatedPrice,
+          activeApp: appName,
+          accessPoints: clientAccessPoints,
           addedAt: new Date().toISOString()
         });
       }
 
-      // 5. Formatar mensagem do teste com os dados do cliente e do app
-      const content = pendingContent || selectedSubOption?.content || selectedDevice?.content || {};
-      const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
-      const deviceTitle = selectedDevice?.name || 'Dispositivo';
-
-      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n👤 *Cliente Novo:* ${regName.trim()}\n📱 *WhatsApp:* ${regPhone.trim()}\n🔑 *Código de Acesso:* ${newCode}\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+      // 6. Formatar mensagem do teste com os dados do cliente e do app
+      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n👤 *Cliente Novo:* ${regName.trim()}\n📱 *WhatsApp:* ${regPhone.trim()}\n🔑 *Código de Acesso:* ${newCode}\n💰 *Valor do Plano:* R$ ${calculatedPrice},00 (${calculatedPlan})\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
 
       if (imagePreview && attachedImage) {
         const payload = {

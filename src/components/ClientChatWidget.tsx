@@ -361,24 +361,29 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       const currentClientDisplayName = clientName || customClientName || 'Cliente';
       const isSinal = option === 'sinal';
 
-      // Buscar pontos de acesso atualizados do cliente se necessário
+      // Buscar pontos de acesso e dados atualizados do cliente se necessário
       let currentScreens = accessPoints;
-      if (!currentScreens || currentScreens.length === 0) {
-        try {
-          const { data: cliData } = await supabase
-            .from('clients')
-            .select('access_points, plan, price')
-            .eq('code', activeCode)
-            .maybeSingle();
+      let effectivePrice = clientPrice;
 
-          if (cliData?.access_points) {
+      try {
+        const { data: cliData } = await supabase
+          .from('clients')
+          .select('access_points, plan, price')
+          .eq('code', activeCode)
+          .maybeSingle();
+
+        if (cliData) {
+          if (cliData.price !== undefined && cliData.price !== null) {
+            effectivePrice = cliData.price;
+          }
+          if (cliData.access_points && (!currentScreens || currentScreens.length === 0)) {
             currentScreens = Array.isArray(cliData.access_points) 
               ? cliData.access_points 
               : JSON.parse(cliData.access_points);
           }
-        } catch (e) {
-          console.error('Erro ao buscar telas do cliente:', e);
         }
+      } catch (e) {
+        console.error('Erro ao buscar dados do cliente:', e);
       }
 
       const validScreens: AccessPointScreen[] = (currentScreens && currentScreens.length > 0)
@@ -419,12 +424,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       let payValue = '';
 
       if (isSinal) {
-        // Usar o plano cadastrado pelo admin
-        if (clientPrice === 70) {
+        // Usar o plano cadastrado
+        if (effectivePrice === 70) {
           payLink = 'https://mpago.la/1ZESpNJ';
           payLabel = 'Pagar R$ 70,00 via Mercado Pago';
           payValue = 'R$ 70,00';
-        } else if (clientPrice === 35) {
+        } else if (effectivePrice === 35) {
           payLink = 'https://mpago.la/2UJjaQb';
           payLabel = 'Pagar R$ 35,00 via Mercado Pago';
           payValue = 'R$ 35,00';
@@ -432,7 +437,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           // Padrão: R$ 40,00
           payLink = 'https://mpago.la/1FqmoD4';
           payLabel = 'Pagar R$ 40,00 via Mercado Pago';
-          payValue = clientPrice ? `R$ ${Number(clientPrice).toFixed(2).replace('.', ',')}` : 'R$ 40,00';
+          payValue = effectivePrice ? `R$ ${Number(effectivePrice).toFixed(2).replace('.', ',')}` : 'R$ 40,00';
         }
       } else {
         // Renovação do Aplicativo

@@ -2210,6 +2210,10 @@ export default function App() {
           canvasLink: c.canvas_link,
           email: c.email,
           phone: c.phone,
+          plan: c.plan || '',
+          price: c.price ?? undefined,
+          activeApp: c.active_app || '',
+          accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
           addedAt: c.added_at,
           lastRecoveryAt: c.last_recovery_at
         })));

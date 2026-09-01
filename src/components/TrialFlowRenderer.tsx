@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronLeft, 
@@ -27,6 +27,7 @@ interface Props {
   mode?: 'trial' | 'add_point';
   onClose: () => void;
   onOpenChat?: () => void;
+  onRegisterStepBack?: (handler: (() => boolean) | null) => void;
   clientCode?: string;
   clientName?: string;
   onClientRegistered?: (client: {
@@ -45,7 +46,7 @@ interface Props {
   onPointAdded?: (client: any) => void;
 }
 
-export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat, clientCode, clientName, onClientRegistered, onPointAdded }: Props) {
+export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat, onRegisterStepBack, clientCode, clientName, onClientRegistered, onPointAdded }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedSubOptionId, setSelectedSubOptionId] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
@@ -66,6 +67,75 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [pendingContent, setPendingContent] = useState<TrialContentBlock | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Refs para suportar navegação segura com botão Voltar do celular
+  const selectedDeviceIdRef = useRef<string | null>(null);
+  const selectedSubOptionIdRef = useRef<string | null>(null);
+  const showRegisterModalRef = useRef(false);
+  const showSuccessModalRef = useRef(false);
+
+  useEffect(() => { selectedDeviceIdRef.current = selectedDeviceId; }, [selectedDeviceId]);
+  useEffect(() => { selectedSubOptionIdRef.current = selectedSubOptionId; }, [selectedSubOptionId]);
+  useEffect(() => { showRegisterModalRef.current = showRegisterModal; }, [showRegisterModal]);
+  useEffect(() => { showSuccessModalRef.current = showSuccessModal; }, [showSuccessModal]);
+
+  // Registra o handler de voltar passo a passo no App.tsx
+  useEffect(() => {
+    if (onRegisterStepBack) {
+      onRegisterStepBack(() => {
+        // 1. Se modal de sucesso estiver aberto, fecha tudo e sai do trial
+        if (showSuccessModalRef.current) {
+          setShowSuccessModal(false);
+          return false;
+        }
+        // 2. Se modal de cadastro estiver aberto, apenas fecha o modal e volta para a tela de instruções
+        if (showRegisterModalRef.current) {
+          setShowRegisterModal(false);
+          setRegError('');
+          return true; // consumiu o voltar
+        }
+        // 3. Se estiver visualizando uma sub-opção de app, volta para a lista de sub-opções do dispositivo
+        if (selectedSubOptionIdRef.current !== null) {
+          setSelectedSubOptionId(null);
+          return true; // consumiu o voltar
+        }
+        // 4. Se estiver na lista de sub-opções ou na tela de um dispositivo direto (ex: Celular), volta para a lista de dispositivos
+        if (selectedDeviceIdRef.current !== null) {
+          setSelectedDeviceId(null);
+          return true; // consumiu o voltar
+        }
+        // 5. Já está na lista de dispositivos raiz -> deixa o App.tsx fechar o fluxo de trial e voltar à tela inicial
+        return false;
+      });
+    }
+    return () => {
+      if (onRegisterStepBack) {
+        onRegisterStepBack(null);
+      }
+    };
+  }, [onRegisterStepBack]);
+
+  // Sincroniza cada passo do teste grátis no histórico do navegador
+  useEffect(() => {
+    let subPage = 'trial-devices';
+    let depth = 1;
+
+    if (showRegisterModal) {
+      subPage = 'trial-register';
+      depth = 4;
+    } else if (selectedSubOptionId) {
+      subPage = `trial-suboption-${selectedSubOptionId}`;
+      depth = 3;
+    } else if (selectedDeviceId) {
+      subPage = `trial-device-${selectedDeviceId}`;
+      depth = 2;
+    }
+
+    const currentState = window.history.state as { app?: string; subPage?: string } | null;
+    if (!currentState || currentState.app !== 'tbi' || currentState.subPage !== subPage) {
+      window.history.pushState({ app: 'tbi', page: 'trial', subPage, depth }, '', window.location.href);
+    }
+  }, [selectedDeviceId, selectedSubOptionId, showRegisterModal]);
 
   const formatPhoneNumber = (val: string) => {
     const digits = val.replace(/\D/g, '').slice(0, 11);

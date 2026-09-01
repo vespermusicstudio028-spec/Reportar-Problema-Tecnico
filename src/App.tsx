@@ -481,6 +481,7 @@ export default function App() {
   const isReportContentOpenRef = useRef(false);
   const isPedirConteudoOpenRef = useRef(false);
   const trialStateRef = useRef<string | null>(null);
+  const trialStepBackRef = useRef<(() => boolean) | null>(null);
   const activeViewRef = useRef<ActiveView>('dashboard');
 
   // Sincroniza refs com os estados em cada render
@@ -588,8 +589,12 @@ export default function App() {
         rebase();
         return;
       }
-      // 11. Fluxo de trial / add_point
+      // 11. Fluxo de trial / add_point -> Suporta voltar passo a passo em cada tela/modal do teste grátis
       if (trialStateRef.current !== null) {
+        if (trialStepBackRef.current && trialStepBackRef.current()) {
+          rebase();
+          return;
+        }
         setTrialState(null);
         rebase();
         return;
@@ -1039,6 +1044,9 @@ export default function App() {
           config={trialConfig}
           mode={trialState === 'add_point' ? 'add_point' : 'trial'}
           onClose={() => setTrialState(null)}
+          onRegisterStepBack={(handler) => {
+            trialStepBackRef.current = handler;
+          }}
           onOpenChat={() => {
             setTrialState(null);
             setIsClientChatOpen(true);

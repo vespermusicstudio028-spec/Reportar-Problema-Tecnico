@@ -79,29 +79,40 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   useEffect(() => { showRegisterModalRef.current = showRegisterModal; }, [showRegisterModal]);
   useEffect(() => { showSuccessModalRef.current = showSuccessModal; }, [showSuccessModal]);
 
+  // Flag para evitar pushState duplo quando o usuário está VOLTANDO (não avançando)
+  const isNavigatingBackRef = useRef(false);
+
   // Registra o handler de voltar passo a passo no App.tsx
   useEffect(() => {
     if (onRegisterStepBack) {
       onRegisterStepBack(() => {
         // 1. Se modal de sucesso estiver aberto, fecha tudo e sai do trial
         if (showSuccessModalRef.current) {
+          isNavigatingBackRef.current = true;
           setShowSuccessModal(false);
+          setTimeout(() => { isNavigatingBackRef.current = false; }, 50);
           return false;
         }
         // 2. Se modal de cadastro estiver aberto, apenas fecha o modal e volta para a tela de instruções
         if (showRegisterModalRef.current) {
+          isNavigatingBackRef.current = true;
           setShowRegisterModal(false);
           setRegError('');
+          setTimeout(() => { isNavigatingBackRef.current = false; }, 50);
           return true; // consumiu o voltar
         }
         // 3. Se estiver visualizando uma sub-opção de app, volta para a lista de sub-opções do dispositivo
         if (selectedSubOptionIdRef.current !== null) {
+          isNavigatingBackRef.current = true;
           setSelectedSubOptionId(null);
+          setTimeout(() => { isNavigatingBackRef.current = false; }, 50);
           return true; // consumiu o voltar
         }
         // 4. Se estiver na lista de sub-opções ou na tela de um dispositivo direto (ex: Celular), volta para a lista de dispositivos
         if (selectedDeviceIdRef.current !== null) {
+          isNavigatingBackRef.current = true;
           setSelectedDeviceId(null);
+          setTimeout(() => { isNavigatingBackRef.current = false; }, 50);
           return true; // consumiu o voltar
         }
         // 5. Já está na lista de dispositivos raiz -> deixa o App.tsx fechar o fluxo de trial e voltar à tela inicial
@@ -116,7 +127,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   }, [onRegisterStepBack]);
 
   // Sincroniza cada passo do teste grátis no histórico do navegador
+  // Não faz pushState se estiver navegando para trás (evita entradas duplas)
   useEffect(() => {
+    if (isNavigatingBackRef.current) return;
+
     let subPage = 'trial-devices';
     let depth = 1;
 

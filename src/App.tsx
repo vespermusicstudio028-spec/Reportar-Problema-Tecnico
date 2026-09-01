@@ -591,10 +591,13 @@ export default function App() {
       }
       // 11. Fluxo de trial / add_point -> Suporta voltar passo a passo em cada tela/modal do teste grátis
       if (trialStateRef.current !== null) {
+        // Se o TrialFlowRenderer consumiu o passo (retornou true), não interfere no histórico —
+        // o próprio componente gerencia o pushState interno de cada sub-etapa.
         if (trialStepBackRef.current && trialStepBackRef.current()) {
-          rebase();
+          // NÃO chama rebase() aqui — o TrialFlowRenderer fará o pushState correto via useEffect
           return;
         }
+        // Se chegou na raiz (lista de dispositivos), fecha o trial e vai para o dashboard
         setTrialState(null);
         rebase();
         return;

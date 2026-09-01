@@ -467,6 +467,136 @@ export default function App() {
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
 
+  interface CatalogUpdate {
+    id: string;
+    title: string;
+  }
+  const [movieUpdates, setMovieUpdates] = useState<CatalogUpdate[]>([]);
+  const [seriesUpdates, setSeriesUpdates] = useState<CatalogUpdate[]>([]);
+  const [newMovieTitle, setNewMovieTitle] = useState('');
+  const [newSeriesTitle, setNewSeriesTitle] = useState('');
+  const generateUniqueClientCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  };
+
+  const [accessCode, setAccessCode] = useState('');
+  const [accessCodeError, setAccessCodeError] = useState('');
+  const [showClientCode, setShowClientCode] = useState(false);
+  const [clientName, setClientName] = useState('');
+  const [clientCode, setClientCode] = useState(() => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  });
+  const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
+  
+  const [loggedClientCode, setLoggedClientCode] = useState(() => {
+    return localStorage.getItem('iptv_access_code_v1') || '';
+  });
+  const [loggedClientName, setLoggedClientName] = useState(() => {
+    return localStorage.getItem('tbi_active_client_name') || '';
+  });
+
+  interface AccessPointScreen {
+    screenNumber: number;
+    appName?: string;
+    appIcon?: string;
+    authType?: 'mac' | 'login';
+    macAddress?: string;
+    deviceKey?: string;
+    username?: string;
+    password?: string;
+    expiresAt?: string;
+    isLifetime?: boolean;
+  }
+
+  interface Client {
+    id: string;
+    name: string;
+    code: string;
+    canvasLink: string;
+    email?: string;
+    phone?: string;
+    plan?: string;
+    price?: number;
+    activeApp?: string;
+    accessPoints?: AccessPointScreen[];
+    addedAt: string;
+    lastRecoveryAt?: string;
+  }
+  const [clients, setClients] = useState<Client[]>([]);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [activeScreenTab, setActiveScreenTab] = useState<number>(1);
+
+  useEffect(() => {
+    if (adminTab === 'clientes' && !clientCode) {
+      setClientCode(generateUniqueClientCode());
+    }
+  }, [adminTab, clientCode]);
+
+  // Image Viewer State
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  // ——— Push Notifications ———
+  const VAPID_PUBLIC_KEY = 'BM9ySPx1kYmZJlNp9_qlkb66OTA8cuSqAL0g8YkC4AD6UcIJBI9YWZHypdOPlFc6miJtgmC591QtvAkLkouOD_s';
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+  const [isPushLoading, setIsPushLoading] = useState(false);
+
+
+  // Converte base64url para Uint8Array (necessário para VAPID)
+  const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  };
+
+  // Registra o dispositivo para receber push
+  const subscribeToPush = async (clientCode: string) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const existing = await registration.pushManager.getSubscription();
+      const sub = existing ?? await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+      const subJson = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
+      // Salva no Supabase (upsert pelo endpoint)
+      await supabase.from('push_subscriptions').upsert({
+        endpoint: subJson.endpoint,
+        p256dh: subJson.keys.p256dh,
+        auth: subJson.keys.auth,
+        client_code: clientCode,
+      }, { onConflict: 'endpoint' });
+    } catch (err) {
+      console.warn('[push] Erro ao registrar subscription:', err);
+    }
+  };
+
+  // Pede permissão e registra subscription
+  const requestPushPermission = async () => {
+    if (!('Notification' in window)) return;
+    setIsPushLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      setPushPermission(permission);
+      if (permission === 'granted') {
+        const code = loggedClientCode || 'admin';
+        await subscribeToPush(code);
+      }
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
+
+  // Verifica estado atual da permissão
+  useEffect(() => {
+    if ('Notification' in window) {
+      setPushPermission(Notification.permission);
+    }
+  }, []);
+
   // ─── Sistema de Navegação: Botão Voltar do Celular ───────────────────────────
   // Refs para leitura dos estados dentro do listener popstate (evita closure stale).
   // Declarados APÓS todos os estados relevantes para evitar referências antes da inicialização.
@@ -690,136 +820,6 @@ export default function App() {
     }
   }, [activeView, isPedirConteudoOpen, trialState, isReportContentOpen, contentType, isClientChatOpen, adminTab, showLoginModal]);
   // ─────────────────────────────────────────────────────────────────────────────
-
-  interface CatalogUpdate {
-    id: string;
-    title: string;
-  }
-  const [movieUpdates, setMovieUpdates] = useState<CatalogUpdate[]>([]);
-  const [seriesUpdates, setSeriesUpdates] = useState<CatalogUpdate[]>([]);
-  const [newMovieTitle, setNewMovieTitle] = useState('');
-  const [newSeriesTitle, setNewSeriesTitle] = useState('');
-  const generateUniqueClientCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  };
-
-  const [accessCode, setAccessCode] = useState('');
-  const [accessCodeError, setAccessCodeError] = useState('');
-  const [showClientCode, setShowClientCode] = useState(false);
-  const [clientName, setClientName] = useState('');
-  const [clientCode, setClientCode] = useState(() => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  });
-  const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
-  
-  const [loggedClientCode, setLoggedClientCode] = useState(() => {
-    return localStorage.getItem('iptv_access_code_v1') || '';
-  });
-  const [loggedClientName, setLoggedClientName] = useState(() => {
-    return localStorage.getItem('tbi_active_client_name') || '';
-  });
-
-  interface AccessPointScreen {
-    screenNumber: number;
-    appName?: string;
-    appIcon?: string;
-    authType?: 'mac' | 'login';
-    macAddress?: string;
-    deviceKey?: string;
-    username?: string;
-    password?: string;
-    expiresAt?: string;
-    isLifetime?: boolean;
-  }
-
-  interface Client {
-    id: string;
-    name: string;
-    code: string;
-    canvasLink: string;
-    email?: string;
-    phone?: string;
-    plan?: string;
-    price?: number;
-    activeApp?: string;
-    accessPoints?: AccessPointScreen[];
-    addedAt: string;
-    lastRecoveryAt?: string;
-  }
-  const [clients, setClients] = useState<Client[]>([]);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [activeScreenTab, setActiveScreenTab] = useState<number>(1);
-
-  useEffect(() => {
-    if (adminTab === 'clientes' && !clientCode) {
-      setClientCode(generateUniqueClientCode());
-    }
-  }, [adminTab, clientCode]);
-
-  // Image Viewer State
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-
-  // ——— Push Notifications ———
-  const VAPID_PUBLIC_KEY = 'BM9ySPx1kYmZJlNp9_qlkb66OTA8cuSqAL0g8YkC4AD6UcIJBI9YWZHypdOPlFc6miJtgmC591QtvAkLkouOD_s';
-  const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
-  const [isPushLoading, setIsPushLoading] = useState(false);
-
-
-  // Converte base64url para Uint8Array (necessário para VAPID)
-  const urlBase64ToUint8Array = (base64String: string): Uint8Array => {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-  };
-
-  // Registra o dispositivo para receber push
-  const subscribeToPush = async (clientCode: string) => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const existing = await registration.pushManager.getSubscription();
-      const sub = existing ?? await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-      const subJson = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
-      // Salva no Supabase (upsert pelo endpoint)
-      await supabase.from('push_subscriptions').upsert({
-        endpoint: subJson.endpoint,
-        p256dh: subJson.keys.p256dh,
-        auth: subJson.keys.auth,
-        client_code: clientCode,
-      }, { onConflict: 'endpoint' });
-    } catch (err) {
-      console.warn('[push] Erro ao registrar subscription:', err);
-    }
-  };
-
-  // Pede permissão e registra subscription
-  const requestPushPermission = async () => {
-    if (!('Notification' in window)) return;
-    setIsPushLoading(true);
-    try {
-      const permission = await Notification.requestPermission();
-      setPushPermission(permission);
-      if (permission === 'granted') {
-        const code = loggedClientCode || 'admin';
-        await subscribeToPush(code);
-      }
-    } finally {
-      setIsPushLoading(false);
-    }
-  };
-
-  // Verifica estado atual da permissão
-  useEffect(() => {
-    if ('Notification' in window) {
-      setPushPermission(Notification.permission);
-    }
-  }, []);
 
   // Auto-registra quando o cliente faz login
   useEffect(() => {

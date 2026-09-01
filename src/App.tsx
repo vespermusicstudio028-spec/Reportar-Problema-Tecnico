@@ -473,10 +473,15 @@ export default function App() {
   const galleryModalRef = useRef<{ urls: string[]; index: number } | null>(null);
   const isClientChatOpenRef = useRef(false);
   const showCodeModalRef = useRef(false);
+  const showForgotCodeModalRef = useRef(false);
   const showUpdatesModalRef = useRef(false);
   const showRequestModalRef = useRef(false);
   const showPWAInstallModalRef = useRef(false);
+  const showLoginModalRef = useRef(false);
+  const editingClientRef = useRef<Client | null>(null);
   const adminTabRef = useRef<string | null>(null);
+  const adminCmsStepBackRef = useRef<(() => boolean) | null>(null);
+  const adminChatStepBackRef = useRef<(() => boolean) | null>(null);
   const contentTypeRef = useRef<ContentType>(null);
   const isReportContentOpenRef = useRef(false);
   const isPedirConteudoOpenRef = useRef(false);
@@ -488,9 +493,12 @@ export default function App() {
   useEffect(() => { galleryModalRef.current = galleryModal; }, [galleryModal]);
   useEffect(() => { isClientChatOpenRef.current = isClientChatOpen; }, [isClientChatOpen]);
   useEffect(() => { showCodeModalRef.current = showCodeModal; }, [showCodeModal]);
+  useEffect(() => { showForgotCodeModalRef.current = showForgotCodeModal; }, [showForgotCodeModal]);
   useEffect(() => { showUpdatesModalRef.current = showUpdatesModal; }, [showUpdatesModal]);
   useEffect(() => { showRequestModalRef.current = showRequestModal; }, [showRequestModal]);
   useEffect(() => { showPWAInstallModalRef.current = showPWAInstallModal; }, [showPWAInstallModal]);
+  useEffect(() => { showLoginModalRef.current = showLoginModal; }, [showLoginModal]);
+  useEffect(() => { editingClientRef.current = editingClient; }, [editingClient]);
   useEffect(() => { adminTabRef.current = adminTab; }, [adminTab]);
   useEffect(() => { contentTypeRef.current = contentType; }, [contentType]);
   useEffect(() => { isReportContentOpenRef.current = isReportContentOpen; }, [isReportContentOpen]);
@@ -526,12 +534,17 @@ export default function App() {
         rebase();
         return;
       }
-      // 2. Chat do cliente (widget) ou Chat do Administrador -> Fecha o chat e vai direto para a tela inicial (dashboard)
-      if (isClientChatOpenRef.current || adminTabRef.current === 'chat') {
+
+      // 2. Modal de edição de cliente (dentro da aba Clientes do Admin)
+      if (editingClientRef.current !== null) {
+        setEditingClient(null);
+        rebase();
+        return;
+      }
+
+      // 3. Chat do cliente (widget) -> Fecha o chat e vai direto para a tela inicial (dashboard)
+      if (isClientChatOpenRef.current) {
         setIsClientChatOpen(false);
-        if (adminTabRef.current === 'chat') {
-          setAdminTab(null);
-        }
         setActiveView('dashboard');
         setIsReportContentOpen(false);
         setIsPedirConteudoOpen(false);
@@ -540,74 +553,107 @@ export default function App() {
         rebase();
         return;
       }
-      // 3. Modal de código de acesso
+
+      // 4. Modal de código de acesso
       if (showCodeModalRef.current) {
         setShowCodeModal(false);
         rebase();
         return;
       }
-      // 4. Modal de atualizações de catálogo
+
+      // 5. Modal de recuperação de código
+      if (showForgotCodeModalRef.current) {
+        setShowForgotCodeModal(false);
+        rebase();
+        return;
+      }
+
+      // 6. Modal de atualizações de catálogo
       if (showUpdatesModalRef.current) {
         setShowUpdatesModal(false);
         rebase();
         return;
       }
-      // 5. Modal de pedido de conteúdo (overlay de busca TMDB)
+
+      // 7. Modal de pedido de conteúdo (overlay de busca TMDB)
       if (showRequestModalRef.current) {
         setShowRequestModal(false);
         rebase();
         return;
       }
-      // 6. Modal de instalação PWA
+
+      // 8. Modal de instalação PWA
       if (showPWAInstallModalRef.current) {
         setShowPWAInstallModal(false);
         rebase();
         return;
       }
-      // 7. Painel Admin (qualquer aba)
+
+      // 9. Abas do Painel Admin (cms-trial, informes, clientes, atualizacoes, pedidos, chat, suporte, crm-tbi)
       if (adminTabRef.current !== null) {
+        // Se estiver dentro de CMS Teste Grátis e houver sub-passo (sub-opção -> dispositivo -> lista)
+        if (adminTabRef.current === 'cms-trial' && adminCmsStepBackRef.current && adminCmsStepBackRef.current()) {
+          return;
+        }
+
+        // Se estiver dentro do Chat Admin e houver conversa com cliente aberta -> volta para lista de conversas
+        if (adminTabRef.current === 'chat' && adminChatStepBackRef.current && adminChatStepBackRef.current()) {
+          return;
+        }
+
+        // Sai da aba do admin e retorna para o Menu do Painel Admin
         setAdminTab(null);
+        setShowLoginModal(true);
         rebase();
         return;
       }
-      // 8. Formulário de reporte (tem contentType selecionado) → volta para seleção de tema
+
+      // 10. Menu do Painel Admin ou Modal de Login
+      if (showLoginModalRef.current) {
+        setShowLoginModal(false);
+        setActiveView('dashboard');
+        rebase();
+        return;
+      }
+
+      // 11. Formulário de reporte (tem contentType selecionado) → volta para seleção de tema
       if (contentTypeRef.current !== null) {
         setContentType(null);
-        // Injeta entry de "report-theme" para que próximo Voltar feche a tela de reporte
         window.history.pushState({ app: 'tbi', page: 'report-theme', depth: 1 }, '', window.location.href);
         return;
       }
-      // 9. Tela de seleção de tema do reporte (sem contentType)
+
+      // 12. Tela de seleção de tema do reporte (sem contentType)
       if (isReportContentOpenRef.current) {
         setIsReportContentOpen(false);
         rebase();
         return;
       }
-      // 10. Tela "Pedir Conteúdo"
+
+      // 13. Tela "Pedir Conteúdo"
       if (isPedirConteudoOpenRef.current) {
         setIsPedirConteudoOpen(false);
         rebase();
         return;
       }
-      // 11. Fluxo de trial / add_point -> Suporta voltar passo a passo em cada tela/modal do teste grátis
+
+      // 14. Fluxo de trial / add_point -> Suporta voltar passo a passo em cada tela/modal do teste grátis
       if (trialStateRef.current !== null) {
-        // Se o TrialFlowRenderer consumiu o passo (retornou true), não interfere no histórico —
-        // o próprio componente gerencia o pushState interno de cada sub-etapa.
         if (trialStepBackRef.current && trialStepBackRef.current()) {
-          // NÃO chama rebase() aqui — o TrialFlowRenderer fará o pushState correto via useEffect
           return;
         }
-        // Se chegou na raiz (lista de dispositivos), fecha o trial e vai para o dashboard
         setTrialState(null);
         rebase();
         return;
       }
-      // 12. Perfil ou Histórico → Dashboard
+
+      // 15. Perfil ou Histórico → Dashboard
       if (activeViewRef.current !== 'dashboard') {
         setActiveView('dashboard');
         rebase();
         return;
       }
+
       // Já no dashboard: reinjeta para não fechar o app
       rebase();
     };
@@ -623,7 +669,9 @@ export default function App() {
     let page = 'dashboard';
     let depth = 0;
 
-    if (isClientChatOpen || adminTab === 'chat') { page = 'chat'; depth = 1; }
+    if (adminTab) { page = `admin-${adminTab}`; depth = 2; }
+    else if (showLoginModal) { page = 'admin-menu'; depth = 1; }
+    else if (isClientChatOpen) { page = 'chat'; depth = 1; }
     else if (activeView === 'profile') { page = 'profile'; depth = 1; }
     else if (activeView === 'history') { page = 'history'; depth = 1; }
     else if (isPedirConteudoOpen) { page = 'pedir-conteudo'; depth = 1; }
@@ -640,7 +688,7 @@ export default function App() {
         window.history.replaceState({ app: 'tbi', page, depth }, '', window.location.href);
       }
     }
-  }, [activeView, isPedirConteudoOpen, trialState, isReportContentOpen, contentType, isClientChatOpen, adminTab]);
+  }, [activeView, isPedirConteudoOpen, trialState, isReportContentOpen, contentType, isClientChatOpen, adminTab, showLoginModal]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   interface CatalogUpdate {
@@ -2899,7 +2947,13 @@ export default function App() {
               {/* ───────────────────────────────────── */}
               {adminTab === 'cms-trial' && (
                 <div className="bg-[#0f131c] border border-slate-800/80 rounded-3xl p-5 md:p-8 shadow-2xl">
-                  <TrialAdminPanel config={trialConfig} onSave={saveTrialConfig} />
+                  <TrialAdminPanel 
+                    config={trialConfig} 
+                    onSave={saveTrialConfig} 
+                    onRegisterStepBack={(handler) => {
+                      adminCmsStepBackRef.current = handler;
+                    }}
+                  />
                 </div>
               )}
 
@@ -3719,7 +3773,12 @@ export default function App() {
               {/* ───────────────────────────────────── */}
               {adminTab === 'chat' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
-                  <AdminChatPanel clientsList={clients} />
+                  <AdminChatPanel 
+                    clientsList={clients} 
+                    onRegisterStepBack={(handler) => {
+                      adminChatStepBackRef.current = handler;
+                    }}
+                  />
                 </div>
               )}
 

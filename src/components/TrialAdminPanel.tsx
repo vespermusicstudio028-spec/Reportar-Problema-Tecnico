@@ -7,16 +7,43 @@ import { supabase } from '../lib/supabase';
 interface Props {
   config: TrialConfig;
   onSave: (config: TrialConfig) => Promise<void>;
+  onRegisterStepBack?: (handler: (() => boolean) | null) => void;
 }
 
 type ViewLevel = 'list' | 'device' | 'suboption';
 
-export function TrialAdminPanel({ config, onSave }: Props) {
+export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
   const [localConfig, setLocalConfig] = useState<TrialConfig>(JSON.parse(JSON.stringify(config)));
   const [view, setView] = useState<ViewLevel>('list');
   const [deviceIdx, setDeviceIdx] = useState<number>(0);
   const [subIdx, setSubIdx] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+
+  const viewRef = useRef<ViewLevel>('list');
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  useEffect(() => {
+    if (onRegisterStepBack) {
+      onRegisterStepBack(() => {
+        if (viewRef.current === 'suboption') {
+          setView('device');
+          return true; // consumiu o voltar
+        }
+        if (viewRef.current === 'device') {
+          setView('list');
+          return true; // consumiu o voltar
+        }
+        return false; // está na lista raiz do CMS
+      });
+    }
+    return () => {
+      if (onRegisterStepBack) {
+        onRegisterStepBack(null);
+      }
+    };
+  }, [onRegisterStepBack]);
 
   const handleSave = async () => {
     setIsSaving(true);

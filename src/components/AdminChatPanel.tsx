@@ -34,6 +34,7 @@ import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } f
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
+  onRegisterStepBack?: (handler: (() => boolean) | null) => void;
 }
 
 const QUICK_REPLIES = [
@@ -45,7 +46,7 @@ const QUICK_REPLIES = [
   { label: 'Tudo funcionando 🚀', message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀' },
 ];
 
-export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [] }) => {
+export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedClientCode, setSelectedClientCode] = useState<string | null>(null);
   const [activeServingClientCode, setActiveServingClientCode] = useState<string | null>(null);
@@ -56,6 +57,35 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const selectedClientCodeRef = useRef<string | null>(null);
+  const mobileShowChatRef = useRef(false);
+
+  useEffect(() => {
+    selectedClientCodeRef.current = selectedClientCode;
+  }, [selectedClientCode]);
+
+  useEffect(() => {
+    mobileShowChatRef.current = mobileShowChat;
+  }, [mobileShowChat]);
+
+  useEffect(() => {
+    if (onRegisterStepBack) {
+      onRegisterStepBack(() => {
+        if (selectedClientCodeRef.current !== null || mobileShowChatRef.current) {
+          setSelectedClientCode(null);
+          setMobileShowChat(false);
+          return true; // consumiu o voltar
+        }
+        return false; // está na lista de conversas raiz
+      });
+    }
+    return () => {
+      if (onRegisterStepBack) {
+        onRegisterStepBack(null);
+      }
+    };
+  }, [onRegisterStepBack]);
 
   const handleCopyMessage = (id: string, text: string) => {
     navigator.clipboard.writeText(text).then(() => {

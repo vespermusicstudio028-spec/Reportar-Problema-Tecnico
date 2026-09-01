@@ -525,9 +525,17 @@ export default function App() {
         rebase();
         return;
       }
-      // 2. Chat do cliente (widget)
-      if (isClientChatOpenRef.current) {
+      // 2. Chat do cliente (widget) ou Chat do Administrador -> Fecha o chat e vai direto para a tela inicial (dashboard)
+      if (isClientChatOpenRef.current || adminTabRef.current === 'chat') {
         setIsClientChatOpen(false);
+        if (adminTabRef.current === 'chat') {
+          setAdminTab(null);
+        }
+        setActiveView('dashboard');
+        setIsReportContentOpen(false);
+        setIsPedirConteudoOpen(false);
+        setContentType(null);
+        setTrialState(null);
         rebase();
         return;
       }
@@ -607,7 +615,8 @@ export default function App() {
     let page = 'dashboard';
     let depth = 0;
 
-    if (activeView === 'profile') { page = 'profile'; depth = 1; }
+    if (isClientChatOpen || adminTab === 'chat') { page = 'chat'; depth = 1; }
+    else if (activeView === 'profile') { page = 'profile'; depth = 1; }
     else if (activeView === 'history') { page = 'history'; depth = 1; }
     else if (isPedirConteudoOpen) { page = 'pedir-conteudo'; depth = 1; }
     else if (trialState) { page = `trial-${trialState}`; depth = 1; }
@@ -623,7 +632,7 @@ export default function App() {
         window.history.replaceState({ app: 'tbi', page, depth }, '', window.location.href);
       }
     }
-  }, [activeView, isPedirConteudoOpen, trialState, isReportContentOpen, contentType]);
+  }, [activeView, isPedirConteudoOpen, trialState, isReportContentOpen, contentType, isClientChatOpen, adminTab]);
   // ─────────────────────────────────────────────────────────────────────────────
 
   interface CatalogUpdate {
@@ -892,6 +901,8 @@ export default function App() {
     setIsReportContentOpen(false);
     setIsPedirConteudoOpen(false);
     setTrialState(null);
+    setIsClientChatOpen(false);
+    setAdminTab(null);
     setIssueType('');
     setIssueTypeOther('');
     setDevice('');
@@ -5160,27 +5171,22 @@ export default function App() {
           accessPoints={currentClient?.accessPoints}
           onOpenCodeLogin={() => setShowCodeModal(true)}
           isOpenExternal={isClientChatOpen}
-          onCloseExternal={() => setIsClientChatOpen(false)}
-          onSelectCanal={() => {
-            setActiveView('dashboard');
-            setIsReportContentOpen(true);
-            setIsPedirConteudoOpen(false);
-            setContentType(null);
-            setIssueType('');
-            setDevice('');
+          onOpenExternal={() => setIsClientChatOpen(true)}
+          onCloseExternal={() => {
             setIsClientChatOpen(false);
+            handleGoHome();
+          }}
+          onSelectCanal={() => {
+            handleGoHome();
+            setIsReportContentOpen(true);
           }}
           onPedirConteudo={() => {
-            setActiveView('dashboard');
+            handleGoHome();
             setIsPedirConteudoOpen(true);
-            setIsReportContentOpen(false);
-            setContentType(null);
-            setIsClientChatOpen(false);
           }}
           onAddPoint={() => {
-            setActiveView('dashboard');
+            handleGoHome();
             setTrialState('add_point');
-            setIsClientChatOpen(false);
           }}
         />
       )}

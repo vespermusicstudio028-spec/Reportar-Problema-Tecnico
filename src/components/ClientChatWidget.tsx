@@ -55,6 +55,7 @@ interface ClientChatWidgetProps {
   accessPoints?: AccessPointScreen[];
   onOpenCodeLogin?: () => void;
   isOpenExternal?: boolean;
+  onOpenExternal?: () => void;
   onCloseExternal?: () => void;
   onSelectCanal?: () => void;
   onPedirConteudo?: () => void;
@@ -70,6 +71,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   accessPoints,
   onOpenCodeLogin,
   isOpenExternal,
+  onOpenExternal,
   onCloseExternal,
   onSelectCanal,
   onPedirConteudo,
@@ -85,6 +87,13 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [showPixUploadModal, setShowPixUploadModal] = useState(false);
   const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const handleOpen = () => {
+    setIsOpen(true);
+    if (onOpenExternal) {
+      onOpenExternal();
+    }
+  };
 
   // Atualizar status do horário periodicamente a cada 30 segundos
   useEffect(() => {
@@ -546,7 +555,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           animate={{ scale: 1, opacity: 1 }}
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setIsOpen(true)}
+          onClick={handleOpen}
           className="fixed bottom-5 right-5 z-40 p-3.5 md:p-4 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-2xl shadow-indigo-600/50 border border-white/20 flex items-center justify-center group"
           title="Falar com o Suporte / Administrador"
         >

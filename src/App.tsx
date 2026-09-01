@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from './lib/supabase';
 import { TrialConfig, defaultTrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from './types/trial';
@@ -466,6 +466,166 @@ export default function App() {
   const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
+
+  // ─── Sistema de Navegação: Botão Voltar do Celular ───────────────────────────
+  // Refs para leitura dos estados dentro do listener popstate (evita closure stale).
+  // Declarados APÓS todos os estados relevantes para evitar referências antes da inicialização.
+  const galleryModalRef = useRef<{ urls: string[]; index: number } | null>(null);
+  const isClientChatOpenRef = useRef(false);
+  const showCodeModalRef = useRef(false);
+  const showUpdatesModalRef = useRef(false);
+  const showRequestModalRef = useRef(false);
+  const showPWAInstallModalRef = useRef(false);
+  const adminTabRef = useRef<string | null>(null);
+  const contentTypeRef = useRef<ContentType>(null);
+  const isReportContentOpenRef = useRef(false);
+  const isPedirConteudoOpenRef = useRef(false);
+  const trialStateRef = useRef<string | null>(null);
+  const activeViewRef = useRef<ActiveView>('dashboard');
+
+  // Sincroniza refs com os estados em cada render
+  useEffect(() => { galleryModalRef.current = galleryModal; }, [galleryModal]);
+  useEffect(() => { isClientChatOpenRef.current = isClientChatOpen; }, [isClientChatOpen]);
+  useEffect(() => { showCodeModalRef.current = showCodeModal; }, [showCodeModal]);
+  useEffect(() => { showUpdatesModalRef.current = showUpdatesModal; }, [showUpdatesModal]);
+  useEffect(() => { showRequestModalRef.current = showRequestModal; }, [showRequestModal]);
+  useEffect(() => { showPWAInstallModalRef.current = showPWAInstallModal; }, [showPWAInstallModal]);
+  useEffect(() => { adminTabRef.current = adminTab; }, [adminTab]);
+  useEffect(() => { contentTypeRef.current = contentType; }, [contentType]);
+  useEffect(() => { isReportContentOpenRef.current = isReportContentOpen; }, [isReportContentOpen]);
+  useEffect(() => { isPedirConteudoOpenRef.current = isPedirConteudoOpen; }, [isPedirConteudoOpen]);
+  useEffect(() => { trialStateRef.current = trialState; }, [trialState]);
+  useEffect(() => { activeViewRef.current = activeView; }, [activeView]);
+
+  // Listener do botão Voltar do Android/iOS/browser
+  useEffect(() => {
+    // Garante que há um estado base no histórico ao inicializar
+    if (!window.history.state || window.history.state.app !== 'tbi') {
+      window.history.replaceState({ app: 'tbi', page: 'dashboard', depth: 0 }, '', window.location.href);
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as { app?: string } | null;
+
+      // Se não é estado do nosso app, reinjeta para não fechar o PWA
+      if (!state || state.app !== 'tbi') {
+        window.history.pushState({ app: 'tbi', page: 'dashboard', depth: 0 }, '', window.location.href);
+        return;
+      }
+
+      // Função auxiliar: reestabelece a entrada base no histórico
+      const rebase = () =>
+        window.history.pushState({ app: 'tbi', page: 'dashboard', depth: 0 }, '', window.location.href);
+
+      // PRIORIDADE DOS FECHAMENTOS (do mais "superficial" ao mais "profundo"):
+
+      // 1. Galeria de fotos/imagens
+      if (galleryModalRef.current !== null) {
+        setGalleryModal(null);
+        rebase();
+        return;
+      }
+      // 2. Chat do cliente (widget)
+      if (isClientChatOpenRef.current) {
+        setIsClientChatOpen(false);
+        rebase();
+        return;
+      }
+      // 3. Modal de código de acesso
+      if (showCodeModalRef.current) {
+        setShowCodeModal(false);
+        rebase();
+        return;
+      }
+      // 4. Modal de atualizações de catálogo
+      if (showUpdatesModalRef.current) {
+        setShowUpdatesModal(false);
+        rebase();
+        return;
+      }
+      // 5. Modal de pedido de conteúdo (overlay de busca TMDB)
+      if (showRequestModalRef.current) {
+        setShowRequestModal(false);
+        rebase();
+        return;
+      }
+      // 6. Modal de instalação PWA
+      if (showPWAInstallModalRef.current) {
+        setShowPWAInstallModal(false);
+        rebase();
+        return;
+      }
+      // 7. Painel Admin (qualquer aba)
+      if (adminTabRef.current !== null) {
+        setAdminTab(null);
+        rebase();
+        return;
+      }
+      // 8. Formulário de reporte (tem contentType selecionado) → volta para seleção de tema
+      if (contentTypeRef.current !== null) {
+        setContentType(null);
+        // Injeta entry de "report-theme" para que próximo Voltar feche a tela de reporte
+        window.history.pushState({ app: 'tbi', page: 'report-theme', depth: 1 }, '', window.location.href);
+        return;
+      }
+      // 9. Tela de seleção de tema do reporte (sem contentType)
+      if (isReportContentOpenRef.current) {
+        setIsReportContentOpen(false);
+        rebase();
+        return;
+      }
+      // 10. Tela "Pedir Conteúdo"
+      if (isPedirConteudoOpenRef.current) {
+        setIsPedirConteudoOpen(false);
+        rebase();
+        return;
+      }
+      // 11. Fluxo de trial / add_point
+      if (trialStateRef.current !== null) {
+        setTrialState(null);
+        rebase();
+        return;
+      }
+      // 12. Perfil ou Histórico → Dashboard
+      if (activeViewRef.current !== 'dashboard') {
+        setActiveView('dashboard');
+        rebase();
+        return;
+      }
+      // Já no dashboard: reinjeta para não fechar o app
+      rebase();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sincroniza mudanças de "página" com o histórico do browser (pushState).
+  // Apenas páginas geram entrada no histórico — modais são tratados pelo popstate acima.
+  useEffect(() => {
+    let page = 'dashboard';
+    let depth = 0;
+
+    if (activeView === 'profile') { page = 'profile'; depth = 1; }
+    else if (activeView === 'history') { page = 'history'; depth = 1; }
+    else if (isPedirConteudoOpen) { page = 'pedir-conteudo'; depth = 1; }
+    else if (trialState) { page = `trial-${trialState}`; depth = 1; }
+    else if (isReportContentOpen && !contentType) { page = 'report-theme'; depth = 1; }
+    else if (isReportContentOpen && contentType) { page = `report-form-${contentType}`; depth = 2; }
+
+    const currentState = window.history.state as { app?: string; page?: string } | null;
+    // Só sincroniza se a "página" mudou (evita pushState duplo)
+    if (!currentState || currentState.app !== 'tbi' || currentState.page !== page) {
+      if (depth > 0) {
+        window.history.pushState({ app: 'tbi', page, depth }, '', window.location.href);
+      } else {
+        window.history.replaceState({ app: 'tbi', page, depth }, '', window.location.href);
+      }
+    }
+  }, [activeView, isPedirConteudoOpen, trialState, isReportContentOpen, contentType]);
+  // ─────────────────────────────────────────────────────────────────────────────
+
   interface CatalogUpdate {
     id: string;
     title: string;

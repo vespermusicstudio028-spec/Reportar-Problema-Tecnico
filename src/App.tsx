@@ -55,7 +55,8 @@ import {
   ExternalLink,
   Globe,
   Check,
-  Building2
+  Building2,
+  Users
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -525,6 +526,7 @@ export default function App() {
     lastRecoveryAt?: string;
   }
   const [clients, setClients] = useState<Client[]>([]);
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [activeScreenTab, setActiveScreenTab] = useState<number>(1);
 
@@ -3355,69 +3357,203 @@ export default function App() {
                     </button>
                   </form>
 
-                  {/* Lista de Clientes */}
-                  <div className="space-y-4">
-                    <h3 className="text-white font-bold text-lg flex items-center justify-between">
-                      <span>Clientes Cadastrados ({clients.length})</span>
-                    </h3>
-                    {clients.length === 0 ? (
-                      <div className="text-center py-12 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800">
-                        <User size={36} className="text-slate-600 mx-auto mb-3" />
-                        <p className="text-slate-400 font-medium">Nenhum cliente cadastrado no banco de dados.</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {clients.map(client => (
-                          <div 
-                            key={client.id} 
-                            onClick={() => {
-                              setEditingClient(client);
-                              setActiveScreenTab(client.accessPoints?.length ? Math.min(5, Math.max(1, client.accessPoints.length)) : 1);
-                            }}
-                            className="p-5 rounded-2xl border bg-[#0f131c] border-slate-800 hover:border-blue-500/40 hover:bg-[#141924] cursor-pointer transition-all flex justify-between items-center gap-4 group shadow-xl"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-white font-bold text-base truncate group-hover:text-blue-400 transition-colors">{client.name}</p>
-                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-mono border border-slate-700">Código: {client.code}</span>
-                                {client.phone && <span className="text-xs text-slate-400">{client.phone}</span>}
-                                {client.price !== undefined && client.price !== null && (
-                                  <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-900/40 text-emerald-300 font-bold border border-emerald-700/40">
-                                    💰 R$ {Number(client.price).toFixed(2).replace('.', ',')}
-                                    {client.plan ? ` – ${client.plan}` : ''}
-                                  </span>
-                                )}
-                              </div>
+                  {/* Lista de Clientes com Barra de Pesquisa */}
+                  {(() => {
+                    const filteredClients = clients.filter(client => {
+                      if (!clientSearchQuery.trim()) return true;
+                      const q = clientSearchQuery.trim().toLowerCase();
+                      const cleanQ = q.replace(/[^a-z0-9]/g, '');
+
+                      // 1. Busca por Nome
+                      if (client.name && client.name.toLowerCase().includes(q)) return true;
+
+                      // 2. Busca por Código de Acesso
+                      if (client.code && client.code.toLowerCase().includes(q)) return true;
+
+                      // 3. Busca por WhatsApp / Telefone
+                      if (client.phone) {
+                        const rawPhone = client.phone.replace(/\D/g, '');
+                        if (client.phone.toLowerCase().includes(q) || (cleanQ && rawPhone.includes(cleanQ))) return true;
+                      }
+
+                      // 4. Busca por Aplicativo Ativo ou Plano
+                      if (client.activeApp && client.activeApp.toLowerCase().includes(q)) return true;
+                      if (client.plan && client.plan.toLowerCase().includes(q)) return true;
+
+                      // 5. Busca por MAC, Login/Usuário, Senha, Device Key nos Pontos de Acesso
+                      if (client.accessPoints && Array.isArray(client.accessPoints)) {
+                        for (const ap of client.accessPoints) {
+                          if (ap.macAddress) {
+                            const mac = ap.macAddress.toLowerCase();
+                            const cleanMac = mac.replace(/[^a-z0-9]/g, '');
+                            if (mac.includes(q) || (cleanQ.length >= 3 && cleanMac.includes(cleanQ))) return true;
+                          }
+                          if (ap.username && ap.username.toLowerCase().includes(q)) return true;
+                          if (ap.password && ap.password.toLowerCase().includes(q)) return true;
+                          if (ap.deviceKey && ap.deviceKey.toLowerCase().includes(q)) return true;
+                          if (ap.appName && ap.appName.toLowerCase().includes(q)) return true;
+                        }
+                      }
+
+                      return false;
+                    });
+
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                          <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                            <Users size={20} className="text-blue-400" />
+                            <span>Clientes Cadastrados</span>
+                            <span className="text-xs bg-blue-500/20 text-blue-300 font-bold px-2.5 py-0.5 rounded-full border border-blue-500/30">
+                              {clientSearchQuery ? `${filteredClients.length} de ${clients.length}` : clients.length}
+                            </span>
+                          </h3>
+                        </div>
+
+                        {/* Barra de Pesquisa Inteligente */}
+                        {clients.length > 0 && (
+                          <div className="bg-[#0f131c] p-3 rounded-2xl border border-slate-800 shadow-xl flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                            <div className="relative flex-1">
+                              <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                              <input
+                                type="text"
+                                value={clientSearchQuery}
+                                onChange={(e) => setClientSearchQuery(e.target.value)}
+                                placeholder="Pesquisar cliente por Nome, MAC, Login, Código ou WhatsApp..."
+                                className="w-full bg-[#151922] border border-slate-700/80 text-slate-50 pl-10 pr-10 py-3 rounded-xl text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 transition-all placeholder:text-slate-500"
+                              />
+                              {clientSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setClientSearchQuery('')}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                                  title="Limpar pesquisa"
+                                >
+                                  <X size={14} />
+                                </button>
+                              )}
                             </div>
-                            <div className="flex items-center shrink-0 gap-1.5">
-                              <button 
-                                type="button" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleWhatsAppMessage(client.name, client.code);
-                                }}
-                                className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
-                                title="Enviar código via WhatsApp"
+
+                            {clientSearchQuery && (
+                              <button
+                                type="button"
+                                onClick={() => setClientSearchQuery('')}
+                                className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-bold transition-all border border-slate-700 shrink-0 flex items-center justify-center gap-1.5"
                               >
-                                <MessageCircle size={18} />
+                                <X size={14} /> Limpar Filtro
                               </button>
-                              <button 
-                                type="button" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteClient(client.id);
-                                }} 
-                                className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20"
-                                title="Excluir cliente"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
+                            )}
                           </div>
-                        ))}
+                        )}
+
+                        {clients.length === 0 ? (
+                          <div className="text-center py-12 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800">
+                            <User size={36} className="text-slate-600 mx-auto mb-3" />
+                            <p className="text-slate-400 font-medium">Nenhum cliente cadastrado no banco de dados.</p>
+                          </div>
+                        ) : filteredClients.length === 0 ? (
+                          <div className="text-center py-12 bg-[#0f131c] rounded-3xl border border-slate-800 shadow-xl space-y-3">
+                            <Search size={36} className="text-slate-600 mx-auto" />
+                            <p className="text-white font-bold text-base">Nenhum cliente encontrado</p>
+                            <p className="text-slate-400 text-xs max-w-md mx-auto">
+                              Não encontramos nenhum cliente com o termo <span className="text-blue-400 font-bold">"{clientSearchQuery}"</span> (buscado em Nome, MAC, Login, Código e WhatsApp).
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setClientSearchQuery('')}
+                              className="mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md shadow-blue-600/20"
+                            >
+                              Ver Todos os Clientes
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {filteredClients.map(client => {
+                              // Extrai dados de telas para exibir badges rápidos
+                              const points = client.accessPoints || [];
+                              const firstMac = points.find(p => p.macAddress)?.macAddress;
+                              const firstLogin = points.find(p => p.username)?.username;
+                              const firstKey = points.find(p => p.deviceKey)?.deviceKey;
+
+                              return (
+                                <div 
+                                  key={client.id} 
+                                  onClick={() => {
+                                    setEditingClient(client);
+                                    setActiveScreenTab(client.accessPoints?.length ? Math.min(5, Math.max(1, client.accessPoints.length)) : 1);
+                                  }}
+                                  className="p-5 rounded-2xl border bg-[#0f131c] border-slate-800 hover:border-blue-500/40 hover:bg-[#141924] cursor-pointer transition-all flex justify-between items-center gap-4 group shadow-xl"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-white font-bold text-base truncate group-hover:text-blue-400 transition-colors">
+                                      {client.name}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                      <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 font-mono border border-slate-700">
+                                        Código: {client.code}
+                                      </span>
+                                      {client.phone && <span className="text-xs text-slate-400">{client.phone}</span>}
+                                      {client.price !== undefined && client.price !== null && (
+                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-900/40 text-emerald-300 font-bold border border-emerald-700/40">
+                                          💰 R$ {Number(client.price).toFixed(2).replace('.', ',')}
+                                          {client.plan ? ` – ${client.plan}` : ''}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* Badges de MAC / Login / Key */}
+                                    {(firstMac || firstLogin || firstKey) && (
+                                      <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+                                        {firstMac && (
+                                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-pink-500/10 text-pink-300 font-mono border border-pink-500/20 font-bold truncate max-w-[200px]" title={`MAC: ${firstMac}`}>
+                                            MAC: {firstMac}
+                                          </span>
+                                        )}
+                                        {firstLogin && (
+                                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 font-mono border border-cyan-500/20 truncate max-w-[160px]" title={`Login: ${firstLogin}`}>
+                                            Login: {firstLogin}
+                                          </span>
+                                        )}
+                                        {firstKey && (
+                                          <span className="text-[11px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-300 font-mono border border-purple-500/20 truncate max-w-[140px]" title={`Key: ${firstKey}`}>
+                                            Key: {firstKey}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center shrink-0 gap-1.5">
+                                    <button 
+                                      type="button" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleWhatsAppMessage(client.name, client.code);
+                                      }}
+                                      className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
+                                      title="Enviar código via WhatsApp"
+                                    >
+                                      <MessageCircle size={18} />
+                                    </button>
+                                    <button 
+                                      type="button" 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClient(client.id);
+                                      }} 
+                                      className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20"
+                                      title="Excluir cliente"
+                                    >
+                                      <Trash2 size={18} />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               )}
 

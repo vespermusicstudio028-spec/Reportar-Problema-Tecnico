@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Reorder } from 'motion/react';
-import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock, TrialLink, TrialMedia } from '../types/trial';
+import { TrialConfig, defaultTrialConfig, TrialDevice, TrialSubOption, TrialContentBlock, TrialLink, TrialMedia } from '../types/trial';
 import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2, Eye, EyeOff, Copy, AlertTriangle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
@@ -13,11 +13,25 @@ interface Props {
 type ViewLevel = 'list' | 'device' | 'suboption';
 
 export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
-  const [localConfig, setLocalConfig] = useState<TrialConfig>(JSON.parse(JSON.stringify(config)));
+  const getSafeConfig = (cfg?: TrialConfig): TrialConfig => {
+    if (cfg && Array.isArray(cfg.devices) && cfg.devices.length > 0) {
+      return JSON.parse(JSON.stringify(cfg));
+    }
+    return JSON.parse(JSON.stringify(defaultTrialConfig));
+  };
+
+  const [localConfig, setLocalConfig] = useState<TrialConfig>(() => getSafeConfig(config));
   const [view, setView] = useState<ViewLevel>('list');
   const [deviceIdx, setDeviceIdx] = useState<number>(0);
   const [subIdx, setSubIdx] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sincroniza localConfig caso a prop config seja carregada após a montagem
+  useEffect(() => {
+    if (config && Array.isArray(config.devices) && config.devices.length > 0) {
+      setLocalConfig(getSafeConfig(config));
+    }
+  }, [config]);
 
   const viewRef = useRef<ViewLevel>('list');
   useEffect(() => {
@@ -53,27 +67,28 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
   };
 
   const updateDevice = (index: number, updatedDevice: TrialDevice) => {
-    const newDevices = [...localConfig.devices];
+    const newDevices = [...(localConfig.devices || [])];
     newDevices[index] = updatedDevice;
     setLocalConfig({ ...localConfig, devices: newDevices });
   };
 
   const updateSubOption = (devIdx: number, sIdx: number, updatedSub: TrialSubOption) => {
-    const newDevices = [...localConfig.devices];
-    const newSubs = [...(newDevices[devIdx].subOptions || [])];
+    const newDevices = [...(localConfig.devices || [])];
+    const newSubs = [...(newDevices[devIdx]?.subOptions || [])];
     newSubs[sIdx] = updatedSub;
     newDevices[devIdx] = { ...newDevices[devIdx], subOptions: newSubs };
     setLocalConfig({ ...localConfig, devices: newDevices });
   };
 
   const addDevice = () => {
+    const currentDevices = localConfig.devices || [];
     const newDevice: TrialDevice = {
       id: `dev_${Date.now()}`,
       name: 'Novo Dispositivo',
       type: 'content',
       content: { title: 'NOVO DISPOSITIVO', textBlocks: [] }
     };
-    const newDevices = [...localConfig.devices, newDevice];
+    const newDevices = [...currentDevices, newDevice];
     setLocalConfig({ ...localConfig, devices: newDevices });
     setDeviceIdx(newDevices.length - 1);
     setView('device');
@@ -81,13 +96,16 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
 
   const deleteDevice = (index: number) => {
     if (!confirm('Tem certeza que deseja excluir este dispositivo?')) return;
-    const newDevices = [...localConfig.devices];
+    const currentDevices = localConfig.devices || [];
+    const newDevices = [...currentDevices];
     newDevices.splice(index, 1);
     setLocalConfig({ ...localConfig, devices: newDevices });
   };
 
   const addSubOption = (devIdx: number) => {
-    const device = localConfig.devices[devIdx];
+    const currentDevices = localConfig.devices || [];
+    const device = currentDevices[devIdx];
+    if (!device) return;
     const newSub: TrialSubOption = {
       id: `sub_${Date.now()}`,
       name: 'Nova Opção',
@@ -101,31 +119,40 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
 
   const deleteSubOption = (devIdx: number, sIdx: number) => {
     if (!confirm('Excluir esta sub-opção?')) return;
-    const device = localConfig.devices[devIdx];
+    const currentDevices = localConfig.devices || [];
+    const device = currentDevices[devIdx];
+    if (!device) return;
     const newSubs = [...(device.subOptions || [])];
     newSubs.splice(sIdx, 1);
     updateDevice(devIdx, { ...device, subOptions: newSubs });
   };
 
   const duplicateDevice = (index: number) => {
-    const newDevices = [...localConfig.devices];
-    const original = newDevices[index];
+    const currentDevices = localConfig.devices || [];
+    const original = currentDevices[index];
+    if (!original) return;
     const clone: TrialDevice = JSON.parse(JSON.stringify(original));
     clone.id = `dev_${Date.now()}`;
     clone.name = `${clone.name} (Cópia)`;
+    const newDevices = [...currentDevices];
     newDevices.splice(index + 1, 0, clone);
     setLocalConfig({ ...localConfig, devices: newDevices });
   };
 
   const toggleDeviceVisibility = (index: number) => {
-    const device = localConfig.devices[index];
+    const currentDevices = localConfig.devices || [];
+    const device = currentDevices[index];
+    if (!device) return;
     updateDevice(index, { ...device, visible: device.visible === false ? true : false });
   };
 
   const duplicateSubOption = (devIdx: number, sIdx: number) => {
-    const device = localConfig.devices[devIdx];
+    const currentDevices = localConfig.devices || [];
+    const device = currentDevices[devIdx];
+    if (!device) return;
     const newSubs = [...(device.subOptions || [])];
     const original = newSubs[sIdx];
+    if (!original) return;
     const clone: TrialSubOption = JSON.parse(JSON.stringify(original));
     clone.id = `sub_${Date.now()}`;
     clone.name = `${clone.name} (Cópia)`;
@@ -134,8 +161,11 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
   };
 
   const toggleSubOptionVisibility = (devIdx: number, sIdx: number) => {
-    const device = localConfig.devices[devIdx];
+    const currentDevices = localConfig.devices || [];
+    const device = currentDevices[devIdx];
+    if (!device) return;
     const newSubs = [...(device.subOptions || [])];
+    if (!newSubs[sIdx]) return;
     newSubs[sIdx] = { ...newSubs[sIdx], visible: newSubs[sIdx].visible === false ? true : false };
     updateDevice(devIdx, { ...device, subOptions: newSubs });
   };
@@ -531,11 +561,11 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
         <h4 className="text-white font-bold flex items-center gap-2 px-1">Dispositivos Principais</h4>
         <Reorder.Group 
           axis="y" 
-          values={localConfig.devices} 
+          values={localConfig.devices || []} 
           onReorder={(newOrder) => setLocalConfig({ ...localConfig, devices: newOrder })}
           className="grid grid-cols-1 gap-3"
         >
-          {localConfig.devices.map((device, index) => (
+          {(localConfig.devices || []).map((device, index) => (
             <Reorder.Item
               key={device.id}
               value={device}
@@ -599,7 +629,18 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
 
   // ─── VIEW: EDITOR DE DISPOSITIVO ────────────────────────────────────────────
   if (view === 'device') {
-    const device = localConfig.devices[deviceIdx];
+    const currentDevices = localConfig.devices || [];
+    const device = currentDevices[deviceIdx];
+    if (!device) {
+      return (
+        <div className="p-6 text-center text-slate-400">
+          <p>Dispositivo não encontrado.</p>
+          <button onClick={() => setView('list')} className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold">
+            Voltar para lista
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-5">
@@ -718,9 +759,19 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
 
   // ─── VIEW: EDITOR DE SUB-OPÇÃO ──────────────────────────────────────────────
   if (view === 'suboption') {
-    const device = localConfig.devices[deviceIdx];
+    const currentDevices = localConfig.devices || [];
+    const device = currentDevices[deviceIdx];
     const sub = device?.subOptions?.[subIdx];
-    if (!sub) return null;
+    if (!device || !sub) {
+      return (
+        <div className="p-6 text-center text-slate-400">
+          <p>Sub-opção não encontrada.</p>
+          <button onClick={() => setView('device')} className="mt-3 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold">
+            Voltar para o dispositivo
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-5">

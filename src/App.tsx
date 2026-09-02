@@ -658,9 +658,10 @@ export default function App() {
 
       // PRIORIDADE DOS FECHAMENTOS (do mais "superficial" ao mais "profundo"):
 
-      // 1. Galeria de fotos/imagens
+      // 1. Galeria de fotos/imagens -> Fecha visualização e recolhe a seção de informes
       if (galleryModalRef.current !== null) {
         setGalleryModal(null);
+        setIsAnnouncementsOpen(false);
         rebase();
         return;
       }
@@ -819,15 +820,17 @@ export default function App() {
       }
     }
   }, [activeView, isPedirConteudoOpen, trialState, isReportContentOpen, contentType, isClientChatOpen, adminTab, showLoginModal]);
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  // Auto-registra quando o cliente faz login
+  // Fechar galeria com tecla Escape e recolher informes
   useEffect(() => {
-    if (loggedClientCode && pushPermission === 'granted') {
-      subscribeToPush(loggedClientCode);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggedClientCode]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && galleryModalRef.current) {
+        setGalleryModal(null);
+        setIsAnnouncementsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // --- TMDB Search Logic ---
   useEffect(() => {
@@ -5289,7 +5292,10 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md select-none"
-            onClick={() => setGalleryModal(null)}
+            onClick={() => {
+              setGalleryModal(null);
+              setIsAnnouncementsOpen(false);
+            }}
             onTouchStart={(e) => {
               const touch = e.touches[0];
               (e.currentTarget as HTMLElement).dataset.touchStartX = String(touch.clientX);
@@ -5320,6 +5326,7 @@ export default function App() {
               onClick={(e) => {
                 e.stopPropagation();
                 setGalleryModal(null);
+                setIsAnnouncementsOpen(false);
               }}
               title="Fechar (ESC)"
             >

@@ -20,7 +20,8 @@ import {
   ArrowLeft,
   UserCheck,
   CheckCircle2,
-  Users
+  Users,
+  ImageIcon
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -32,6 +33,7 @@ import {
 } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 import { TrialDataActionsCard, extractTrialRequestData } from './TrialDataActionsCard';
+import { isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -693,7 +695,31 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                                   : 'bg-[#1a1f2c] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
                               }`}
                             >
-                              {isPixPdfMessage(msg.message) ? (
+                              {isSupportPhotosMessage(msg.message) ? (
+                                (() => {
+                                  const payload = parseSupportPhotosMessage(msg.message);
+                                  if (!payload) return null;
+                                  return (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <ImageIcon size={14} className="text-blue-400" />
+                                        <span className="text-xs font-bold text-blue-200">{payload.count} foto(s) enviada(s) pelo cliente</span>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-1.5">
+                                        {payload.photos.map((url, i) => (
+                                          <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                            className="block rounded-lg overflow-hidden border border-white/10 hover:opacity-85 transition-opacity">
+                                            <img src={url} alt={`Foto ${i + 1}`} className="w-full aspect-square object-cover" loading="lazy" />
+                                          </a>
+                                        ))}
+                                      </div>
+                                      {payload.caption && (
+                                        <p className="text-xs mt-1.5 text-slate-300 italic">{payload.caption}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })()
+                              ) : isPixPdfMessage(msg.message) ? (
                                 <PixPdfCard
                                   payload={parsePixPdfMessage(msg.message)!}
                                   isAdmin={true}

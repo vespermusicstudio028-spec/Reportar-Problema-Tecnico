@@ -20,16 +20,17 @@ import {
   Calendar,
   AlertCircle,
   ArrowLeft,
-  Paperclip,
-  FileText,
+  Camera,
   RefreshCcw,
   Smartphone,
   Radio,
-  PlusCircle
+  PlusCircle,
+  ImageIcon
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } from '../lib/pixUtils';
+import { PhotoUploadModal, isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 
@@ -85,6 +86,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [customClientName, setCustomClientName] = useState('');
   const [showScheduleInfo, setShowScheduleInfo] = useState(false);
   const [showPixUploadModal, setShowPixUploadModal] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -847,7 +849,31 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                                 : 'bg-[#171b28] border border-slate-700/80 text-slate-100 rounded-bl-none shadow-md'
                             }`}
                           >
-                            {isPixPdfMessage(msg.message) ? (
+                            {isSupportPhotosMessage(msg.message) ? (
+                              (() => {
+                                const payload = parseSupportPhotosMessage(msg.message);
+                                if (!payload) return null;
+                                return (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <ImageIcon size={14} className={isClient ? 'text-indigo-200' : 'text-blue-400'} />
+                                      <span className="text-xs font-bold">{payload.count} foto(s) enviada(s) ao suporte</span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {payload.photos.map((url, i) => (
+                                        <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                          className="block rounded-lg overflow-hidden border border-white/10 hover:opacity-90 transition-opacity">
+                                          <img src={url} alt={`Foto ${i + 1}`} className="w-full aspect-square object-cover" loading="lazy" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                    {payload.caption && (
+                                      <p className="text-xs mt-1.5 opacity-80 italic">{payload.caption}</p>
+                                    )}
+                                  </div>
+                                );
+                              })()
+                            ) : isPixPdfMessage(msg.message) ? (
                               <PixPdfCard
                                 payload={parsePixPdfMessage(msg.message)!}
                                 isClientSender={isClient}
@@ -959,14 +985,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <RefreshCcw size={13} className="text-amber-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 2: Enviar Comprovante Pix (PDF) - ao lado de Renovar */}
+                    {/* Atalho 2: Enviar Fotos ao Suporte */}
                     <button
                       type="button"
-                      onClick={() => setShowPixUploadModal(true)}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/30 to-teal-600/20 hover:from-emerald-600/45 hover:to-teal-600/35 text-emerald-200 border border-emerald-500/50 font-bold"
+                      onClick={() => setShowPhotoModal(true)}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-blue-600/30 to-cyan-600/20 hover:from-blue-600/45 hover:to-cyan-600/35 text-blue-200 border border-blue-500/50 font-bold"
                     >
-                      <span className="truncate">📄 Comprovante</span>
-                      <FileText size={13} className="text-emerald-300 shrink-0" />
+                      <span className="truncate">📷 Fotos</span>
+                      <Camera size={13} className="text-blue-300 shrink-0" />
                     </button>
 
                     {/* Atalho 3: + 1 Ponto de Acesso */}
@@ -1045,14 +1071,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                   }}
                   className="p-3 md:p-4 bg-[#0a0d14] border-t border-slate-800/80 flex items-center gap-2 md:gap-2.5"
                 >
-                  {/* Botão de Anexar Comprovante PDF / Pix */}
+                  {/* Botão de Enviar Fotos ao Suporte */}
                   <button
                     type="button"
-                    onClick={() => setShowPixUploadModal(true)}
-                    className="p-3 bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-400 hover:text-emerald-300 border border-emerald-500/40 rounded-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0 shadow-lg shadow-emerald-600/10"
-                    title="Anexar Comprovante Pix (PDF)"
+                    onClick={() => setShowPhotoModal(true)}
+                    className="p-3 bg-blue-600/15 hover:bg-blue-600/30 text-blue-400 hover:text-blue-300 border border-blue-500/40 rounded-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0 shadow-lg shadow-blue-600/10"
+                    title="Enviar fotos ao suporte (até 10 fotos)"
                   >
-                    <Paperclip size={18} />
+                    <Camera size={18} />
                   </button>
 
                   <input
@@ -1078,11 +1104,20 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Modal de Anexo de Comprovante Pix PDF */}
+      {/* Modal de Comprovante Pix PDF (mantido para compatibilidade) */}
       <PixUploadModal
         isOpen={showPixUploadModal}
         onClose={() => setShowPixUploadModal(false)}
         onSendPixPayload={handleSendPixAttachment}
+      />
+
+      {/* Modal de Envio de Fotos ao Suporte */}
+      <PhotoUploadModal
+        isOpen={showPhotoModal}
+        onClose={() => setShowPhotoModal(false)}
+        clientCode={activeCode}
+        clientName={clientName || customClientName || 'Cliente'}
+        onPhotosSent={() => fetchMessages()}
       />
     </>
   );

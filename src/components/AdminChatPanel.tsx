@@ -31,6 +31,7 @@ import {
   getAutomatedFinishAttendanceMessage 
 } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
+import { TrialDataActionsCard, extractTrialRequestData } from './TrialDataActionsCard';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -712,6 +713,19 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                                         label={payData.label}
                                         value={payData.value}
                                       />
+                                    ) : null;
+                                  })()}
+
+                                  {/* Card de Ações Rápidas de Cópia (Teste Grátis / Dados do App / MAC / Key) */}
+                                  {(() => {
+                                    const trialData = extractTrialRequestData(
+                                      msg.message, 
+                                      activeClientName, 
+                                      msg.client_code, 
+                                      selectedClientInfo?.phone
+                                    );
+                                    return trialData && trialData.isTrialOrPointRequest ? (
+                                      <TrialDataActionsCard data={trialData} isClientSender={!isAdmin} />
                                     ) : null;
                                   })()}
                                 </div>

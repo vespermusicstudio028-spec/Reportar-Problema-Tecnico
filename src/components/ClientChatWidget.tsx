@@ -892,6 +892,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                                       url={payData.url}
                                       label={payData.label}
                                       value={payData.value}
+                                      onSendReceipt={() => setShowPhotoModal(true)}
                                     />
                                   ) : null;
                                 })()}

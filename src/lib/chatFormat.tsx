@@ -72,8 +72,19 @@ export function extractPaymentLink(text: string): { url: string; label: string; 
 
 /**
  * Card visual de pagamento via Mercado Pago para o chat.
+ * onSendReceipt: quando fornecido, exibe botão de "Enviar Comprovante" abaixo do "Pagar agora"
  */
-export function PaymentLinkCard({ url, label, value }: { url: string; label: string; value: string }) {
+export function PaymentLinkCard({
+  url,
+  label,
+  value,
+  onSendReceipt,
+}: {
+  url: string;
+  label: string;
+  value: string;
+  onSendReceipt?: () => void;
+}) {
   return (
     <div className="mt-3 rounded-2xl overflow-hidden border border-emerald-500/40 shadow-lg shadow-emerald-900/20">
       {/* Header */}
@@ -101,6 +112,22 @@ export function PaymentLinkCard({ url, label, value }: { url: string; label: str
           Pagar agora →
         </a>
       </div>
+      {/* Botão de Enviar Comprovante — aparece somente no lado do cliente */}
+      {onSendReceipt && (
+        <div className="bg-[#0a1410]/90 px-4 py-3 border-t border-emerald-500/20">
+          <p className="text-[10px] text-slate-400 mb-2 text-center">
+            Após o pagamento, envie o comprovante para agilizar a confirmação:
+          </p>
+          <button
+            type="button"
+            onClick={onSendReceipt}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600/30 to-cyan-600/20 hover:from-blue-600/50 hover:to-cyan-600/40 border border-blue-500/50 text-blue-200 font-bold text-xs transition-all active:scale-[0.98] shadow-md hover:shadow-blue-600/20"
+          >
+            <span>📷</span>
+            <span>Enviar Comprovante de Pagamento</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

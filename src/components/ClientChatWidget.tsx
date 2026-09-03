@@ -33,6 +33,9 @@ import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } f
 import { PhotoUploadModal, isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
+import { getOrCreateClientMemory } from '../lib/clientMemoryService';
+import { processClientSupportMessage } from '../lib/automatedSupportEngine';
+import { Brain } from 'lucide-react';
 
 export interface AccessPointScreen {
   screenNumber: number;
@@ -87,6 +90,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [showScheduleInfo, setShowScheduleInfo] = useState(false);
   const [showPixUploadModal, setShowPixUploadModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [isBotThinking, setIsBotThinking] = useState(false);
   const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -210,78 +214,32 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       if (error) throw error;
       setInputText('');
 
-      // Verificar se estamos fora do horário de atendimento para disparar a resposta automática de ausência
-      const currentStatus = getSupportBusinessHoursStatus();
-      if (!currentStatus.isOnline) {
-        const oneHourAgo = Date.now() - 60 * 60 * 1000;
-        const alreadySentAbsence = messages.some(
-          (m) =>
-            m.sender === 'admin' &&
-            m.message.includes('fora do horário de funcionamento') &&
-            new Date(m.created_at).getTime() > oneHourAgo
-        );
-
-        if (!alreadySentAbsence) {
-          setTimeout(async () => {
-            try {
-              await supabase.from('chat_messages').insert({
-                client_code: activeCode,
-                client_name: 'Suporte The Best IPTV+',
-                sender: 'admin',
-                message: getAutomatedAbsenceMessage(currentClientDisplayName),
-                read_by_admin: true,
-                read_by_client: false
-              });
-            } catch (autoErr) {
-              console.error('Erro ao disparar mensagem de ausência automática:', autoErr);
-            }
-          }, 800);
-        }
-      } else {
-        // Se estiver online, verificar se há outros clientes sendo atendidos para enviar mensagem de fila de espera
-        try {
-          const { data: recentMsgs } = await supabase
-            .from('chat_messages')
-            .select('*')
-            .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-            .order('created_at', { ascending: true });
-
-          if (recentMsgs && recentMsgs.length > 0) {
-            const queueInfo = getClientQueueInfo(activeCode, recentMsgs as ChatMessage[]);
-            if (queueInfo.isInQueue && queueInfo.position > 0) {
-              const twentyMinAgo = Date.now() - 20 * 60 * 1000;
-              const alreadySentQueue = messages.some(
-                (m) =>
-                  m.sender === 'admin' &&
-                  m.message.includes('Sua Posição na Fila:') &&
-                  new Date(m.created_at).getTime() > twentyMinAgo
-              );
-
-              if (!alreadySentQueue) {
-                setTimeout(async () => {
-                  try {
-                    await supabase.from('chat_messages').insert({
-                      client_code: activeCode,
-                      client_name: 'Suporte The Best IPTV+',
-                      sender: 'admin',
-                      message: getAutomatedQueueWaitMessage(
-                        currentClientDisplayName,
-                        queueInfo.position,
-                        queueInfo.estimatedMinutes
-                      ),
-                      read_by_admin: true,
-                      read_by_client: false
-                    });
-                  } catch (qErr) {
-                    console.error('Erro ao enviar mensagem de fila de espera:', qErr);
-                  }
-                }, 800);
+      // Disparar Atendimento Inteligente com Memória Persistente do Cliente
+      const isSystemPayload = text.startsWith('[FOTOS_SUPORTE]') || text.startsWith('[PIX_COMPROVANTE]');
+      if (!isSystemPayload) {
+        setIsBotThinking(true);
+        setTimeout(async () => {
+          try {
+            const memory = await getOrCreateClientMemory(activeCode, currentClientDisplayName);
+            if (memory) {
+              const contextualResponse = await processClientSupportMessage(text, memory);
+              if (contextualResponse && contextualResponse.replyText) {
+                await supabase.from('chat_messages').insert({
+                  client_code: activeCode,
+                  client_name: 'Suporte The Best IPTV+',
+                  sender: 'admin',
+                  message: contextualResponse.replyText,
+                  read_by_admin: true,
+                  read_by_client: false
+                });
               }
             }
+          } catch (botErr) {
+            console.error('Erro no motor inteligente de atendimento:', botErr);
+          } finally {
+            setIsBotThinking(false);
           }
-        } catch (queueCheckErr) {
-          console.error('Erro ao verificar fila de espera:', queueCheckErr);
-        }
+        }, 900);
       }
     } catch (err: any) {
       alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
@@ -958,6 +916,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       </div>
                     );
                   })}
+                  {isBotThinking && (
+                    <div className="flex items-center gap-2.5 p-3 max-w-[85%] sm:max-w-[70%] rounded-2xl bg-[#131724] border border-indigo-500/30 text-indigo-300 text-xs shadow-md animate-pulse">
+                      <Brain size={16} className="animate-spin text-indigo-400 shrink-0" />
+                      <span>Robô de suporte consultando histórico e analisando solução...</span>
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
 

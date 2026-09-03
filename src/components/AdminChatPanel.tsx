@@ -21,7 +21,8 @@ import {
   UserCheck,
   CheckCircle2,
   Users,
-  ImageIcon
+  ImageIcon,
+  Brain
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -34,6 +35,7 @@ import {
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 import { TrialDataActionsCard, extractTrialRequestData } from './TrialDataActionsCard';
 import { isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
+import { ClientMemoryModal } from './ClientMemoryModal';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -59,6 +61,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [isLoading, setIsLoading] = useState(true);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [showMemoryModal, setShowMemoryModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedClientCodeRef = useRef<string | null>(null);
@@ -583,14 +586,26 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleDeleteConversation}
-                  className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all border border-red-500/20"
-                  title="Apagar conversa deste cliente"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMemoryModal(true)}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-purple-900/20 active:scale-95"
+                    title="Ver e Gerenciar Memória do Cliente"
+                  >
+                    <Brain size={15} className="text-purple-300" />
+                    <span className="hidden sm:inline">Memória</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteConversation}
+                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all border border-red-500/20"
+                    title="Apagar conversa deste cliente"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* Barra de Status da Fila e Atendimento do Cliente Selecionado */}
@@ -853,6 +868,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           )}
         </div>
       </div>
+
+      {/* Modal de Memória Individual do Cliente */}
+      {selectedClientCode && (
+        <ClientMemoryModal
+          isOpen={showMemoryModal}
+          onClose={() => setShowMemoryModal(false)}
+          clientCode={selectedClientCode}
+          clientName={activeClientName}
+        />
+      )}
     </div>
   );
 };

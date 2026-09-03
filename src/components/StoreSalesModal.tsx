@@ -21,13 +21,11 @@ import {
   ArrowRight,
   Play,
   Image as ImageIcon,
-  Settings,
   Maximize2,
   Loader2
 } from 'lucide-react';
 import { StoreProduct } from '../types/store';
 import { fetchStoreProducts, formatVideoEmbedUrl } from '../lib/storeService';
-import { AdminStoreManagerModal } from './AdminStoreManagerModal';
 
 interface StoreSalesModalProps {
   isOpen: boolean;
@@ -52,7 +50,6 @@ export const StoreSalesModal: React.FC<StoreSalesModalProps> = ({
 }) => {
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdminManager, setShowAdminManager] = useState(false);
   const [activePhotoModal, setActivePhotoModal] = useState<{ images: string[]; activeIndex: number; title: string } | null>(null);
   const [activeVideoModal, setActiveVideoModal] = useState<{ url: string; title: string } | null>(null);
 
@@ -162,17 +159,6 @@ export const StoreSalesModal: React.FC<StoreSalesModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Botão de Gestão do Administrador */}
-              <button
-                type="button"
-                onClick={() => setShowAdminManager(true)}
-                className="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-amber-300 border border-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
-                title="Gerenciar, editar produtos, fotos e vídeos da loja"
-              >
-                <Settings size={14} className="text-amber-400" />
-                <span className="hidden sm:inline">Editar Loja</span>
-              </button>
-
               <button
                 onClick={onClose}
                 className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all active:scale-95"
@@ -212,16 +198,10 @@ export const StoreSalesModal: React.FC<StoreSalesModalProps> = ({
                 <span className="text-sm">Carregando catálogo da loja...</span>
               </div>
             ) : products.length === 0 ? (
-              <div className="py-16 text-center text-slate-400 space-y-3">
-                <ShoppingBag size={40} className="mx-auto text-slate-600" />
-                <p className="text-sm">Nenhum produto cadastrado no momento.</p>
-                <button
-                  type="button"
-                  onClick={() => setShowAdminManager(true)}
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs"
-                >
-                  Cadastrar Primeiro Produto
-                </button>
+              <div className="py-16 text-center text-slate-400 space-y-2">
+                <ShoppingBag size={40} className="mx-auto text-slate-600 mb-2" />
+                <p className="text-sm font-semibold text-slate-300">Nossos planos estão sendo atualizados no momento.</p>
+                <p className="text-xs text-slate-500">Por favor, entre em contato direto pelo suporte no chat abaixo!</p>
               </div>
             ) : (
               /* Grid dos Produtos Dinâmicos */
@@ -523,13 +503,6 @@ export const StoreSalesModal: React.FC<StoreSalesModalProps> = ({
           </div>
         </div>
       )}
-
-      {/* Modal de Gerenciamento da Loja para o Administrador */}
-      <AdminStoreManagerModal
-        isOpen={showAdminManager}
-        onClose={() => setShowAdminManager(false)}
-        onProductsUpdated={loadStoreProducts}
-      />
     </AnimatePresence>
   );
 };

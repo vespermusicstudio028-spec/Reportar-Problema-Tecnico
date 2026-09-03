@@ -7,6 +7,7 @@ import { TrialFlowRenderer } from './components/TrialFlowRenderer';
 import { AdminChatPanel } from './components/AdminChatPanel';
 import { ClientChatWidget } from './components/ClientChatWidget';
 import { AnnouncementMediaCarousel } from './components/AnnouncementMediaCarousel';
+import { AdminStoreManagerModal } from './components/AdminStoreManagerModal';
 import { 
   RefreshCcw,
   Tv, 
@@ -56,7 +57,8 @@ import {
   Globe,
   Check,
   Building2,
-  Users
+  Users,
+  ShoppingBag
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -432,6 +434,7 @@ export default function App() {
   const [isAdminLogged, setIsAdminLogged] = useState(() => {
     return localStorage.getItem('iptv_admin_logged') === 'true';
   });
+  const [showAdminStoreModal, setShowAdminStoreModal] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('iptv_admin_logged', isAdminLogged.toString());
@@ -2738,7 +2741,14 @@ export default function App() {
                         badge: unreadChatCount > 0 ? unreadChatCount : null,
                         badgePulse: unreadChatCount > 0,
                       },
-
+                      {
+                        id: 'loja' as const,
+                        icon: <ShoppingBag size={22} />,
+                        title: '🛍️ Loja & Produtos',
+                        subtitle: 'Planos, fotos, vídeos e preços',
+                        accent: 'from-amber-500/20 to-orange-500/10 border-amber-500/30 hover:border-amber-400/60 text-amber-400',
+                        iconBg: 'bg-amber-500/20 text-amber-300',
+                      },
                      {
                        id: 'suporte' as const,
                        icon: <AlertTriangle size={22} />,
@@ -2754,6 +2764,11 @@ export default function App() {
                        key={tab.id}
                        type="button"
                        onClick={() => {
+                         if ((tab.id as string) === 'loja') {
+                           setShowAdminStoreModal(true);
+                           setShowLoginModal(false);
+                           return;
+                         }
                          if (tab.id === 'pedidos') {
                            setLastSeenRequestsCount(contentRequests.length);
                            localStorage.setItem('admin_last_seen_requests', contentRequests.length.toString());
@@ -2762,7 +2777,7 @@ export default function App() {
                          if (tab.id === 'suporte') {
                            setLastSeenReportsCount(userReports.length);
                            localStorage.setItem('admin_last_seen_reports', userReports.length.toString());
-                           setNewReportsCount(0);
+                           setNewRequestsCount(0);
                          }
                          setAdminTab(tab.id);
                          setShowLoginModal(false);
@@ -5539,6 +5554,12 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal do Gerenciador da Loja de Vendas (Exclusivo Administrador) */}
+      <AdminStoreManagerModal
+        isOpen={showAdminStoreModal}
+        onClose={() => setShowAdminStoreModal(false)}
+      />
     </div>
   );
 }

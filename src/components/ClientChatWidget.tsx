@@ -25,17 +25,19 @@ import {
   Smartphone,
   Radio,
   PlusCircle,
-  ImageIcon
+  ImageIcon,
+  ShoppingBag,
+  Brain
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } from '../lib/pixUtils';
 import { PhotoUploadModal, isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
+import { StoreSalesModal } from './StoreSalesModal';
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 import { getOrCreateClientMemory } from '../lib/clientMemoryService';
 import { processClientSupportMessage } from '../lib/automatedSupportEngine';
-import { Brain } from 'lucide-react';
 
 export interface AccessPointScreen {
   screenNumber: number;
@@ -90,6 +92,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [showScheduleInfo, setShowScheduleInfo] = useState(false);
   const [showPixUploadModal, setShowPixUploadModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showStoreModal, setShowStoreModal] = useState(false);
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -950,14 +953,15 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <RefreshCcw size={13} className="text-amber-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 2: Enviar Fotos ao Suporte */}
+                    {/* Atalho 2: Loja & Página de Vendas */}
                     <button
                       type="button"
-                      onClick={() => setShowPhotoModal(true)}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-blue-600/30 to-cyan-600/20 hover:from-blue-600/45 hover:to-cyan-600/35 text-blue-200 border border-blue-500/50 font-bold"
+                      onClick={() => setShowStoreModal(true)}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/35 to-teal-600/25 hover:from-emerald-600/50 hover:to-teal-600/40 text-emerald-200 border border-emerald-500/60 font-bold"
+                      title="Abrir Loja e Página de Vendas com nossos planos oficiais"
                     >
-                      <span className="truncate">📷 Fotos</span>
-                      <Camera size={13} className="text-blue-300 shrink-0" />
+                      <span className="truncate">🛍️ Loja</span>
+                      <ShoppingBag size={13} className="text-emerald-300 shrink-0" />
                     </button>
 
                     {/* Atalho 3: + 1 Ponto de Acesso */}
@@ -1083,6 +1087,24 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         clientCode={activeCode}
         clientName={clientName || customClientName || 'Cliente'}
         onPhotosSent={() => fetchMessages()}
+      />
+
+      {/* Modal de Loja & Página de Vendas */}
+      <StoreSalesModal
+        isOpen={showStoreModal}
+        onClose={() => setShowStoreModal(false)}
+        clientCode={activeCode}
+        clientName={clientName || customClientName || 'Cliente'}
+        onSelectPlanForChat={(planName, price) => {
+          setInputText(`🛍️ Olá! Tenho interesse no plano *${planName}* (${price}). Gostaria de mais detalhes para assinar.`);
+        }}
+        onAddPoint={() => {
+          if (onAddPoint) {
+            onAddPoint();
+            setIsOpen(false);
+          }
+        }}
+        onOpenComprovante={() => setShowPhotoModal(true)}
       />
     </>
   );

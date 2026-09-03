@@ -22,7 +22,8 @@ import {
   CheckCircle2,
   Users,
   ImageIcon,
-  Brain
+  Brain,
+  ShoppingBag
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -36,6 +37,7 @@ import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } f
 import { TrialDataActionsCard, extractTrialRequestData } from './TrialDataActionsCard';
 import { isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
 import { ClientMemoryModal } from './ClientMemoryModal';
+import { AdminStoreManagerModal } from './AdminStoreManagerModal';
 
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
@@ -62,6 +64,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
+  const [showStoreManager, setShowStoreManager] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const selectedClientCodeRef = useRef<string | null>(null);
@@ -408,14 +411,25 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           </div>
         </div>
 
-        <button
-          onClick={fetchMessages}
-          className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5 border border-slate-700/60"
-          title="Atualizar mensagens"
-        >
-          <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-          <span className="hidden sm:inline">Atualizar</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowStoreManager(true)}
+            className="p-2 px-3 rounded-xl bg-gradient-to-r from-amber-600/30 to-orange-600/20 hover:from-amber-600/50 hover:to-orange-600/40 text-amber-300 transition-all text-xs font-bold flex items-center gap-1.5 border border-amber-500/40 active:scale-95 shadow-sm"
+            title="Gerenciar produtos, fotos e vídeos da loja"
+          >
+            <ShoppingBag size={14} className="text-amber-400" />
+            <span>Loja & Produtos</span>
+          </button>
+
+          <button
+            onClick={fetchMessages}
+            className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5 border border-slate-700/60"
+            title="Atualizar mensagens"
+          >
+            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Atualizar</span>
+          </button>
+        </div>
       </div>
 
       {/* Grid Principal: Lista de Conversas (Esquerda) e Chat Ativo (Direita) */}
@@ -878,6 +892,12 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           clientName={activeClientName}
         />
       )}
+
+      {/* Modal de Gerenciamento da Loja de Vendas */}
+      <AdminStoreManagerModal
+        isOpen={showStoreManager}
+        onClose={() => setShowStoreManager(false)}
+      />
     </div>
   );
 };

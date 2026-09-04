@@ -133,6 +133,33 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
     }
   };
 
+  // Alternar visibilidade (ocultar ou mostrar produto para os clientes)
+  const handleToggleProductVisibility = async (prod: StoreProduct) => {
+    const newStatus = !prod.is_active;
+
+    // Atualização otimista imediata na UI
+    setProducts((prev) =>
+      prev.map((p) => (p.id === prod.id ? { ...p, is_active: newStatus } : p))
+    );
+
+    const res = await saveStoreProduct({ id: prod.id, is_active: newStatus });
+    if (res.success) {
+      showNotification(
+        'success',
+        newStatus
+          ? `O produto "${prod.name}" agora está VISÍVEL na loja para os clientes! 👁️`
+          : `O produto "${prod.name}" agora está OCULTO dos clientes! 👁️‍🗨️`
+      );
+      if (onProductsUpdated) onProductsUpdated();
+    } else {
+      // Reverter em caso de falha
+      setProducts((prev) =>
+        prev.map((p) => (p.id === prod.id ? { ...p, is_active: prod.is_active } : p))
+      );
+      showNotification('error', 'Erro ao alterar visibilidade do produto.');
+    }
+  };
+
   const handleSaveProduct = async () => {
     if (!selectedProduct) return;
 
@@ -475,17 +502,28 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
 
                       <div className="space-y-2">
                         <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                          Visibilidade & Destaque
+                          Visibilidade para Clientes
                         </label>
-                        <label className="flex items-center gap-2 p-2 rounded-xl bg-[#101420] border border-slate-800 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedProduct.is_active ?? true}
-                            onChange={(e) => setSelectedProduct({ ...selectedProduct, is_active: e.target.checked })}
-                            className="rounded accent-emerald-500"
-                          />
-                          <span className="text-xs text-slate-200">Visível na Loja (Ativo)</span>
-                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedProduct({ ...selectedProduct, is_active: !selectedProduct.is_active })}
+                          className={`w-full flex items-center justify-between gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all active:scale-[0.98] ${
+                            selectedProduct.is_active
+                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                              : 'bg-rose-500/15 border-rose-500/40 text-rose-300 hover:bg-rose-500/25'
+                          }`}
+                          title={selectedProduct.is_active ? 'Clique para ocultar dos clientes' : 'Clique para mostrar aos clientes'}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {selectedProduct.is_active ? <Eye size={15} className="text-emerald-400" /> : <EyeOff size={15} className="text-rose-400" />}
+                            <span>{selectedProduct.is_active ? 'Visível na Loja' : 'Oculto dos Clientes'}</span>
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            selectedProduct.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                          }`}>
+                            {selectedProduct.is_active ? 'Ativo' : 'Oculto'}
+                          </span>
+                        </button>
 
                         <label className="flex items-center gap-2 p-2 rounded-xl bg-[#101420] border border-slate-800 cursor-pointer">
                           <input
@@ -776,13 +814,27 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
                         {/* Topo: Nome, Preço e Badges */}
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="text-sm font-bold text-white">{prod.name}</h4>
-                              {!prod.is_active && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-400">
-                                  Inativo
-                                </span>
-                              )}
+                              
+                              {/* Botão do Olhinho para Ocultar ou Mostrar */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleProductVisibility(prod);
+                                }}
+                                className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all active:scale-95 shadow-sm ${
+                                  prod.is_active
+                                    ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/40 hover:border-emerald-500'
+                                    : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border-rose-500/40 hover:border-rose-500'
+                                }`}
+                                title={prod.is_active ? 'Clique para ocultar este produto dos clientes na loja' : 'Clique para mostrar este produto aos clientes na loja'}
+                              >
+                                {prod.is_active ? <Eye size={13} className="text-emerald-400" /> : <EyeOff size={13} className="text-rose-400" />}
+                                <span>{prod.is_active ? 'Visível na Loja' : 'Oculto dos Clientes'}</span>
+                              </button>
+
                               {prod.is_popular && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                                   ⭐ Destaque
@@ -848,6 +900,21 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
                         </span>
 
                         <div className="flex items-center gap-2">
+                          {/* Botão de Ação Rápida com Olhinho */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleProductVisibility(prod)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 border ${
+                              prod.is_active
+                                ? 'bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/30'
+                                : 'bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 border-rose-500/30'
+                            }`}
+                            title={prod.is_active ? 'Clique para ocultar este produto dos clientes' : 'Clique para mostrar este produto aos clientes'}
+                          >
+                            {prod.is_active ? <Eye size={13} className="text-emerald-400" /> : <EyeOff size={13} className="text-rose-400" />}
+                            <span>{prod.is_active ? 'Ocultar' : 'Mostrar'}</span>
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => handleEditProduct(prod)}

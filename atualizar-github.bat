@@ -20,8 +20,8 @@ git commit -m "%msg%"
 :: Garante que a branch principal se chama main
 git branch -M main
 
-:: Adiciona o link do seu GitHub (ignora erro se ja estiver adicionado)
-git remote add origin https://github.com/vespermusicstudio028-spec/Reportar-Problema-Tecnico.git 2>nul
+:: Adiciona ou atualiza o link do seu GitHub com a conta correta
+git remote set-url origin https://vespermusicstudio028-spec@github.com/vespermusicstudio028-spec/Reportar-Problema-Tecnico.git 2>nul || git remote add origin https://vespermusicstudio028-spec@github.com/vespermusicstudio028-spec/Reportar-Problema-Tecnico.git 2>nul
 
 :: Envia os arquivos para o GitHub
 git push -u origin main

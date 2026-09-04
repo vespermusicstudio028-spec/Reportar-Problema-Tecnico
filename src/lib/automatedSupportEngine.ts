@@ -12,17 +12,17 @@ export function detectSupportIntent(text: string): SupportIntent {
 
   // 1. Retorno de problema recorrente
   if (
-    lower.includes('voltou') ||
-    lower.includes('continua') ||
     lower.includes('ainda esta') ||
     lower.includes('ainda ta') ||
     lower.includes('nao resolveu') ||
     lower.includes('nao funcionou') ||
+    lower.includes('nao adiantou') ||
     lower.includes('mesmo problema') ||
     lower.includes('fiz o que mandou') ||
-    lower.includes('nao adiantou') ||
     lower.includes('continua igual') ||
-    lower.includes('persistindo')
+    lower.includes('persistindo') ||
+    lower.includes('voltou o problema') ||
+    lower.includes('problema voltou')
   ) {
     return 'RETORNO_PROBLEMA';
   }
@@ -48,7 +48,49 @@ export function detectSupportIntent(text: string): SupportIntent {
     return 'CONFIRMACAO_OK';
   }
 
-  // 3. Loja / Produtos / Planos / Assinar
+  // 3. PAGAMENTO / RENOVAÇÃO — verificado ANTES de sinal para evitar conflito com 'canal'
+  // Palavras de ação financeira/renovação têm prioridade máxima
+  if (
+    lower.includes('renovar') ||
+    lower.includes('renovar canal') ||
+    lower.includes('renovar canais') ||
+    lower.includes('renovar o canal') ||
+    lower.includes('renovar os canais') ||
+    lower.includes('renovar meu canal') ||
+    lower.includes('renovar minha assinatura') ||
+    lower.includes('renovar o acesso') ||
+    lower.includes('renovar o sinal') ||
+    lower.includes('renovar meu sinal') ||
+    lower.includes('renovacao') ||
+    lower.includes('renovação') ||
+    lower.includes('pagar') ||
+    lower.includes('pagamento') ||
+    lower.includes('pix') ||
+    lower.includes('comprovante') ||
+    lower.includes('vencimento') ||
+    lower.includes('venceu') ||
+    lower.includes('vencendo') ||
+    lower.includes('fatura') ||
+    lower.includes('chave pix') ||
+    lower.includes('link de pagamento') ||
+    lower.includes('link pagamento') ||
+    lower.includes('como pagar') ||
+    lower.includes('forma de pagamento') ||
+    lower.includes('quero pagar') ||
+    lower.includes('quero renovar') ||
+    lower.includes('preciso renovar') ||
+    lower.includes('meu acesso venceu') ||
+    lower.includes('meu plano venceu') ||
+    lower.includes('perdeu o acesso') ||
+    lower.includes('sem acesso') ||
+    lower.includes('acesso expirou') ||
+    lower.includes('assinatura venceu') ||
+    lower.includes('mensalidade')
+  ) {
+    return 'PAGAMENTO_RENOVACAO';
+  }
+
+  // 4. Loja / Produtos / Planos / Assinar
   if (
     lower.includes('loja') ||
     lower.includes('produto') ||
@@ -64,7 +106,6 @@ export function detectSupportIntent(text: string): SupportIntent {
     lower.includes('ver planos') ||
     lower.includes('ver produtos') ||
     lower.includes('tem promocao') ||
-    lower.includes('promoção') ||
     lower.includes('promocao') ||
     lower.includes('oferta') ||
     lower.includes('desconto') ||
@@ -75,28 +116,32 @@ export function detectSupportIntent(text: string): SupportIntent {
     lower.includes('o valor') ||
     lower.includes('tem pacote') ||
     lower.includes('quais sao os planos') ||
-    lower.includes('quais sao os produtos') ||
     lower.includes('ver oferta') ||
     lower.includes('ver opcoes')
   ) {
     return 'LOJA_PRODUTOS';
   }
 
-  // 4. Sinal / Travamento / Queda de conexão
+  // 5. Sinal / Travamento / Queda de conexão
+  // ATENÇÃO: 'canal' e 'canais' sozinhos NÃO disparam aqui — precisam de contexto de problema
   if (
-    lower.includes('sinal') ||
     lower.includes('travando') ||
     lower.includes('trava') ||
     lower.includes('fora do ar') ||
     lower.includes('nao carrega') ||
     lower.includes('nao abre') ||
     lower.includes('tela preta') ||
-    lower.includes('canal') ||
-    lower.includes('canais') ||
+    lower.includes('sem sinal') ||
+    lower.includes('nao tem sinal') ||
+    lower.includes('canal travando') ||
+    lower.includes('canal cortando') ||
+    lower.includes('canal caindo') ||
+    lower.includes('canal sem imagem') ||
+    lower.includes('canais travando') ||
+    lower.includes('canais caindo') ||
     lower.includes('caindo') ||
     lower.includes('buffering') ||
     lower.includes('lentidao') ||
-    lower.includes('carregando') ||
     lower.includes('picotando') ||
     lower.includes('cortando') ||
     lower.includes('freezando') ||
@@ -109,7 +154,7 @@ export function detectSupportIntent(text: string): SupportIntent {
     lower.includes('nao reproduz') ||
     lower.includes('erro de reproducao') ||
     lower.includes('lista nao carrega') ||
-    lower.includes('nao tem sinal')
+    (lower.includes('sinal') && !lower.includes('renovar o sinal') && !lower.includes('renovar meu sinal'))
   ) {
     return 'SINAL_TRAVAMENTO';
   }
@@ -169,27 +214,7 @@ export function detectSupportIntent(text: string): SupportIntent {
     return 'TESTE_GRATIS';
   }
 
-  // 8. Pagamento / Renovação / Pix / Comprovante
-  if (
-    lower.includes('renovar') ||
-    lower.includes('renovacao') ||
-    lower.includes('renovação') ||
-    lower.includes('pagar') ||
-    lower.includes('pagamento') ||
-    lower.includes('pix') ||
-    lower.includes('comprovante') ||
-    lower.includes('vencimento') ||
-    lower.includes('venceu') ||
-    lower.includes('vencendo') ||
-    lower.includes('fatura') ||
-    lower.includes('chave pix') ||
-    lower.includes('link de pagamento') ||
-    lower.includes('link pagamento') ||
-    lower.includes('como pagar') ||
-    lower.includes('forma de pagamento')
-  ) {
-    return 'PAGAMENTO_RENOVACAO';
-  }
+  // (PAGAMENTO_RENOVACAO já verificado acima — antes de SINAL_TRAVAMENTO)
 
   // 9. Novo Ponto / Tela Adicional
   if (
@@ -518,10 +543,40 @@ export async function processClientSupportMessage(
   // INTENT: PAGAMENTO E RENOVAÇÃO
   // ─────────────────────────────────────────────────────────────────────────
   if (intent === 'PAGAMENTO_RENOVACAO') {
+    const lower2 = clientMessage.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const screensText = numScreens > 1 ? `${numScreens} Telas Simultâneas` : '1 Tela';
-    const reply = `🤖 **Central de Pagamento & Renovação:**\n\nOlá, **${clientName}**! Consultei seus dados oficiais no sistema:\n\n📋 **Seu Plano Atual:** *${planName}* (${screensText})\n💰 **Valor Oficial:** *R$ ${realPrice}*\n\n👉 Para renovar agora mesmo com liberação rápida, use o botão interativo **🔄 Renovar** no atalho rápido do chat!\n\nApós o pagamento, clique em **📎 Enviar Comprovante** e nosso sistema faz a confirmação imediata. 💳✅`;
 
-    const summary = `Consulta de pagamento/renovação. Informados valores reais cadastrados (${planName} - R$ ${realPrice}).`;
+    // Detectar sub-contexto: o cliente quer renovar canal, app, ou apenas perguntar sobre pagamento?
+    const querRenovarCanal =
+      lower2.includes('canal') || lower2.includes('canais') || lower2.includes('renovar') || lower2.includes('renovacao');
+    const querRenovarApp =
+      lower2.includes('aplicativo') || lower2.includes('app') || lower2.includes('acesso') || lower2.includes('streaming');
+    const querChavePix =
+      lower2.includes('pix') || lower2.includes('chave') || lower2.includes('chave pix') || lower2.includes('como pagar') || lower2.includes('forma de pagamento');
+    const querSaberValor =
+      lower2.includes('valor') || lower2.includes('preco') || lower2.includes('quanto') || lower2.includes('fatura') || lower2.includes('mensalidade');
+
+    let contextBlock = '';
+    if (querChavePix) {
+      contextBlock = `\n\n💳 **Para pagar via Pix:**\nUse o botão **🔄 Renovar** no atalho rápido do chat e siga as instruções para gerar a chave Pix ou acessar o link de pagamento. Após confirmar, clique em **📎 Enviar Comprovante** para liberação imediata!`;
+    } else if (querSaberValor) {
+      contextBlock = `\n\n💰 **Valor do seu plano:** *R$ ${realPrice}* (${planName} — ${screensText})`;
+    }
+
+    const reply =
+      `🤖 Olá, **${clientName}**! Entendi que você quer **renovar ou resolver algo relacionado ao pagamento**. \n\n` +
+      `📋 **Seus dados no sistema:**\n` +
+      `• Plano: *${planName}* (${screensText})\n` +
+      `• Valor: *R$ ${realPrice}*\n` +
+      `${contextBlock}\n\n` +
+      `🔄 **Escolha uma opção:**\n` +
+      `1️⃣ **Renovar Canais / Sinal** — Use o botão **🔄 Renovar** no chat\n` +
+      `2️⃣ **Renovar Aplicativo / Streaming** — Use o botão **🔄 Renovar** e selecione *Sinal do Streaming*\n` +
+      `3️⃣ **Ver planos e promoções** — Clique em **🛍️ Loja** no chat\n` +
+      `4️⃣ **Enviar comprovante** — Após pagar, clique em **📎 Enviar Comprovante** para liberação imediata\n\n` +
+      `Posso te ajudar com mais alguma coisa? 😊`;
+
+    const summary = `Consulta de pagamento/renovação. Cliente perguntou sobre ${querRenovarCanal ? 'renovação de canal' : querRenovarApp ? 'renovação de aplicativo' : 'pagamento'}. Plano: ${planName} - R$ ${realPrice}.`;
 
     await saveSupportSession({
       client_code: memory.client_code,
@@ -529,16 +584,16 @@ export async function processClientSupportMessage(
       topic: 'Pagamento e Renovação',
       status: 'resolvido',
       summary,
-      detected_issue: 'Dúvida/solicitação de pagamento',
-      applied_solution: 'Envio de dados reais de cobrança'
+      detected_issue: 'Dúvida/solicitação de renovação ou pagamento',
+      applied_solution: 'Apresentação das opções de renovação e dados reais do plano'
     });
 
     return {
       intent,
       replyText: reply,
       summary,
-      detectedIssue: 'Consulta de pagamento',
-      appliedSolution: 'Apresentação dos valores reais do plano cadastrado'
+      detectedIssue: 'Consulta de pagamento/renovação',
+      appliedSolution: 'Menu completo de opções de renovação e pagamento'
     };
   }
 

@@ -212,3 +212,62 @@ export function formatVideoEmbedUrl(url: string): { type: 'youtube' | 'vimeo' | 
     embedUrl: trimmed
   };
 }
+
+export interface StoreSettings {
+  is_button_visible_in_chat: boolean;
+}
+
+const STORE_SETTINGS_KEY = 'tbi_store_button_visible_chat';
+
+/**
+ * Busca a configuração de exibição do botão da Loja no Chat.
+ */
+export async function fetchStoreSettings(): Promise<StoreSettings> {
+  try {
+    const local = localStorage.getItem(STORE_SETTINGS_KEY);
+    const fallbackVisible = local !== null ? local === 'true' : true;
+
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('config_data')
+      .eq('id', 'store_settings')
+      .single();
+
+    if (error || !data || !data.config_data) {
+      return { is_button_visible_in_chat: fallbackVisible };
+    }
+
+    const visible = data.config_data.is_button_visible_in_chat ?? true;
+    localStorage.setItem(STORE_SETTINGS_KEY, String(visible));
+    return { is_button_visible_in_chat: visible };
+  } catch (err) {
+    console.warn('Erro ao carregar store_settings, usando fallback:', err);
+    const local = localStorage.getItem(STORE_SETTINGS_KEY);
+    return { is_button_visible_in_chat: local !== null ? local === 'true' : true };
+  }
+}
+
+/**
+ * Salva a configuração de exibição do botão da Loja no Chat.
+ */
+export async function saveStoreSettings(settings: StoreSettings): Promise<{ success: boolean; error?: string }> {
+  try {
+    localStorage.setItem(STORE_SETTINGS_KEY, String(settings.is_button_visible_in_chat));
+    // Notifica componentes na mesma aba
+    window.dispatchEvent(new CustomEvent('tbi_store_settings_changed', { detail: settings }));
+
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({
+        id: 'store_settings',
+        config_data: settings
+      });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (err: any) {
+    console.error('Erro ao salvar store_settings no Supabase:', err);
+    return { success: false, error: err?.message || 'Falha ao salvar configuração da loja' };
+  }
+}
+

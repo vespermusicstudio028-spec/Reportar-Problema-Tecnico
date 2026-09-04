@@ -826,21 +826,27 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
               </div>
 
               {/* Respostas Rápidas */}
-              <div className="px-4 py-2 bg-[#0e1118] border-t border-slate-800/60 overflow-x-auto flex items-center gap-2 custom-scrollbar">
-                <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 shrink-0 uppercase tracking-wider">
-                  <Sparkles size={13} className="text-amber-400" />
-                  Rápidas:
-                </span>
-                {QUICK_REPLIES.map((reply, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => handleSendMessage(reply.message)}
-                    className="text-xs bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-300 border border-slate-800 px-3 py-1.5 rounded-xl transition-all shrink-0 whitespace-nowrap"
-                  >
-                    {reply.label}
-                  </button>
-                ))}
+              <div className="p-2.5 sm:p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-amber-400" />
+                    Respostas Rápidas:
+                  </span>
+                  <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">Clique para enviar resposta pronta</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                  {QUICK_REPLIES.map((reply, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleSendMessage(reply.message)}
+                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800 font-medium truncate flex items-center justify-between gap-1"
+                      title={reply.message}
+                    >
+                      <span className="truncate">{reply.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Campo de Envio de Mensagem */}

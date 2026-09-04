@@ -38,6 +38,7 @@ import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/support
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 import { getOrCreateClientMemory } from '../lib/clientMemoryService';
 import { processClientSupportMessage } from '../lib/automatedSupportEngine';
+import { fetchStoreSettings } from '../lib/storeService';
 
 export interface AccessPointScreen {
   screenNumber: number;
@@ -93,6 +94,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [showPixUploadModal, setShowPixUploadModal] = useState(false);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showStoreModal, setShowStoreModal] = useState(false);
+  const [isStoreButtonVisible, setIsStoreButtonVisible] = useState(true);
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -110,6 +112,37 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       setBusinessStatus(getSupportBusinessHoursStatus());
     }, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Sincronizar visibilidade do botão da loja a partir do Supabase e eventos locais
+  useEffect(() => {
+    fetchStoreSettings().then((s) => setIsStoreButtonVisible(s.is_button_visible_in_chat));
+
+    const handleSettingsChanged = (e: any) => {
+      if (e.detail?.is_button_visible_in_chat !== undefined) {
+        setIsStoreButtonVisible(e.detail.is_button_visible_in_chat);
+      }
+    };
+    window.addEventListener('tbi_store_settings_changed', handleSettingsChanged);
+
+    // Escuta em tempo real do Supabase
+    const channel = supabase
+      .channel('store-settings-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'app_settings', filter: 'id=eq.store_settings' },
+        (payload: any) => {
+          if (payload.new?.config_data?.is_button_visible_in_chat !== undefined) {
+            setIsStoreButtonVisible(payload.new.config_data.is_button_visible_in_chat);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener('tbi_store_settings_changed', handleSettingsChanged);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Sincronizar estado externo se fornecido
@@ -953,16 +986,18 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       <RefreshCcw size={13} className="text-amber-300 shrink-0" />
                     </button>
 
-                    {/* Atalho 2: Loja & Página de Vendas */}
-                    <button
-                      type="button"
-                      onClick={() => setShowStoreModal(true)}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/35 to-teal-600/25 hover:from-emerald-600/50 hover:to-teal-600/40 text-emerald-200 border border-emerald-500/60 font-bold"
-                      title="Abrir Loja e Página de Vendas com nossos planos oficiais"
-                    >
-                      <span className="truncate">🛍️ Loja</span>
-                      <ShoppingBag size={13} className="text-emerald-300 shrink-0" />
-                    </button>
+                    {/* Atalho 2: Loja & Página de Vendas (Controlado pelo Admin via Olhinho) */}
+                    {isStoreButtonVisible && (
+                      <button
+                        type="button"
+                        onClick={() => setShowStoreModal(true)}
+                        className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm flex items-center justify-between gap-1.5 bg-gradient-to-r from-emerald-600/35 to-teal-600/25 hover:from-emerald-600/50 hover:to-teal-600/40 text-emerald-200 border border-emerald-500/60 font-bold"
+                        title="Abrir Loja e Página de Vendas com nossos planos oficiais"
+                      >
+                        <span className="truncate">🛍️ Loja</span>
+                        <ShoppingBag size={13} className="text-emerald-300 shrink-0" />
+                      </button>
+                    )}
 
                     {/* Atalho 3: + 1 Ponto de Acesso */}
                     <button

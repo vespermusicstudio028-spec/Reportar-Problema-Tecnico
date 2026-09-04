@@ -30,7 +30,9 @@ import {
   saveStoreProduct,
   deleteStoreProduct,
   uploadProductImage,
-  formatVideoEmbedUrl
+  formatVideoEmbedUrl,
+  fetchStoreSettings,
+  saveStoreSettings
 } from '../lib/storeService';
 
 interface AdminStoreManagerModalProps {
@@ -61,6 +63,8 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
   const [featureInput, setFeatureInput] = useState('');
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [videoPreviewOpen, setVideoPreviewOpen] = useState(false);
+  const [isStoreButtonVisible, setIsStoreButtonVisible] = useState(true);
+  const [savingStoreButton, setSavingStoreButton] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -71,8 +75,12 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
 
   const loadProducts = async () => {
     setLoading(true);
-    const data = await fetchStoreProducts(false); // trazer todos, inclusive inativos
+    const [data, settings] = await Promise.all([
+      fetchStoreProducts(false), // trazer todos, inclusive inativos
+      fetchStoreSettings()
+    ]);
     setProducts(data);
+    setIsStoreButtonVisible(settings.is_button_visible_in_chat);
     setLoading(false);
   };
 
@@ -157,6 +165,28 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
         prev.map((p) => (p.id === prod.id ? { ...p, is_active: prod.is_active } : p))
       );
       showNotification('error', 'Erro ao alterar visibilidade do produto.');
+    }
+  };
+
+  // Alternar se o botão da Loja aparece ou fica oculto no chat dos clientes
+  const handleToggleStoreButtonVisibility = async () => {
+    const nextStatus = !isStoreButtonVisible;
+    setIsStoreButtonVisible(nextStatus);
+    setSavingStoreButton(true);
+
+    const res = await saveStoreSettings({ is_button_visible_in_chat: nextStatus });
+    setSavingStoreButton(false);
+
+    if (res.success) {
+      showNotification(
+        'success',
+        nextStatus
+          ? 'O botão 🛍️ Loja agora está VISÍVEL no chat dos clientes! 👁️'
+          : 'O botão 🛍️ Loja agora está OCULTO no chat dos clientes! 👁️‍🗨️'
+      );
+    } else {
+      setIsStoreButtonVisible(!nextStatus);
+      showNotification('error', res.error || 'Erro ao atualizar visibilidade do botão no chat.');
     }
   };
 
@@ -311,6 +341,23 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Botão de Atalho Rápido para Ocultar/Exibir o Botão da Loja no Chat */}
+              <button
+                type="button"
+                onClick={handleToggleStoreButtonVisibility}
+                disabled={savingStoreButton}
+                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border active:scale-95 shadow-sm ${
+                  isStoreButtonVisible
+                    ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/40'
+                    : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border-rose-500/40'
+                }`}
+                title={isStoreButtonVisible ? 'Clique para ocultar o botão da Loja no chat dos clientes' : 'Clique para exibir o botão da Loja no chat dos clientes'}
+              >
+                {isStoreButtonVisible ? <Eye size={14} className="text-emerald-400" /> : <EyeOff size={14} className="text-rose-400" />}
+                <span className="hidden sm:inline">Botão no Chat:</span>
+                <span>{isStoreButtonVisible ? 'Visível' : 'Oculto'}</span>
+              </button>
+
               {!isEditing && (
                 <button
                   type="button"
@@ -318,7 +365,7 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
                   className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 active:scale-95"
                 >
                   <Plus size={15} />
-                  <span>Novo Produto</span>
+                  <span className="hidden sm:inline">Novo Produto</span>
                 </button>
               )}
               <button
@@ -795,9 +842,53 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
             ) : (
               /* Lista de Produtos Cadastrados */
               <div className="space-y-4">
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                {/* Painel de Controle de Visibilidade do Botão da Loja no Chat */}
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-[#111728] via-[#141b30] to-[#111728] border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3.5 shadow-lg">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 ${
+                      isStoreButtonVisible
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
+                        : 'bg-rose-500/15 border-rose-500/40 text-rose-400'
+                    }`}>
+                      {isStoreButtonVisible ? <Eye size={20} /> : <EyeOff size={20} />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-xs sm:text-sm font-bold text-white">
+                          Exibição do Botão 🛍️ Loja no Chat dos Clientes
+                        </h4>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isStoreButtonVisible ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        }`}>
+                          {isStoreButtonVisible ? 'Visível aos Clientes' : 'Oculto dos Clientes'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {isStoreButtonVisible
+                          ? 'O botão 🛍️ Loja está ativo e visível nos atalhos rápidos do chat para todos os clientes.'
+                          : 'O botão 🛍️ Loja foi ocultado do chat e nenhum cliente poderá visualizá-lo.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleToggleStoreButtonVisibility}
+                    disabled={savingStoreButton}
+                    className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 border active:scale-95 shadow-md shrink-0 ${
+                      isStoreButtonVisible
+                        ? 'bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border-rose-500/50'
+                        : 'bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/50'
+                    }`}
+                  >
+                    {isStoreButtonVisible ? <EyeOff size={14} className="text-rose-400" /> : <Eye size={14} className="text-emerald-400" />}
+                    <span>{isStoreButtonVisible ? 'Ocultar Botão no Chat' : 'Exibir Botão no Chat'}</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-1">
                   <span>Total de {products.length} produto(s) cadastrado(s) na Loja</span>
-                  <span>Clique em Editar para alterar fotos, vídeo, preço ou descrição</span>
+                  <span>Clique no olhinho de cada produto para ocultar/exibir individualmente</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -219,13 +219,22 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
 
       const updatedScreens = [...existingScreens, newPoint];
 
-      // 2. Atualizar cliente com +1 ponto e mudar plano para R$ 70,00 (Sinal do Streaming)
+      // 2. Atualizar cliente com +1 ponto e mudar plano para R$ 55,00 (se plano promo) ou R$ 70,00 (padrão)
+      const isPromoDevice = (clientData?.price === 30 || clientData?.price === 55 ||
+        selectedDevice?.id === 'android-tv' || selectedDevice?.id === 'celular' || selectedDevice?.id === 'tvbox' ||
+        deviceTitle.toLowerCase().includes('android') || deviceTitle.toLowerCase().includes('celular') || deviceTitle.toLowerCase().includes('tv box'));
+      
+      const newPlanPrice = (newScreenNumber === 2 && isPromoDevice) ? 55 : (newScreenNumber === 2 ? 70 : (isPromoDevice ? 30 : 40));
+      const payLink = (newScreenNumber === 2 && isPromoDevice) ? 'https://mpago.la/2Dpsfqh' : (isPromoDevice ? 'https://mpago.la/1hXh4nb' : 'https://mpago.la/2UJjaQb');
+      const payLabel = (newScreenNumber === 2 && isPromoDevice) ? 'Pagar Plano 2 Pontos (R$ 55,00)' : (isPromoDevice ? 'Pagar Ativação de Ponto (R$ 30,00)' : 'Pagar Ativação de +1 Ponto (R$ 35,00)');
+      const payValue = (newScreenNumber === 2 && isPromoDevice) ? 'R$ 55,00' : (isPromoDevice ? 'R$ 30,00' : 'R$ 35,00');
+
       const { error: updateErr } = await supabase
         .from('clients')
         .update({
           access_points: updatedScreens,
           plan: 'Sinal do Streaming',
-          price: 70
+          price: newPlanPrice
         })
         .eq('code', activeCode);
 
@@ -233,13 +242,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         console.error('Erro ao atualizar cliente com novo ponto:', updateErr);
       }
 
-      // 3. Montar mensagem do cliente com o link de pagamento da ativação (R$ 35,00)
-      const payLink = 'https://mpago.la/2UJjaQb';
-      const payLabel = 'Pagar Ativação de +1 Ponto (R$ 35,00)';
-      const payValue = 'R$ 35,00';
+      // 3. Montar mensagem do cliente com o link de pagamento
       const paymentMarker = `[PAYMENT_LINK:${payLink}|||${payLabel}|||${payValue}]`;
 
-      let msgText = `➕ *Solicitação de Ponto Adicional (+1 Tela)*\n\n👤 *Cliente:* ${activeName}\n🔑 *Código:* ${activeCode}\n\n📺 *Novo Ponto (Tela ${newScreenNumber}):* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}\n\n💰 *Taxa de Ativação do Ponto Adicional:* R$ 35,00\n💰 *Valor das Próximas Renovações:* R$ 70,00 (${updatedScreens.length} Telas)\n\n${paymentMarker}`;
+      let msgText = `➕ *Solicitação de Ponto Adicional (+1 Tela)*\n\n👤 *Cliente:* ${activeName}\n🔑 *Código:* ${activeCode}\n\n📺 *Novo Ponto (Tela ${newScreenNumber}):* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}\n\n💰 *Taxa de Ativação do Ponto:* ${payValue}\n💰 *Valor das Próximas Renovações:* R$ ${newPlanPrice},00 (${updatedScreens.length} Telas)\n\n${paymentMarker}`;
 
       if (imagePreview && attachedImage) {
         const payload = {
@@ -262,7 +268,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
       });
 
       // 5. Salvar resposta automática do bot
-      const autoReply = `🤖 **Novo Ponto Adicionado com Sucesso!** 🎉\n\nRecebemos os dados do seu novo aparelho (*${appName} - Tela ${newScreenNumber}*).\n\n💳 Para liberar o acesso deste novo ponto, realize o pagamento da taxa de ativação de **R$ 35,00** clicando no botão acima.\n\n✨ Seu plano foi atualizado para **R$ 70,00** (${updatedScreens.length} Telas) para as próximas renovações! Em instantes nosso suporte ativará seu novo aparelho. 🍿📺`;
+      const autoReply = `🤖 **Novo Ponto Adicionado com Sucesso!** 🎉\n\nRecebemos os dados do seu novo aparelho (*${appName} - Tela ${newScreenNumber}*).\n\n💳 Para liberar o acesso deste ponto, realize o pagamento de **${payValue}** clicando no botão acima.\n\n✨ Seu plano foi atualizado para **R$ ${newPlanPrice},00** (${updatedScreens.length} Telas)! Em instantes nosso suporte ativará seu novo aparelho. 🍿📺`;
       await supabase.from('chat_messages').insert({
         client_code: activeCode,
         client_name: 'Suporte The Best IPTV+',
@@ -276,7 +282,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         onPointAdded({
           ...clientData,
           plan: 'Sinal do Streaming',
-          price: 70,
+          price: newPlanPrice,
           access_points: updatedScreens,
           accessPoints: updatedScreens
         });
@@ -387,16 +393,36 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         newCode = Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
       }
 
-      // 2. Determinar se o dispositivo é Celular ou outro
+      // 2. Determinar se o dispositivo é TV Android (Play store), Celular ou TV Box
       const content = pendingContent || selectedSubOption?.content || selectedDevice?.content || {};
       const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
       const deviceTitle = selectedDevice?.name || 'Dispositivo';
 
-      const isCelular = (selectedDevice?.id?.toLowerCase() === 'celular') ||
-                        (selectedDevice?.name?.toLowerCase().includes('celular')) ||
-                        (deviceTitle.toLowerCase().includes('celular')) ||
-                        (selectedSubOption?.name?.toLowerCase().includes('celular'));
-      const calculatedPrice = isCelular ? 35 : 40;
+      const devId = (selectedDevice?.id || '').toLowerCase();
+      const devName = (selectedDevice?.name || '').toLowerCase();
+      const subName = (selectedSubOption?.name || '').toLowerCase();
+      const devTitleLower = deviceTitle.toLowerCase();
+      const appNameLower = appName.toLowerCase();
+
+      // Identifica se é TV Android (Play store), Celular ou TV Box
+      const isPromo30Device = devId === 'android-tv' ||
+                              devId === 'celular' ||
+                              devId === 'tvbox' ||
+                              devName.includes('android') ||
+                              devName.includes('celular') ||
+                              devName.includes('tv box') ||
+                              devName.includes('tvbox') ||
+                              devTitleLower.includes('android') ||
+                              devTitleLower.includes('celular') ||
+                              devTitleLower.includes('tv box') ||
+                              devTitleLower.includes('tvbox') ||
+                              appNameLower.includes('android') ||
+                              appNameLower.includes('tv box') ||
+                              appNameLower.includes('tvbox') ||
+                              subName.includes('celular');
+
+      // TV Android, Celular e TV Box: R$ 30,00 (1 Tela). Se for outro dispositivo: R$ 40,00.
+      const calculatedPrice = isPromo30Device ? 30 : 40;
       const calculatedPlan = 'Sinal do Streaming';
 
       const clientAccessPoints = [{
@@ -449,8 +475,13 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         });
       }
 
-      // 6. Formatar mensagem do teste com os dados do cliente e do app
-      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n👤 *Cliente Novo:* ${regName.trim()}\n📱 *WhatsApp:* ${regPhone.trim()}\n🔑 *Código de Acesso:* ${newCode}\n💰 *Valor do Plano:* R$ ${calculatedPrice},00 (${calculatedPlan})\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+      // 6. Formatar mensagem do teste com os dados do cliente, plano e links do Mercado Pago
+      let paymentMarker = '';
+      if (isPromo30Device) {
+        paymentMarker = `[PAYMENT_LINK:https://mpago.la/1hXh4nb|||Contratar 1 Ponto (R$ 30,00)|||R$ 30,00]\n[PAYMENT_LINK:https://mpago.la/2Dpsfqh|||Contratar 2 Pontos (R$ 55,00)|||R$ 55,00]`;
+      }
+
+      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n👤 *Cliente Novo:* ${regName.trim()}\n📱 *WhatsApp:* ${regPhone.trim()}\n🔑 *Código de Acesso:* ${newCode}\n💰 *Valor do Plano:* R$ ${calculatedPrice},00 (${calculatedPlan})${isPromo30Device ? ' (1 Ponto R$ 30,00 | 2 Pontos R$ 55,00)' : ''}\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}${paymentMarker ? `\n\n${paymentMarker}` : ''}`;
 
       if (imagePreview && attachedImage) {
         const payload = {
@@ -472,8 +503,13 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         read_by_client: true
       });
 
-      // 7. Inserir resposta de boas-vindas do suporte técnico
-      const autoReply = `🤖 **Olá, ${regName.trim()}! Seja muito bem-vindo(a) à The Best IPTV!** 🎉\n\n🔑 **Seu Código de Acesso Exclusivo é:** \`${newCode}\`\n*(Guarde este código para acessar suporte e novidades sempre que entrar no app!)*\n\nRecebemos os dados do seu dispositivo (*${appName}*) para liberação do seu **Teste Grátis de 3h**! 🍿📺\n\nNossa equipe já está gerando sua lista de acesso e em instantes liberará seu login e senha aqui no chat.`;
+      // 7. Inserir resposta de boas-vindas do suporte técnico com os links
+      let autoReply = `🤖 **Olá, ${regName.trim()}! Seja muito bem-vindo(a) à The Best IPTV!** 🎉\n\n🔑 **Seu Código de Acesso Exclusivo é:** \`${newCode}\`\n*(Guarde este código para acessar suporte e novidades sempre que entrar no app!)*\n\nRecebemos os dados do seu dispositivo (*${appName}*) para liberação do seu **Teste Grátis de 3h**! 🍿📺\n\nNossa equipe já está gerando sua lista de acesso e em instantes liberará seu login e senha aqui no chat.`;
+
+      if (isPromo30Device) {
+        autoReply += `\n\n💰 **Valores Especiais para seu Aparelho (${deviceTitle}):**\n• 📺 **1 Ponto (1 Tela):** R$ 30,00 ➡️ [Pagar R$ 30,00 via Mercado Pago](https://mpago.la/1hXh4nb)\n• 📺📺 **2 Pontos (2 Telas):** R$ 55,00 ➡️ [Pagar R$ 55,00 via Mercado Pago](https://mpago.la/2Dpsfqh)\n\n*(Você pode testar à vontade durante o período de 3 horas antes de assinar!)*`;
+      }
+
       await supabase.from('chat_messages').insert({
         client_code: newCode,
         client_name: 'Suporte The Best IPTV+',

@@ -9,7 +9,7 @@ async function testAppQueries() {
     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
   });
   const clients = await cliRes.json();
-  console.log("Clients OK:", clients.length, clients.map(c => ({ name: c.name, code: c.code, link: c.canvas_link })));
+  console.log("Clients Status:", cliRes.status, "Response:", clients);
 
   // 2. Announcements
   const annRes = await fetch(`${supabaseUrl}/rest/v1/announcements?select=*&order=created_at.desc`, {
@@ -34,6 +34,14 @@ async function testAppQueries() {
     headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
   });
   console.log("Content Requests Status:", reqRes.status);
+
+  // 6. Chat Messages
+  const chatRes = await fetch(`${supabaseUrl}/rest/v1/chat_messages?select=*&order=created_at.desc&limit=5`, {
+    headers: { 'apikey': supabaseKey, 'Authorization': `Bearer ${supabaseKey}` }
+  });
+  console.log("Chat Messages Status:", chatRes.status);
+  const chatMsgs = await chatRes.json();
+  console.log("Total recentes de chat encontrados:", Array.isArray(chatMsgs) ? chatMsgs.length : chatMsgs);
 }
 
 testAppQueries();

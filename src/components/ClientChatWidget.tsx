@@ -437,10 +437,18 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           payLink = 'https://mpago.la/1ZESpNJ';
           payLabel = 'Pagar R$ 70,00 via Mercado Pago';
           payValue = 'R$ 70,00';
+        } else if (effectivePrice === 55 || (screensCount >= 2 && effectivePrice === 30)) {
+          payLink = 'https://mpago.la/2Dpsfqh';
+          payLabel = 'Pagar R$ 55,00 (2 Pontos) via Mercado Pago';
+          payValue = 'R$ 55,00';
         } else if (effectivePrice === 35) {
           payLink = 'https://mpago.la/2UJjaQb';
           payLabel = 'Pagar R$ 35,00 via Mercado Pago';
           payValue = 'R$ 35,00';
+        } else if (effectivePrice === 30) {
+          payLink = 'https://mpago.la/1hXh4nb';
+          payLabel = 'Pagar R$ 30,00 via Mercado Pago';
+          payValue = 'R$ 30,00';
         } else {
           // Padrão: R$ 40,00
           payLink = 'https://mpago.la/1FqmoD4';

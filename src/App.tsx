@@ -2779,7 +2779,7 @@ export default function App() {
                            localStorage.setItem('admin_last_seen_reports', userReports.length.toString());
                            setNewRequestsCount(0);
                          }
-                         setAdminTab(tab.id);
+                         setAdminTab(tab.id as any);
                          setShowLoginModal(false);
                        }}
                        className={`w-full text-left p-4 rounded-2xl bg-gradient-to-br ${tab.accent} border transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-between group shadow-lg`}
@@ -4655,9 +4655,11 @@ export default function App() {
                 </label>
                 <div className="grid grid-cols-1 gap-2">
                   {([
-                    { label: '📡 Plano R$ 70,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 70, link: 'https://mpago.la/1ZESpNJ', color: 'purple' },
+                    { label: '📡 Plano R$ 70,00 — Sinal do Streaming (2 Telas)', plan: 'Sinal do Streaming', price: 70, link: 'https://mpago.la/1ZESpNJ', color: 'purple' },
+                    { label: '📡 Plano R$ 55,00 — Sinal do Streaming (2 Telas Promo)', plan: 'Sinal do Streaming', price: 55, link: 'https://mpago.la/2Dpsfqh', color: 'cyan' },
                     { label: '📡 Plano R$ 40,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 40, link: 'https://mpago.la/1FqmoD4', color: 'indigo' },
                     { label: '📡 Plano R$ 35,00 — Sinal do Streaming', plan: 'Sinal do Streaming', price: 35, link: 'https://mpago.la/2UJjaQb', color: 'blue' },
+                    { label: '📡 Plano R$ 30,00 — Sinal do Streaming (TV Android / Celular / TV Box)', plan: 'Sinal do Streaming', price: 30, link: 'https://mpago.la/1hXh4nb', color: 'teal' },
                     { label: '📱 Renovação do Aplicativo', plan: 'Aplicativo', price: 0, link: 'https://mpago.la/31zU6D3', color: 'emerald' },
                   ] as const).map((opt) => {
                     const isSelected = editingClient.price === opt.price && editingClient.plan === opt.plan;
@@ -4685,7 +4687,7 @@ export default function App() {
                       min="0"
                       step="0.01"
                       placeholder="Valor personalizado (R$)"
-                      value={editingClient.price !== undefined && ![70, 40, 35, 0].includes(editingClient.price) ? editingClient.price : ''}
+                      value={editingClient.price !== undefined && ![70, 55, 40, 35, 30, 0].includes(editingClient.price) ? editingClient.price : ''}
                       onChange={(e) => setEditingClient({ ...editingClient, price: e.target.value ? parseFloat(e.target.value) : undefined, plan: 'Personalizado' })}
                       className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all placeholder-slate-500"
                     />
@@ -4706,8 +4708,10 @@ export default function App() {
                   let payLink = '';
                   let payLabel = '';
                   if (editingClient.price === 70) { payLink = 'https://mpago.la/1ZESpNJ'; payLabel = 'Link Pix R$ 70,00'; }
+                  else if (editingClient.price === 55) { payLink = 'https://mpago.la/2Dpsfqh'; payLabel = 'Link Pix R$ 55,00 (2 Pontos)'; }
                   else if (editingClient.price === 40) { payLink = 'https://mpago.la/1FqmoD4'; payLabel = 'Link Pix R$ 40,00'; }
                   else if (editingClient.price === 35) { payLink = 'https://mpago.la/2UJjaQb'; payLabel = 'Link Pix R$ 35,00'; }
+                  else if (editingClient.price === 30) { payLink = 'https://mpago.la/1hXh4nb'; payLabel = 'Link Pix R$ 30,00 (1 Ponto)'; }
                   else if (editingClient.price === 0 && editingClient.plan === 'Aplicativo') { payLink = 'https://mpago.la/31zU6D3'; payLabel = 'Link Renovação App'; }
                   if (!payLink) return null;
                   return (

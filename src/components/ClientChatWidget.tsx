@@ -275,7 +275,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           } finally {
             setIsBotThinking(false);
           }
-        }, 900);
+        }, 400);
       }
     } catch (err: any) {
       alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));

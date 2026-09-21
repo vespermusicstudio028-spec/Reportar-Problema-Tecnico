@@ -241,10 +241,31 @@ export default function App() {
   // User Reports History
   const [userReports, setUserReports] = useState<UserReport[]>([]);
 
-  // Announcements
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [pollVotes, setPollVotes] = useState<PollVote[]>([]);
-  const [annReactions, setAnnReactions] = useState<AnnouncementReaction[]>([]);
+  // Announcements (com cache instantâneo de 0ms)
+  const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_announcements');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [pollVotes, setPollVotes] = useState<PollVote[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_poll_votes');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [annReactions, setAnnReactions] = useState<AnnouncementReaction[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_ann_reactions');
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
   const [annViews, setAnnViews] = useState<AnnouncementView[]>([]);
 
   // Content Requests
@@ -279,40 +300,18 @@ export default function App() {
 
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
-    const fetchData = async () => {
+    // 1. Carregamento instantâneo e prioritário de Avisos Importantes
+    const fetchAnnouncementsFast = async () => {
       try {
-        const [
-          settingsRes,
-          annRes,
-          votesRes,
-          reactionsRes,
-          viewsRes,
-          movRes,
-          serRes,
-          cliRes,
-          repRes,
-          reqsRes,
-          chatDataRes
-        ] = await Promise.all([
-          supabase.from('app_settings').select('config_data').eq('id', 'trial_config').single(),
+        const [annRes, votesRes, reactionsRes, viewsRes] = await Promise.all([
           supabase.from('announcements').select('*').order('created_at', { ascending: false }),
           supabase.from('poll_votes').select('*'),
           supabase.from('announcement_reactions').select('*'),
-          supabase.from('announcement_views').select('*'),
-          supabase.from('movie_updates').select('*').order('created_at', { ascending: false }),
-          supabase.from('series_updates').select('*').order('created_at', { ascending: false }),
-          supabase.from('clients').select('*').order('added_at', { ascending: false }),
-          supabase.from('user_reports').select('*').order('timestamp', { ascending: false }),
-          supabase.from('content_requests').select('*').order('created_at', { ascending: false }),
-          supabase.from('chat_messages').select('id').eq('sender', 'client').eq('read_by_admin', false)
+          supabase.from('announcement_views').select('*')
         ]);
 
-        if (settingsRes.data?.config_data?.devices) {
-          setTrialConfig(settingsRes.data.config_data as TrialConfig);
-        }
-
         if (annRes.data) {
-          setAnnouncements(annRes.data.map((a: any) => {
+          const mapped = annRes.data.map((a: any) => {
             let mediaUrls: string[] = [];
             let singleMediaUrl = a.media_url || undefined;
             if (a.media_url) {
@@ -346,12 +345,59 @@ export default function App() {
               pollOptions: a.poll_options, 
               createdAt: a.created_at
             };
-          }));
+          });
+          setAnnouncements(mapped);
+          try {
+            localStorage.setItem('tbi_cached_announcements', JSON.stringify(mapped));
+          } catch {}
         }
 
-        if (votesRes.data) setPollVotes(votesRes.data);
-        if (reactionsRes.data) setAnnReactions(reactionsRes.data);
+        if (votesRes.data) {
+          setPollVotes(votesRes.data);
+          try {
+            localStorage.setItem('tbi_cached_poll_votes', JSON.stringify(votesRes.data));
+          } catch {}
+        }
+        if (reactionsRes.data) {
+          setAnnReactions(reactionsRes.data);
+          try {
+            localStorage.setItem('tbi_cached_ann_reactions', JSON.stringify(reactionsRes.data));
+          } catch {}
+        }
         if (viewsRes.data) setAnnViews(viewsRes.data);
+      } catch (e) {
+        console.error("Error fetching announcements:", e);
+      }
+    };
+
+    // Dispara busca ultra rápida dos avisos imediatamente
+    fetchAnnouncementsFast();
+
+    // 2. Carregamento dos demais dados gerais em paralelo
+    const fetchData = async () => {
+      try {
+        const [
+          settingsRes,
+          movRes,
+          serRes,
+          cliRes,
+          repRes,
+          reqsRes,
+          chatDataRes
+        ] = await Promise.all([
+          supabase.from('app_settings').select('config_data').eq('id', 'trial_config').single(),
+          supabase.from('movie_updates').select('*').order('created_at', { ascending: false }),
+          supabase.from('series_updates').select('*').order('created_at', { ascending: false }),
+          supabase.from('clients').select('*').order('added_at', { ascending: false }),
+          supabase.from('user_reports').select('*').order('timestamp', { ascending: false }),
+          supabase.from('content_requests').select('*').order('created_at', { ascending: false }),
+          supabase.from('chat_messages').select('id').eq('sender', 'client').eq('read_by_admin', false)
+        ]);
+
+        if (settingsRes.data?.config_data?.devices) {
+          setTrialConfig(settingsRes.data.config_data as TrialConfig);
+        }
+
         if (movRes.data) setMovieUpdates(movRes.data.map((m: any) => ({ id: m.id, title: m.title })));
         if (serRes.data) setSeriesUpdates(serRes.data.map((s: any) => ({ id: s.id, title: s.title })));
         if (cliRes.data) setClients(cliRes.data.map((c: any) => ({
@@ -377,26 +423,32 @@ export default function App() {
           setUnreadChatCount(chatDataRes.data.length);
         }
       } catch (e) {
-        console.error("Error fetching data:", e);
+        console.error("Error fetching general data:", e);
       }
     };
 
     fetchData();
 
+    // Canal dedicado para Avisos com resposta instantânea
+    const annChannel = supabase.channel('announcements-fast-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAnnouncementsFast)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchAnnouncementsFast)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchAnnouncementsFast)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchAnnouncementsFast)
+      .subscribe();
+
+    // Canal para demais dados
     const channel = supabase.channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'movie_updates' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'series_updates' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, fetchData)
       .subscribe();
 
     return () => {
+      supabase.removeChannel(annChannel);
       supabase.removeChannel(channel);
     };
   }, []);
@@ -471,9 +523,12 @@ export default function App() {
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showForgotCodeModal, setShowForgotCodeModal] = useState(false);
   const [forgotCodePhone, setForgotCodePhone] = useState('');
-  const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
-  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
+    const saved = localStorage.getItem('tbi_announcements_open');
+    if (saved !== null) return saved === 'true';
+    return true; // Aberto por padrão para que os avisos importantes apareçam imediatamente na tela inicial
+  });
 
   interface CatalogUpdate {
     id: string;
@@ -1130,9 +1185,10 @@ export default function App() {
 
     return (
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.1 }}
         className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
       >
         <div id="tour-announcements" className="w-full max-w-xl mb-6">
@@ -1157,6 +1213,7 @@ export default function App() {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.1 }}
                 className="overflow-hidden"
               >
                 <div className="space-y-3 pt-2">

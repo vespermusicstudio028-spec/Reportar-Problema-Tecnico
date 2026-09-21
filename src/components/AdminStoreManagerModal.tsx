@@ -88,7 +88,7 @@ export const AdminStoreManagerModal: React.FC<AdminStoreManagerModalProps> = ({
     setFeedback({ type, message });
     setTimeout(() => {
       setFeedback(null);
-    }, 4000);
+    }, 1500);
   };
 
   const handleStartNewProduct = () => {

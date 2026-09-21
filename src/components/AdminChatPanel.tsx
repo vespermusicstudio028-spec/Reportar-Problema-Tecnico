@@ -54,13 +54,22 @@ const QUICK_REPLIES = [
 ];
 
 export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_chat_messages');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [selectedClientCode, setSelectedClientCode] = useState<string | null>(null);
   const [activeServingClientCode, setActiveServingClientCode] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSending, setIsSending] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      return !localStorage.getItem('tbi_cached_chat_messages');
+    } catch { return true; }
+  });
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [mobileShowChat, setMobileShowChat] = useState(false);
   const [showMemoryModal, setShowMemoryModal] = useState(false);
@@ -114,6 +123,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       if (error) throw error;
       if (data) {
         setMessages(data as ChatMessage[]);
+        try { localStorage.setItem('tbi_cached_chat_messages', JSON.stringify(data)); } catch {}
       }
     } catch (err) {
       console.error('Erro ao buscar mensagens do chat:', err);

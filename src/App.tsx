@@ -166,7 +166,12 @@ export default function App() {
   const [contentType, setContentType] = useState<ContentType>(null);
   const [trialState, setTrialState] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
-  const [trialConfig, setTrialConfig] = useState<TrialConfig>(defaultTrialConfig);
+  const [trialConfig, setTrialConfig] = useState<TrialConfig>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_trial_config');
+      return cached ? JSON.parse(cached) : defaultTrialConfig;
+    } catch { return defaultTrialConfig; }
+  });
   const [isTrialEnabled, setIsTrialEnabled] = useState(() => {
     const saved = localStorage.getItem('tbi_trial_enabled');
     return saved !== null ? saved === 'true' : true;
@@ -239,7 +244,12 @@ export default function App() {
   }, [isTrialEnabled]);
   
   // User Reports History
-  const [userReports, setUserReports] = useState<UserReport[]>([]);
+  const [userReports, setUserReports] = useState<UserReport[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_reports');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
 
   // Announcements (com cache instantâneo de 0ms)
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
@@ -277,7 +287,12 @@ export default function App() {
   const [selectedTMDB, setSelectedTMDB] = useState<TMDBResult | null>(null);
   const [requestSeason, setRequestSeason] = useState('');
   const [requestEpisode, setRequestEpisode] = useState('');
-  const [contentRequests, setContentRequests] = useState<ContentRequest[]>([]);
+  const [contentRequests, setContentRequests] = useState<ContentRequest[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_content_requests');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [quotaAlert, setQuotaAlert] = useState<'warning' | 'limit' | null>(null);
 
@@ -396,31 +411,49 @@ export default function App() {
 
         if (settingsRes.data?.config_data?.devices) {
           setTrialConfig(settingsRes.data.config_data as TrialConfig);
+          try { localStorage.setItem('tbi_cached_trial_config', JSON.stringify(settingsRes.data.config_data)); } catch {}
         }
 
-        if (movRes.data) setMovieUpdates(movRes.data.map((m: any) => ({ id: m.id, title: m.title })));
-        if (serRes.data) setSeriesUpdates(serRes.data.map((s: any) => ({ id: s.id, title: s.title })));
-        if (cliRes.data) setClients(cliRes.data.map((c: any) => ({
-          id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
-          plan: c.plan || '', price: c.price ?? undefined,
-          activeApp: c.active_app || '',
-          accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
-          addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
-        })));
+        if (movRes.data) {
+          const mapped = movRes.data.map((m: any) => ({ id: m.id, title: m.title }));
+          setMovieUpdates(mapped);
+          try { localStorage.setItem('tbi_cached_movie_updates', JSON.stringify(mapped)); } catch {}
+        }
+        if (serRes.data) {
+          const mapped = serRes.data.map((s: any) => ({ id: s.id, title: s.title }));
+          setSeriesUpdates(mapped);
+          try { localStorage.setItem('tbi_cached_series_updates', JSON.stringify(mapped)); } catch {}
+        }
+        if (cliRes.data) {
+          const mapped = cliRes.data.map((c: any) => ({
+            id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
+            plan: c.plan || '', price: c.price ?? undefined,
+            activeApp: c.active_app || '',
+            accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
+            addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
+          }));
+          setClients(mapped);
+          try { localStorage.setItem('tbi_cached_clients', JSON.stringify(mapped)); } catch {}
+        }
         if (repRes.data) {
-          setUserReports(repRes.data.map((r: any) => ({
+          const mapped = repRes.data.map((r: any) => ({
             id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp, client_code: r.client_code
-          })));
+          }));
+          setUserReports(mapped);
+          try { localStorage.setItem('tbi_cached_reports', JSON.stringify(mapped)); } catch {}
           const reportCount = Math.max(0, repRes.data.length - lastSeenReportsCount);
           setNewReportsCount(reportCount);
         }
         if (reqsRes.data) {
           setContentRequests(reqsRes.data);
+          try { localStorage.setItem('tbi_cached_content_requests', JSON.stringify(reqsRes.data)); } catch {}
           const count = Math.max(0, reqsRes.data.length - lastSeenRequestsCount);
           setNewRequestsCount(count);
         }
         if (chatDataRes.data) {
-          setUnreadChatCount(chatDataRes.data.length);
+          const count = chatDataRes.data.length;
+          setUnreadChatCount(count);
+          try { localStorage.setItem('tbi_cached_unread_count', String(count)); } catch {}
         }
       } catch (e) {
         console.error("Error fetching general data:", e);
@@ -518,11 +551,16 @@ export default function App() {
   const [showCrmPassword, setShowCrmPassword] = useState(false);
   const [copiedClientDataId, setCopiedClientDataId] = useState<string | null>(null);
   const [copiedEditClientData, setCopiedEditClientData] = useState(false);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [unreadChatCount, setUnreadChatCount] = useState(() => {
+    try {
+      return parseInt(localStorage.getItem('tbi_cached_unread_count') || '0', 10);
+    } catch { return 0; }
+  });
   const [isClientChatOpen, setIsClientChatOpen] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showForgotCodeModal, setShowForgotCodeModal] = useState(false);
   const [forgotCodePhone, setForgotCodePhone] = useState('');
+  const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
     const saved = localStorage.getItem('tbi_announcements_open');
@@ -534,8 +572,18 @@ export default function App() {
     id: string;
     title: string;
   }
-  const [movieUpdates, setMovieUpdates] = useState<CatalogUpdate[]>([]);
-  const [seriesUpdates, setSeriesUpdates] = useState<CatalogUpdate[]>([]);
+  const [movieUpdates, setMovieUpdates] = useState<CatalogUpdate[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_movie_updates');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [seriesUpdates, setSeriesUpdates] = useState<CatalogUpdate[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_series_updates');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [newMovieTitle, setNewMovieTitle] = useState('');
   const [newSeriesTitle, setNewSeriesTitle] = useState('');
   const generateUniqueClientCode = () => {
@@ -587,7 +635,12 @@ export default function App() {
     addedAt: string;
     lastRecoveryAt?: string;
   }
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<Client[]>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_clients');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [activeScreenTab, setActiveScreenTab] = useState<number>(1);

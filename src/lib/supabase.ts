@@ -11,5 +11,22 @@ if (!envUrl || envUrl.includes('yasytydjkkbikwwmtmeu')) {
   envKey = defaultAnonKey;
 }
 
-export const supabase = createClient(envUrl, envKey || defaultAnonKey);
-
+export const supabase = createClient(envUrl, envKey || defaultAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
+  realtime: {
+    params: {
+      eventsPerSecond: 10,
+    },
+  },
+  global: {
+    fetch: fetch.bind(globalThis),
+    headers: { 'x-application-name': 'reportar-problema-tecnico' },
+  },
+  db: {
+    schema: 'public',
+  },
+});

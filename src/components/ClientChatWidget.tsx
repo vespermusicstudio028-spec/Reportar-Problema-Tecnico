@@ -85,7 +85,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   onAddPoint,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const code = clientCode || localStorage.getItem('iptv_access_code_v1') || '';
+      if (!code) return [];
+      const cached = localStorage.getItem(`tbi_cached_client_messages_${code}`);
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [tempCodeInput, setTempCodeInput] = useState('');
@@ -171,6 +178,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       if (error) throw error;
       if (data) {
         setMessages(data as ChatMessage[]);
+        try { localStorage.setItem(`tbi_cached_client_messages_${activeCode}`, JSON.stringify(data)); } catch {}
       }
     } catch (err) {
       console.error('Erro ao buscar mensagens do chat do cliente:', err);

@@ -142,9 +142,9 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     };
   }, []);
 
-  // Rolar para o final quando a conversa ativa mudar ou receber nova mensagem
+  // Rolar para o final quando a conversa ativa mudar ou receber nova mensagem sem delay
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages, selectedClientCode]);
 
   // Marcar mensagens do cliente selecionado como lidas pelo admin
@@ -230,12 +230,26 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const activeClientName =
     selectedClientInfo?.name || selectedConversation?.client_name || `Cliente (${selectedClientCode})`;
 
-  // Enviar resposta do administrador
+  // Enviar resposta do administrador sem delay (feedback instantâneo)
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || replyText).trim();
     if (!text || !selectedClientCode || isSending) return;
 
     setIsSending(true);
+    setReplyText('');
+
+    const optimisticAdminMsg: ChatMessage = {
+      id: 'opt-admin-' + Date.now(),
+      client_code: selectedClientCode,
+      client_name: activeClientName,
+      sender: 'admin',
+      message: text,
+      created_at: new Date().toISOString(),
+      read_by_admin: true,
+      read_by_client: false
+    };
+    setMessages((prev) => [...prev, optimisticAdminMsg]);
+
     try {
       const { error } = await supabase.from('chat_messages').insert({
         client_code: selectedClientCode,
@@ -247,7 +261,6 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       });
 
       if (error) throw error;
-      setReplyText('');
     } catch (err: any) {
       alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
     } finally {
@@ -255,10 +268,22 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
-  // Confirmar e Reconhecer Pagamento Pix com 1 clique
+  // Confirmar e Reconhecer Pagamento Pix com 1 clique sem delay
   const handleConfirmPixPayment = async (clientCode: string, clientName: string) => {
     try {
       const confirmMsg = getAutomatedPixConfirmedMessage(clientName);
+      const optimisticMsg: ChatMessage = {
+        id: 'opt-pix-conf-' + Date.now(),
+        client_code: clientCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: confirmMsg,
+        created_at: new Date().toISOString(),
+        read_by_admin: true,
+        read_by_client: false
+      };
+      setMessages((prev) => [...prev, optimisticMsg]);
+
       const { error } = await supabase.from('chat_messages').insert({
         client_code: clientCode,
         client_name: 'Suporte The Best IPTV+',

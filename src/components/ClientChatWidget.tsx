@@ -204,10 +204,10 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     };
   }, [activeCode]);
 
-  // Rolar para a última mensagem
+  // Rolar para a última mensagem sem delay
   useEffect(() => {
     if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
     }
   }, [messages, isOpen]);
 
@@ -236,8 +236,23 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     if (!text || !activeCode || isSending) return;
 
     setIsSending(true);
+    setInputText('');
+    const currentClientDisplayName = clientName || customClientName || 'Cliente';
+
+    // Adiciona a mensagem imediatamente na tela (0 delay)
+    const optimisticClientMsg: ChatMessage = {
+      id: 'opt-' + Date.now(),
+      client_code: activeCode,
+      client_name: currentClientDisplayName,
+      sender: 'client',
+      message: text,
+      created_at: new Date().toISOString(),
+      read_by_admin: false,
+      read_by_client: true
+    };
+    setMessages(prev => [...prev, optimisticClientMsg]);
+
     try {
-      const currentClientDisplayName = clientName || customClientName || 'Cliente';
       const { error } = await supabase.from('chat_messages').insert({
         client_code: activeCode,
         client_name: currentClientDisplayName,
@@ -248,18 +263,28 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       });
 
       if (error) throw error;
-      setInputText('');
 
-      // Disparar Atendimento Inteligente com Memória Persistente do Cliente
+      // Disparar Atendimento Inteligente com Memória Persistente do Cliente sem delay
       const isSystemPayload = text.startsWith('[FOTOS_SUPORTE]') || text.startsWith('[PIX_COMPROVANTE]');
       if (!isSystemPayload) {
         setIsBotThinking(true);
-        setTimeout(async () => {
+        (async () => {
           try {
             const memory = await getOrCreateClientMemory(activeCode, currentClientDisplayName);
             if (memory) {
               const contextualResponse = await processClientSupportMessage(text, memory);
               if (contextualResponse && contextualResponse.replyText) {
+                const optimisticBotMsg: ChatMessage = {
+                  id: 'bot-' + Date.now(),
+                  client_code: activeCode,
+                  client_name: 'Suporte The Best IPTV+',
+                  sender: 'admin',
+                  message: contextualResponse.replyText,
+                  created_at: new Date().toISOString(),
+                  read_by_admin: true,
+                  read_by_client: false
+                };
+                setMessages(prev => [...prev, optimisticBotMsg]);
                 await supabase.from('chat_messages').insert({
                   client_code: activeCode,
                   client_name: 'Suporte The Best IPTV+',
@@ -275,7 +300,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           } finally {
             setIsBotThinking(false);
           }
-        }, 400);
+        })();
       }
     } catch (err: any) {
       alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
@@ -288,36 +313,56 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     if (!activeCode) return;
     const currentClientDisplayName = clientName || customClientName || 'Cliente';
 
-    // 1. Enviar mensagem com o anexo do comprovante Pix como cliente
-    const { error } = await supabase.from('chat_messages').insert({
+    // 1. Mensagens otimistas imediatas (0 delay)
+    const optimisticPixMsg: ChatMessage = {
+      id: 'pix-' + Date.now(),
       client_code: activeCode,
       client_name: currentClientDisplayName,
       sender: 'client',
       message: payloadString,
+      created_at: new Date().toISOString(),
       read_by_admin: false,
       read_by_client: true
-    });
+    };
+    const autoPixReply = getAutomatedPixReceivedMessage(currentClientDisplayName);
+    const optimisticBotMsg: ChatMessage = {
+      id: 'bot-pix-' + (Date.now() + 1),
+      client_code: activeCode,
+      client_name: 'Suporte The Best IPTV+',
+      sender: 'admin',
+      message: autoPixReply,
+      created_at: new Date().toISOString(),
+      read_by_admin: true,
+      read_by_client: false
+    };
+    setMessages(prev => [...prev, optimisticPixMsg, optimisticBotMsg]);
 
-    if (error) throw error;
+    try {
+      const { error } = await supabase.from('chat_messages').insert({
+        client_code: activeCode,
+        client_name: currentClientDisplayName,
+        sender: 'client',
+        message: payloadString,
+        read_by_admin: false,
+        read_by_client: true
+      });
 
-    // 2. Disparar imediatamente a resposta automática do bot confirmando o recebimento do Pix
-    setTimeout(async () => {
-      try {
-        await supabase.from('chat_messages').insert({
-          client_code: activeCode,
-          client_name: 'Suporte The Best IPTV+',
-          sender: 'admin',
-          message: getAutomatedPixReceivedMessage(currentClientDisplayName),
-          read_by_admin: true,
-          read_by_client: false
-        });
-      } catch (autoErr) {
-        console.error('Erro ao enviar confirmação automática de Pix:', autoErr);
-      }
-    }, 600);
+      if (error) throw error;
+
+      await supabase.from('chat_messages').insert({
+        client_code: activeCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: autoPixReply,
+        read_by_admin: true,
+        read_by_client: false
+      });
+    } catch (autoErr) {
+      console.error('Erro ao enviar confirmação de Pix:', autoErr);
+    }
   };
 
-  // Iniciar fluxo de renovação pelo botão de atalho rápido
+  // Iniciar fluxo de renovação pelo botão de atalho rápido sem delay
   const handleInitiateRenewal = async () => {
     if (!activeCode || isSending) return;
     setIsSending(true);
@@ -325,35 +370,51 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       const currentClientDisplayName = clientName || customClientName || 'Cliente';
       const screensCount = (accessPoints && accessPoints.length > 0) ? accessPoints.length : 1;
 
-      // 1. Enviar mensagem do cliente solicitando renovação
       const clientMsg = screensCount > 1
         ? `🔄 Gostaria de renovar os meus *${screensCount} pontos (telas)*.`
         : '🔄 Gostaria de fazer uma renovação.';
+      const botMsg = '🤖 *Central de Renovações:*\nQual renovação você deseja realizar?\n\n👉 Selecione uma das opções abaixo:';
 
-      await supabase.from('chat_messages').insert({
+      const opt1: ChatMessage = {
+        id: 'ren-c-' + Date.now(),
         client_code: activeCode,
         client_name: currentClientDisplayName,
         sender: 'client',
         message: clientMsg,
+        created_at: new Date().toISOString(),
         read_by_admin: false,
         read_by_client: true
-      });
+      };
+      const opt2: ChatMessage = {
+        id: 'ren-b-' + (Date.now() + 1),
+        client_code: activeCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: botMsg,
+        created_at: new Date().toISOString(),
+        read_by_admin: true,
+        read_by_client: false
+      };
+      setMessages(prev => [...prev, opt1, opt2]);
 
-      // 2. Disparar resposta automática do bot com as opções
-      setTimeout(async () => {
-        try {
-          await supabase.from('chat_messages').insert({
-            client_code: activeCode,
-            client_name: 'Suporte The Best IPTV+',
-            sender: 'admin',
-            message: '🤖 *Central de Renovações:*\nQual renovação você deseja realizar?\n\n👉 Selecione uma das opções abaixo:',
-            read_by_admin: true,
-            read_by_client: false
-          });
-        } catch (botErr) {
-          console.error('Erro ao enviar opções de renovação:', botErr);
+      await supabase.from('chat_messages').insert([
+        {
+          client_code: activeCode,
+          client_name: currentClientDisplayName,
+          sender: 'client',
+          message: clientMsg,
+          read_by_admin: false,
+          read_by_client: true
+        },
+        {
+          client_code: activeCode,
+          client_name: 'Suporte The Best IPTV+',
+          sender: 'admin',
+          message: botMsg,
+          read_by_admin: true,
+          read_by_client: false
         }
-      }, 500);
+      ]);
     } catch (err) {
       console.error('Erro ao iniciar renovação:', err);
     } finally {
@@ -492,25 +553,45 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         screensInfoText = `📱 *Informações dos seus Pontos de Acesso (${screensCount} Telas):*\n${screensList}`;
       }
 
-      // 4. Resposta do bot com informações completas e link de pagamento
-      setTimeout(async () => {
-        try {
-          const botConfirm = isSinal
-            ? `✅ Certo! Sua solicitação de renovação do *Sinal do Streaming* (${screensCount > 1 ? `*${screensCount} Telas/Pontos*` : '*1 Tela/Ponto*'}) foi registrada. O administrador já foi notificado!\n\n${screensInfoText}\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para realizar o pagamento de forma rápida e segura:\n\n${paymentMarker}\n\n📎 Após o pagamento, anexe o comprovante usando o botão de clipe.`
-            : `✅ Certo! Sua solicitação de renovação do *Aplicativo* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para pagar a renovação do aplicativo:\n\n${paymentMarker}\n\n📎 Após o pagamento, envie uma foto ou o código/MAC do seu aplicativo.`;
+      // 4. Resposta do bot com informações completas e link de pagamento sem delay
+      const botConfirm = isSinal
+        ? `✅ Certo! Sua solicitação de renovação do *Sinal do Streaming* (${screensCount > 1 ? `*${screensCount} Telas/Pontos*` : '*1 Tela/Ponto*'}) foi registrada. O administrador já foi notificado!\n\n${screensInfoText}\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para realizar o pagamento de forma rápida e segura:\n\n${paymentMarker}\n\n📎 Após o pagamento, anexe o comprovante usando o botão de clipe.`
+        : `✅ Certo! Sua solicitação de renovação do *Aplicativo* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para pagar a renovação do aplicativo:\n\n${paymentMarker}\n\n📎 Após o pagamento, envie uma foto ou o código/MAC do seu aplicativo.`;
 
-          await supabase.from('chat_messages').insert({
-            client_code: activeCode,
-            client_name: 'Suporte The Best IPTV+',
-            sender: 'admin',
-            message: botConfirm,
-            read_by_admin: true,
-            read_by_client: false
-          });
-        } catch (botErr) {
-          console.error('Erro ao enviar confirmação de renovação:', botErr);
-        }
-      }, 600);
+      const optChoice1: ChatMessage = {
+        id: 'sel-c-' + Date.now(),
+        client_code: activeCode,
+        client_name: currentClientDisplayName,
+        sender: 'client',
+        message: clientMsg,
+        created_at: new Date().toISOString(),
+        read_by_admin: false,
+        read_by_client: true
+      };
+      const optChoice2: ChatMessage = {
+        id: 'sel-b-' + (Date.now() + 1),
+        client_code: activeCode,
+        client_name: 'Suporte The Best IPTV+',
+        sender: 'admin',
+        message: botConfirm,
+        created_at: new Date().toISOString(),
+        read_by_admin: true,
+        read_by_client: false
+      };
+      setMessages(prev => [...prev, optChoice1, optChoice2]);
+
+      try {
+        await supabase.from('chat_messages').insert({
+          client_code: activeCode,
+          client_name: 'Suporte The Best IPTV+',
+          sender: 'admin',
+          message: botConfirm,
+          read_by_admin: true,
+          read_by_client: false
+        });
+      } catch (botErr) {
+        console.error('Erro ao enviar confirmação de renovação:', botErr);
+      }
     } catch (err) {
       console.error('Erro ao selecionar opção de renovação:', err);
     } finally {

@@ -22,3 +22,22 @@ body {
   background: #2d3748;
   border-radius: 10px;
 }
+
+/* Otimizações globais de resposta instantânea sem delay */
+html {
+  scroll-behavior: auto !important;
+}
+
+*, *::before, *::after {
+  touch-action: manipulation;
+}
+
+button, a, input, select, textarea {
+  transition-duration: 100ms !important;
+  transition-delay: 0s !important;
+}
+
+button:active, a:active {
+  transform: scale(0.98);
+  transition-duration: 50ms !important;
+}

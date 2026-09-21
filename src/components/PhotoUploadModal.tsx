@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, ImageIcon, Upload, Loader2, Send, Trash2, CheckCircle2, AlertCircle, Camera } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -142,14 +142,12 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       });
 
       setSuccessMsg(`Fotos enviadas com sucesso!`);
-      setTimeout(() => {
-        photos.forEach(p => URL.revokeObjectURL(p.previewUrl));
-        setPhotos([]);
-        setCaption('');
-        setSuccessMsg('');
-        onPhotosSent();
-        onClose();
-      }, 1400);
+      photos.forEach(p => URL.revokeObjectURL(p.previewUrl));
+      setPhotos([]);
+      setCaption('');
+      setSuccessMsg('');
+      onPhotosSent();
+      onClose();
     } catch (err: any) {
       setErrorMsg('Erro ao enviar: ' + (err.message || 'Erro desconhecido.'));
     } finally {

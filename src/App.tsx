@@ -281,99 +281,103 @@ export default function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const { data: settings } = await supabase.from('app_settings').select('config_data').eq('id', 'trial_config').single();
-        if (settings && settings.config_data && settings.config_data.devices) {
-          setTrialConfig(settings.config_data as TrialConfig);
-        }
-      } catch (e) {
-        console.error("Error fetching trial config", e);
-      }
+        const [
+          settingsRes,
+          annRes,
+          votesRes,
+          reactionsRes,
+          viewsRes,
+          movRes,
+          serRes,
+          cliRes,
+          repRes,
+          reqsRes,
+          chatDataRes
+        ] = await Promise.all([
+          supabase.from('app_settings').select('config_data').eq('id', 'trial_config').single(),
+          supabase.from('announcements').select('*').order('created_at', { ascending: false }),
+          supabase.from('poll_votes').select('*'),
+          supabase.from('announcement_reactions').select('*'),
+          supabase.from('announcement_views').select('*'),
+          supabase.from('movie_updates').select('*').order('created_at', { ascending: false }),
+          supabase.from('series_updates').select('*').order('created_at', { ascending: false }),
+          supabase.from('clients').select('*').order('added_at', { ascending: false }),
+          supabase.from('user_reports').select('*').order('timestamp', { ascending: false }),
+          supabase.from('content_requests').select('*').order('created_at', { ascending: false }),
+          supabase.from('chat_messages').select('id').eq('sender', 'client').eq('read_by_admin', false)
+        ]);
 
-      const { data: ann } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
-      if (ann) setAnnouncements(ann.map((a: any) => {
-        let mediaUrls: string[] = [];
-        let singleMediaUrl = a.media_url || undefined;
-        if (a.media_url) {
-          try {
-            if (typeof a.media_url === 'string' && a.media_url.trim().startsWith('[') && a.media_url.trim().endsWith(']')) {
-              const parsed = JSON.parse(a.media_url);
-              if (Array.isArray(parsed) && parsed.length > 0) {
-                mediaUrls = parsed;
-                singleMediaUrl = parsed[0];
-              } else {
+        if (settingsRes.data?.config_data?.devices) {
+          setTrialConfig(settingsRes.data.config_data as TrialConfig);
+        }
+
+        if (annRes.data) {
+          setAnnouncements(annRes.data.map((a: any) => {
+            let mediaUrls: string[] = [];
+            let singleMediaUrl = a.media_url || undefined;
+            if (a.media_url) {
+              try {
+                if (typeof a.media_url === 'string' && a.media_url.trim().startsWith('[') && a.media_url.trim().endsWith(']')) {
+                  const parsed = JSON.parse(a.media_url);
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    mediaUrls = parsed;
+                    singleMediaUrl = parsed[0];
+                  } else {
+                    mediaUrls = [a.media_url];
+                  }
+                } else {
+                  mediaUrls = [a.media_url];
+                }
+              } catch {
                 mediaUrls = [a.media_url];
               }
-            } else {
-              mediaUrls = [a.media_url];
             }
-          } catch {
-            mediaUrls = [a.media_url];
-          }
+
+            return {
+              id: a.id, 
+              category: a.category, 
+              name: a.name, 
+              status: a.status, 
+              message: a.message, 
+              expiryDate: a.expiry_date, 
+              mediaUrl: singleMediaUrl, 
+              mediaUrls: mediaUrls,
+              mediaType: a.media_type,
+              pollOptions: a.poll_options, 
+              createdAt: a.created_at
+            };
+          }));
         }
 
-        return {
-          id: a.id, 
-          category: a.category, 
-          name: a.name, 
-          status: a.status, 
-          message: a.message, 
-          expiryDate: a.expiry_date, 
-          mediaUrl: singleMediaUrl, 
-          mediaUrls: mediaUrls,
-          mediaType: a.media_type,
-          pollOptions: a.poll_options, 
-          createdAt: a.created_at
-        };
-      }));
-
-      const { data: votes } = await supabase.from('poll_votes').select('*');
-      if (votes) setPollVotes(votes);
-
-      const { data: reactions } = await supabase.from('announcement_reactions').select('*');
-      if (reactions) setAnnReactions(reactions);
-
-      const { data: views } = await supabase.from('announcement_views').select('*');
-      if (views) setAnnViews(views);
-
-      const { data: mov } = await supabase.from('movie_updates').select('*').order('created_at', { ascending: false });
-      if (mov) setMovieUpdates(mov.map((m: any) => ({ id: m.id, title: m.title })));
-
-      const { data: ser } = await supabase.from('series_updates').select('*').order('created_at', { ascending: false });
-      if (ser) setSeriesUpdates(ser.map((s: any) => ({ id: s.id, title: s.title })));
-
-      const { data: cli } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
-      if (cli) setClients(cli.map((c: any) => ({
-        id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
-        plan: c.plan || '', price: c.price ?? undefined,
-        activeApp: c.active_app || '',
-        accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
-        addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
-      })));
-
-      const { data: rep } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
-      if (rep) {
-        setUserReports(rep.map((r: any) => ({
-          id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp, client_code: r.client_code
+        if (votesRes.data) setPollVotes(votesRes.data);
+        if (reactionsRes.data) setAnnReactions(reactionsRes.data);
+        if (viewsRes.data) setAnnViews(viewsRes.data);
+        if (movRes.data) setMovieUpdates(movRes.data.map((m: any) => ({ id: m.id, title: m.title })));
+        if (serRes.data) setSeriesUpdates(serRes.data.map((s: any) => ({ id: s.id, title: s.title })));
+        if (cliRes.data) setClients(cliRes.data.map((c: any) => ({
+          id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
+          plan: c.plan || '', price: c.price ?? undefined,
+          activeApp: c.active_app || '',
+          accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
+          addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
         })));
-        const reportCount = Math.max(0, rep.length - lastSeenReportsCount);
-        setNewReportsCount(reportCount);
-      }
-
-      const { data: reqs } = await supabase.from('content_requests').select('*').order('created_at', { ascending: false });
-      if (reqs) {
-        setContentRequests(reqs);
-        const count = Math.max(0, reqs.length - lastSeenRequestsCount);
-        setNewRequestsCount(count);
-      }
-
-      // Buscar mensagens não lidas do chat para o admin
-      const { data: chatData } = await supabase
-        .from('chat_messages')
-        .select('id')
-        .eq('sender', 'client')
-        .eq('read_by_admin', false);
-      if (chatData) {
-        setUnreadChatCount(chatData.length);
+        if (repRes.data) {
+          setUserReports(repRes.data.map((r: any) => ({
+            id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp, client_code: r.client_code
+          })));
+          const reportCount = Math.max(0, repRes.data.length - lastSeenReportsCount);
+          setNewReportsCount(reportCount);
+        }
+        if (reqsRes.data) {
+          setContentRequests(reqsRes.data);
+          const count = Math.max(0, reqsRes.data.length - lastSeenRequestsCount);
+          setNewRequestsCount(count);
+        }
+        if (chatDataRes.data) {
+          setUnreadChatCount(chatDataRes.data.length);
+        }
+      } catch (e) {
+        console.error("Error fetching data:", e);
       }
     };
 
@@ -888,7 +892,7 @@ export default function App() {
 
     const debounce = setTimeout(() => {
       fetchTMDB();
-    }, 500);
+    }, 100);
 
     return () => clearTimeout(debounce);
   }, [searchQuery, requestType]);

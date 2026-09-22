@@ -261,6 +261,16 @@ export default function App() {
       return [];
     }
   });
+  const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_announcements');
+      if (!cached) return true;
+      const parsed = JSON.parse(cached);
+      return !Array.isArray(parsed) || parsed.length === 0;
+    } catch {
+      return true;
+    }
+  });
   const [pollVotes, setPollVotes] = useState<PollVote[]>(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_poll_votes');
@@ -316,18 +326,21 @@ export default function App() {
 
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
-    // 1. Carregamento instantâneo e prioritário de Avisos Importantes
+    // 1. Carregamento instantâneo e prioritário de Avisos Importantes (leve e filtrado)
     const fetchAnnouncementsFast = async () => {
       try {
-        const [annRes, votesRes, reactionsRes, viewsRes] = await Promise.all([
-          supabase.from('announcements').select('*').order('created_at', { ascending: false }),
-          supabase.from('poll_votes').select('*'),
-          supabase.from('announcement_reactions').select('*'),
-          supabase.from('announcement_views').select('*')
-        ]);
+        // Busca imediata apenas dos avisos recentes/válidos (retorno em < 100ms)
+        const { data: annData, error: annErr } = await supabase
+          .from('announcements')
+          .select('*')
+          .gte('expiry_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: false })
+          .limit(10);
 
-        if (annRes.data) {
-          const mapped = annRes.data.map((a: any) => {
+        setIsAnnouncementsLoading(false);
+
+        if (!annErr && annData) {
+          const mapped = annData.map((a: any) => {
             let mediaUrls: string[] = [];
             let singleMediaUrl = a.media_url || undefined;
             if (a.media_url) {
@@ -368,20 +381,25 @@ export default function App() {
           } catch {}
         }
 
-        if (votesRes.data) {
-          setPollVotes(votesRes.data);
-          try {
-            localStorage.setItem('tbi_cached_poll_votes', JSON.stringify(votesRes.data));
-          } catch {}
-        }
-        if (reactionsRes.data) {
-          setAnnReactions(reactionsRes.data);
-          try {
-            localStorage.setItem('tbi_cached_ann_reactions', JSON.stringify(reactionsRes.data));
-          } catch {}
-        }
-        if (viewsRes.data) setAnnViews(viewsRes.data);
+        // Votos, reações e views rodam em segundo plano sem travar o anúncio
+        Promise.all([
+          supabase.from('poll_votes').select('*'),
+          supabase.from('announcement_reactions').select('*'),
+          supabase.from('announcement_views').select('*')
+        ]).then(([votesRes, reactionsRes, viewsRes]) => {
+          if (votesRes.data) {
+            setPollVotes(votesRes.data);
+            try { localStorage.setItem('tbi_cached_poll_votes', JSON.stringify(votesRes.data)); } catch {}
+          }
+          if (reactionsRes.data) {
+            setAnnReactions(reactionsRes.data);
+            try { localStorage.setItem('tbi_cached_ann_reactions', JSON.stringify(reactionsRes.data)); } catch {}
+          }
+          if (viewsRes.data) setAnnViews(viewsRes.data);
+        }).catch(() => {});
+
       } catch (e) {
+        setIsAnnouncementsLoading(false);
         console.error("Error fetching announcements:", e);
       }
     };
@@ -1409,6 +1427,11 @@ export default function App() {
                         </div>
                       </div>
                     ))
+                  ) : isAnnouncementsLoading ? (
+                    <div className="bg-slate-800/30 border border-slate-700/40 rounded-xl p-4 flex items-center justify-center gap-2.5 text-slate-400 text-xs animate-pulse">
+                      <Loader2 size={16} className="animate-spin text-amber-400" />
+                      <span>Verificando avisos importantes...</span>
+                    </div>
                   ) : (
                     <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-4 text-center">
                       <p className="text-slate-400 text-sm">Nenhum aviso importante ou problema técnico no momento.</p>
@@ -2447,6 +2470,27 @@ export default function App() {
         alert('Erro ao publicar informe. O arquivo pode ser muito grande: ' + error.message);
         return;
       }
+
+      // Adiciona imediatamente ao estado local e ao cache para exibição em 0ms
+      const createdAnn: Announcement = {
+        id: 'ann-' + Date.now(),
+        category: annCategory,
+        name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
+        status: annStatus,
+        message: annMessage,
+        expiryDate: new Date(annExpiry).toISOString(),
+        mediaUrl: mediaUrls[0] || undefined,
+        mediaUrls: mediaUrls,
+        mediaType: mediaType,
+        pollOptions: finalPollOptions,
+        createdAt: new Date().toISOString()
+      };
+      setAnnouncements(prev => [createdAnn, ...prev]);
+      try {
+        const cached = localStorage.getItem('tbi_cached_announcements');
+        const list = cached ? [createdAnn, ...JSON.parse(cached)] : [createdAnn];
+        localStorage.setItem('tbi_cached_announcements', JSON.stringify(list));
+      } catch {}
 
       setAnnName('');
       setAnnMessage('');

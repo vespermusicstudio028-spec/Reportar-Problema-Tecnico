@@ -190,7 +190,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
 
     if (!activeCode) return;
 
-    // Escutar novas mensagens em tempo real para o código deste cliente
+    // Escutar novas mensagens em tempo real para o código deste cliente com injeção instantânea (0ms)
     const channel = supabase
       .channel(`client-chat-${activeCode}`)
       .on(
@@ -201,13 +201,46 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           table: 'chat_messages',
           filter: `client_code=eq.${activeCode}`
         },
-        () => {
-          fetchMessages();
+        (payload: any) => {
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newMsg = payload.new as ChatMessage;
+            setMessages((prev) => {
+              // Evitar duplicar mensagem (otimista ou já recebida)
+              const existingIdx = prev.findIndex(
+                (m) => m.id === newMsg.id || 
+                (m.id.startsWith('opt-') && m.sender === newMsg.sender && m.message === newMsg.message)
+              );
+              let updated: ChatMessage[];
+              if (existingIdx !== -1) {
+                updated = [...prev];
+                updated[existingIdx] = newMsg;
+              } else {
+                updated = [...prev, newMsg];
+              }
+              try {
+                localStorage.setItem(`tbi_cached_client_messages_${activeCode}`, JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            const updatedMsg = payload.new as ChatMessage;
+            setMessages((prev) => prev.map((m) => m.id === updatedMsg.id ? updatedMsg : m));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setMessages((prev) => prev.filter((m) => m.id !== payload.old.id));
+          } else {
+            fetchMessages();
+          }
         }
       )
       .subscribe();
 
+    // Polling rápido de segurança a cada 2.5s para garantir que nenhuma mensagem atrase
+    const pollInterval = setInterval(() => {
+      fetchMessages();
+    }, 2500);
+
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(channel);
     };
   }, [activeCode]);

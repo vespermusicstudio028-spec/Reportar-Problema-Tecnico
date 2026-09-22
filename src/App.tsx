@@ -22,6 +22,7 @@ import {
   History,
   User,
   LayoutDashboard,
+  Home,
   LogOut,
   Shield,
   Trash2,
@@ -849,6 +850,13 @@ export default function App() {
           return;
         }
 
+        // Se estiver no Chat Admin e for sair -> vai DIRETO para a tela inicial do site
+        if (adminTabRef.current === 'chat') {
+          handleGoHome();
+          rebase();
+          return;
+        }
+
         // Sai da aba do admin e retorna para o Menu do Painel Admin
         setAdminTab(null);
         setShowLoginModal(true);
@@ -1079,6 +1087,8 @@ export default function App() {
     setTrialState(null);
     setIsClientChatOpen(false);
     setAdminTab(null);
+    setShowLoginModal(false);
+    setShowCodeModal(false);
     setIssueType('');
     setIssueTypeOther('');
     setDevice('');
@@ -3030,13 +3040,26 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  setAdminTab(null);
-                  setShowLoginModal(true);
+                  if (adminTab === 'chat') {
+                    handleGoHome();
+                  } else {
+                    setAdminTab(null);
+                    setShowLoginModal(true);
+                  }
                 }}
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-slate-200 hover:text-white text-xs md:text-sm font-bold border border-slate-700 transition-all active:scale-95 shadow-sm"
               >
-                <ChevronRight size={18} className="rotate-180" />
-                <span>Voltar ao Menu</span>
+                {adminTab === 'chat' ? (
+                  <>
+                    <Home size={16} className="text-indigo-400" />
+                    <span>Tela Inicial</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronRight size={18} className="rotate-180" />
+                    <span>Voltar ao Menu</span>
+                  </>
+                )}
               </button>
 
               <div className="h-6 w-px bg-slate-800 hidden sm:block"></div>
@@ -3055,7 +3078,9 @@ export default function App() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setAdminTab(null)}
+                onClick={() => {
+                  handleGoHome();
+                }}
                 className="w-10 h-10 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition-colors border border-slate-700"
                 title="Fechar e ir para a tela inicial"
               >
@@ -4046,6 +4071,7 @@ export default function App() {
                     onRegisterStepBack={(handler) => {
                       adminChatStepBackRef.current = handler;
                     }}
+                    onCloseToHome={handleGoHome}
                   />
                 </div>
               )}

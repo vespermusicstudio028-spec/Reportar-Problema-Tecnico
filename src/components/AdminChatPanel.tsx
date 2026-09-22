@@ -23,7 +23,8 @@ import {
   Users,
   ImageIcon,
   Brain,
-  ShoppingBag
+  ShoppingBag,
+  Home
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -42,6 +43,7 @@ import { AdminStoreManagerModal } from './AdminStoreManagerModal';
 interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
   onRegisterStepBack?: (handler: (() => boolean) | null) => void;
+  onCloseToHome?: () => void;
 }
 
 const QUICK_REPLIES = [
@@ -53,7 +55,7 @@ const QUICK_REPLIES = [
   { label: 'Tudo funcionando 🚀', message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀' },
 ];
 
-export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack }) => {
+export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack, onCloseToHome }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_chat_messages');
@@ -447,6 +449,17 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         </div>
 
         <div className="flex items-center gap-2">
+          {onCloseToHome && (
+            <button
+              onClick={onCloseToHome}
+              className="p-2 px-3 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 border border-indigo-500/40 active:scale-95 shadow-sm"
+              title="Sair do chat e voltar imediatamente para a tela inicial"
+            >
+              <Home size={14} className="text-indigo-400 group-hover:text-white" />
+              <span>Tela Inicial</span>
+            </button>
+          )}
+
           <button
             onClick={() => setShowStoreManager(true)}
             className="p-2 px-3 rounded-xl bg-gradient-to-r from-amber-600/30 to-orange-600/20 hover:from-amber-600/50 hover:to-orange-600/40 text-amber-300 transition-all text-xs font-bold flex items-center gap-1.5 border border-amber-500/40 active:scale-95 shadow-sm"

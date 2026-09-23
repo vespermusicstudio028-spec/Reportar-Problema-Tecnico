@@ -242,6 +242,7 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('tbi_trial_enabled', String(isTrialEnabled));
+    try { localStorage.removeItem('tbi_announcements_open'); } catch {}
   }, [isTrialEnabled]);
   
   // User Reports History
@@ -581,11 +582,7 @@ export default function App() {
   const [forgotCodePhone, setForgotCodePhone] = useState('');
   const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
-  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
-    const saved = localStorage.getItem('tbi_announcements_open');
-    if (saved !== null) return saved === 'true';
-    return true; // Aberto por padrão para que os avisos importantes apareçam imediatamente na tela inicial
-  });
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
 
   interface CatalogUpdate {
     id: string;

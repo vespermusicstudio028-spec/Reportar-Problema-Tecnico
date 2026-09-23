@@ -27,7 +27,8 @@ import {
   PlusCircle,
   ImageIcon,
   ShoppingBag,
-  Brain
+  Brain,
+  ArrowDown
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
@@ -105,6 +106,9 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [isBotThinking, setIsBotThinking] = useState(false);
   const [businessStatus, setBusinessStatus] = useState(getSupportBusinessHoursStatus());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const userScrolledUpRef = useRef(false);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -177,7 +181,19 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
 
       if (error) throw error;
       if (data) {
-        setMessages(data as ChatMessage[]);
+        setMessages((prev) => {
+          if (prev.length === data.length && prev.length > 0) {
+            const lastPrev = prev[prev.length - 1];
+            const lastData = data[data.length - 1];
+            if (
+              lastPrev.id === lastData.id &&
+              lastPrev.read_by_client === lastData.read_by_client
+            ) {
+              return prev;
+            }
+          }
+          return data as ChatMessage[];
+        });
         try { localStorage.setItem(`tbi_cached_client_messages_${activeCode}`, JSON.stringify(data)); } catch {}
       }
     } catch (err) {
@@ -245,12 +261,29 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     };
   }, [activeCode]);
 
-  // Rolar para a última mensagem sem delay
+  // Rolar para a última mensagem de forma inteligente:
+  // - Ao abrir o chat: vai para o fim
+  // - Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima
+  const prevIsOpenRef = useRef(false);
+  const prevMessagesCountRef = useRef(0);
+
   useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    const justOpened = isOpen && !prevIsOpenRef.current;
+    const countIncreased = messages.length > prevMessagesCountRef.current;
+
+    prevIsOpenRef.current = isOpen;
+    prevMessagesCountRef.current = messages.length;
+
+    if (justOpened) {
+      userScrolledUpRef.current = false;
+      setShowScrollBottomBtn(false);
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 50);
+    } else if (isOpen && countIncreased && !userScrolledUpRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isOpen]);
+  }, [messages.length, isOpen]);
 
   // Marcar mensagens do admin como lidas pelo cliente quando o chat está aberto
   useEffect(() => {
@@ -292,6 +325,11 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       read_by_client: true
     };
     setMessages(prev => [...prev, optimisticClientMsg]);
+    userScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
 
     try {
       const { error } = await supabase.from('chat_messages').insert({
@@ -917,8 +955,19 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
               </div>
             ) : (
               /* Interface de Conversa em Tempo Real */
-              <div className="flex-1 flex flex-col overflow-hidden max-w-5xl w-full mx-auto">
-                <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar bg-[#080b11]/80">
+              <div className="flex-1 flex flex-col overflow-hidden max-w-5xl w-full mx-auto relative">
+                <div
+                  ref={messagesContainerRef}
+                  className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar bg-[#080b11]/80"
+                  onScroll={() => {
+                    const el = messagesContainerRef.current;
+                    if (!el) return;
+                    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                    const isUp = distanceFromBottom > 50;
+                    userScrolledUpRef.current = isUp;
+                    setShowScrollBottomBtn(isUp);
+                  }}
+                >
                   {/* Aviso de Suporte Ausente (caso esteja fora do horário) */}
                   {!businessStatus.isOnline && (
                     <div className="p-3.5 md:p-4 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-amber-200 text-xs md:text-sm flex items-start gap-3 shadow-lg">
@@ -1090,6 +1139,19 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                   )}
                   <div ref={messagesEndRef} />
                 </div>
+                {showScrollBottomBtn && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      userScrolledUpRef.current = false;
+                      setShowScrollBottomBtn(false);
+                      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="absolute bottom-24 right-6 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 px-3 rounded-full shadow-lg backdrop-blur border border-indigo-400/30 flex items-center gap-1.5 transition-all z-20 cursor-pointer shadow-indigo-600/20 active:scale-95"
+                  >
+                    <ArrowDown size={14} /> Mensagens recentes
+                  </button>
+                )}
 
                 {/* Sugestões Rápidas de Tópicos (Responsivas) */}
                 <div className="p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">

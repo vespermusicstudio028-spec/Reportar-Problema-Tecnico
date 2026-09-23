@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChatMessage, ChatConversation } from '../types/chat';
 import { 
@@ -24,7 +24,8 @@ import {
   ImageIcon,
   Brain,
   ShoppingBag,
-  Home
+  Home,
+  ArrowDown
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -77,6 +78,9 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [showStoreManager, setShowStoreManager] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const userScrolledUpRef = useRef(false);
+  const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
   const selectedClientCodeRef = useRef<string | null>(null);
   const mobileShowChatRef = useRef(false);
@@ -124,7 +128,20 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
       if (error) throw error;
       if (data) {
-        setMessages(data as ChatMessage[]);
+        setMessages((prev) => {
+          if (prev.length === data.length && prev.length > 0) {
+            const lastPrev = prev[prev.length - 1];
+            const lastData = data[data.length - 1];
+            if (
+              lastPrev.id === lastData.id &&
+              lastPrev.read_by_admin === lastData.read_by_admin &&
+              lastPrev.read_by_client === lastData.read_by_client
+            ) {
+              return prev;
+            }
+          }
+          return data as ChatMessage[];
+        });
         try { localStorage.setItem('tbi_cached_chat_messages', JSON.stringify(data)); } catch {}
       }
     } catch (err) {
@@ -187,12 +204,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     };
   }, []);
 
-  // Rolar para o final quando a conversa ativa mudar ou receber nova mensagem sem delay
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-  }, [messages, selectedClientCode]);
-
-  // Marcar mensagens do cliente selecionado como lidas pelo admin
+    // Marcar mensagens do cliente selecionado como lidas pelo admin
   useEffect(() => {
     if (!selectedClientCode) return;
 
@@ -269,6 +281,30 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     ? messages.filter((m) => m.client_code === selectedClientCode)
     : [];
 
+  // Rolar para o final de forma inteligente:
+  // 1. Ao trocar de conversa: rola instantaneamente para o fim
+  // 2. Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima para ler mensagens antigas
+  const prevSelectedClientCodeRef = useRef<string | null>(null);
+  const prevActiveMessagesCountRef = useRef<number>(0);
+
+  useEffect(() => {
+    const conversationChanged = prevSelectedClientCodeRef.current !== selectedClientCode;
+    const countIncreased = activeMessages.length > prevActiveMessagesCountRef.current;
+
+    prevSelectedClientCodeRef.current = selectedClientCode;
+    prevActiveMessagesCountRef.current = activeMessages.length;
+
+    if (conversationChanged) {
+      userScrolledUpRef.current = false;
+      setShowScrollBottomBtn(false);
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 50);
+    } else if (countIncreased && !userScrolledUpRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeMessages.length, selectedClientCode]);
+
   const selectedClientInfo = clientsList.find((c) => c.code === selectedClientCode);
   const selectedConversation = conversations.find((c) => c.client_code === selectedClientCode);
 
@@ -294,6 +330,12 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       read_by_client: false
     };
     setMessages((prev) => [...prev, optimisticAdminMsg]);
+    // Reset scroll on admin message
+    userScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
 
     try {
       const { error } = await supabase.from('chat_messages').insert({
@@ -763,7 +805,19 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
               </div>
 
               {/* Corpo das Mensagens */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar">
+              <div className="flex-1 relative flex flex-col overflow-hidden">
+                <div
+                  ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 custom-scrollbar"
+                onScroll={() => {
+                  const el = messagesContainerRef.current;
+                  if (!el) return;
+                  const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+                  const isUp = distanceFromBottom > 50;
+                  userScrolledUpRef.current = isUp;
+                  setShowScrollBottomBtn(isUp);
+                }}
+              >
                 {activeMessages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 p-6">
                     <MessageSquare size={36} className="text-slate-600 mb-2 stroke-[1.5]" />
@@ -904,6 +958,20 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   })
                 )}
                 <div ref={messagesEndRef} />
+                </div>
+                {showScrollBottomBtn && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      userScrolledUpRef.current = false;
+                      setShowScrollBottomBtn(false);
+                      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="absolute bottom-4 right-6 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 px-3 rounded-full shadow-lg backdrop-blur border border-indigo-400/30 flex items-center gap-1.5 transition-all z-20 cursor-pointer shadow-indigo-600/20 active:scale-95"
+                  >
+                    <ArrowDown size={14} /> Mensagens recentes
+                  </button>
+                )}
               </div>
 
               {/* Respostas RÃ¡pidas */}

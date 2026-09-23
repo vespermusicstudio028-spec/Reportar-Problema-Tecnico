@@ -7,7 +7,8 @@ import {
   Wrench, 
   XCircle, 
   AlertTriangle, 
-  Search 
+  Search,
+  ChevronRight
 } from 'lucide-react';
 import { ServerStatusData, SERVER_STATUS_OPTIONS, ServerStatusKey } from '../types/serverStatus';
 
@@ -15,9 +16,17 @@ interface ServerStatusCardProps {
   statusData?: ServerStatusData;
   className?: string;
   isPreview?: boolean;
+  isAdmin?: boolean;
+  onClick?: () => void;
 }
 
-export function ServerStatusCard({ statusData, className = '', isPreview = false }: ServerStatusCardProps) {
+export function ServerStatusCard({ 
+  statusData, 
+  className = '', 
+  isPreview = false,
+  isAdmin = false,
+  onClick
+}: ServerStatusCardProps) {
   const currentKey: ServerStatusKey = statusData?.statusKey && SERVER_STATUS_OPTIONS[statusData.statusKey]
     ? statusData.statusKey
     : 'operacional';
@@ -26,45 +35,42 @@ export function ServerStatusCard({ statusData, className = '', isPreview = false
   const isOperacional = currentKey === 'operacional';
   const displayMessage = statusData?.customMessage?.trim() || config.defaultMessage;
   const estimatedTime = statusData?.estimatedTime?.trim();
-
-  const renderIcon = () => {
-    switch (config.iconName) {
-      case 'CheckCircle2':
-        return <CheckCircle2 size={15} className={config.textColor} />;
-      case 'AlertCircle':
-        return <AlertCircle size={15} className={config.textColor} />;
-      case 'Activity':
-        return <Activity size={15} className={config.textColor} />;
-      case 'Clock':
-        return <Clock size={15} className={config.textColor} />;
-      case 'Wrench':
-        return <Wrench size={15} className={config.textColor} />;
-      case 'XCircle':
-        return <XCircle size={15} className={config.textColor} />;
-      case 'AlertTriangle':
-        return <AlertTriangle size={15} className={config.textColor} />;
-      case 'Search':
-        return <Search size={15} className={config.textColor} />;
-      default:
-        return <CheckCircle2 size={15} className={config.textColor} />;
-    }
-  };
+  const isClickable = Boolean(isAdmin && onClick);
 
   return (
     <div 
+      onClick={isClickable ? onClick : undefined}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={isClickable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } } : undefined}
+      title={isClickable ? 'Clique para gerenciar o Status do Servidor no Painel Admin' : undefined}
       className={`p-4 bg-[#1a1d24]/90 backdrop-blur-md border rounded-2xl transition-all duration-300 ${
+        isClickable ? 'cursor-pointer group hover:border-indigo-500/50 hover:bg-[#1f232d] hover:scale-[1.01] active:scale-[0.98]' : ''
+      } ${
         isOperacional ? 'border-white/5 shadow-lg' : `${config.borderCard} shadow-xl shadow-black/40`
       } ${className}`}
     >
       <div className="flex items-center justify-between gap-2 mb-2">
-        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
-          Status do Servidor
-        </p>
-        {isPreview && (
+        <div className="flex items-center gap-1.5">
+          <p className={`text-[11px] text-slate-400 font-bold uppercase tracking-wider ${isClickable ? 'group-hover:text-indigo-300 transition-colors' : ''}`}>
+            Status do Servidor
+          </p>
+          {isAdmin && (
+            <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Admin
+            </span>
+          )}
+        </div>
+
+        {isPreview ? (
           <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
             Prévia
           </span>
-        )}
+        ) : isClickable ? (
+          <span className="text-[10px] text-slate-500 group-hover:text-indigo-300 font-medium flex items-center gap-0.5 transition-colors">
+            Gerenciar <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+          </span>
+        ) : null}
       </div>
 
       <div className="flex items-center gap-2.5">

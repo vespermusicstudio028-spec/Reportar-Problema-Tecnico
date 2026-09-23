@@ -343,6 +343,13 @@ export default function App() {
     await supabase.from('app_settings').upsert({ id: 'server_status', config_data: newStatus });
   };
 
+  const handleOpenServerStatusAdmin = () => {
+    if (isAdminLogged) {
+      setAdminTab('server-status');
+      setShowLoginModal(false);
+    }
+  };
+
 
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
@@ -1299,7 +1306,11 @@ export default function App() {
       >
         {/* Status do Servidor no Celular (sempre visível) */}
         <div className="w-full max-w-xl mb-4 md:hidden">
-          <ServerStatusCard statusData={serverStatus} />
+          <ServerStatusCard 
+            statusData={serverStatus} 
+            isAdmin={isAdminLogged}
+            onClick={isAdminLogged ? handleOpenServerStatusAdmin : undefined}
+          />
         </div>
 
 <div id="tour-announcements" className="w-full max-w-xl mb-6">
@@ -5533,7 +5544,11 @@ export default function App() {
         </button>
         
         <div className="mt-auto">
-          <ServerStatusCard statusData={serverStatus} />
+          <ServerStatusCard 
+            statusData={serverStatus} 
+            isAdmin={isAdminLogged}
+            onClick={isAdminLogged ? handleOpenServerStatusAdmin : undefined}
+          />
         </div>
       </aside>
 

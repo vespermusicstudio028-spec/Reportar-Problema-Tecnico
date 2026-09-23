@@ -2886,6 +2886,16 @@ export default function App() {
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                    {[
                      {
+                       id: 'server-status' as const,
+                       icon: <Activity size={22} />,
+                       title: '⚙️ Status do Servidor',
+                       subtitle: `Situação: ${SERVER_STATUS_OPTIONS[serverStatus.statusKey]?.label || 'Operacional'}`,
+                       accent: 'from-emerald-500/20 to-teal-500/10 border-emerald-500/30 hover:border-emerald-400/60 text-emerald-400',
+                       iconBg: 'bg-emerald-500/20 text-emerald-300',
+                       badge: serverStatus.statusKey !== 'operacional' ? SERVER_STATUS_OPTIONS[serverStatus.statusKey]?.badge : null,
+                       badgePulse: serverStatus.statusKey !== 'operacional',
+                     },
+                     {
                        id: 'cms-trial' as const,
                        icon: <Tv size={22} />,
                        title: 'Gerenciar Teste Grátis',

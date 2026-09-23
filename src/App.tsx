@@ -8,6 +8,10 @@ import { AdminChatPanel } from './components/AdminChatPanel';
 import { ClientChatWidget } from './components/ClientChatWidget';
 import { AnnouncementMediaCarousel } from './components/AnnouncementMediaCarousel';
 import { AdminStoreManagerModal } from './components/AdminStoreManagerModal';
+import { ServerStatusData, DEFAULT_SERVER_STATUS, SERVER_STATUS_OPTIONS } from './types/serverStatus';
+import { ServerStatusCard } from './components/ServerStatusCard';
+import { AdminServerStatusPanel } from './components/AdminServerStatusPanel';
+
 import { 
   RefreshCcw,
   Tv, 
@@ -58,6 +62,7 @@ import {
   Globe,
   Check,
   Building2,
+  Activity,
   Users,
   ShoppingBag
 } from 'lucide-react';
@@ -325,6 +330,20 @@ export default function App() {
     await supabase.from('app_settings').upsert({ id: 'trial_config', config_data: newConfig });
   };
 
+  const [serverStatus, setServerStatus] = useState<ServerStatusData>(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_server_status');
+      return cached ? JSON.parse(cached) : DEFAULT_SERVER_STATUS;
+    } catch { return DEFAULT_SERVER_STATUS; }
+  });
+
+  const saveServerStatus = async (newStatus: ServerStatusData) => {
+    setServerStatus(newStatus);
+    try { localStorage.setItem('tbi_cached_server_status', JSON.stringify(newStatus)); } catch {}
+    await supabase.from('app_settings').upsert({ id: 'server_status', config_data: newStatus });
+  };
+
+
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
     // 1. Carregamento instantâneo e prioritário de Avisos Importantes (leve e filtrado)
@@ -413,6 +432,7 @@ export default function App() {
       try {
         const [
           settingsRes,
+          serverStatusRes,
           movRes,
           serRes,
           cliRes,
@@ -421,6 +441,7 @@ export default function App() {
           chatDataRes
         ] = await Promise.all([
           supabase.from('app_settings').select('config_data').eq('id', 'trial_config').single(),
+          supabase.from('app_settings').select('config_data').eq('id', 'server_status').single(),
           supabase.from('movie_updates').select('*').order('created_at', { ascending: false }),
           supabase.from('series_updates').select('*').order('created_at', { ascending: false }),
           supabase.from('clients').select('*').order('added_at', { ascending: false }),
@@ -428,6 +449,11 @@ export default function App() {
           supabase.from('content_requests').select('*').order('created_at', { ascending: false }),
           supabase.from('chat_messages').select('id').eq('sender', 'client').eq('read_by_admin', false)
         ]);
+
+                if (serverStatusRes.data?.config_data?.statusKey) {
+          setServerStatus(serverStatusRes.data.config_data as ServerStatusData);
+          try { localStorage.setItem('tbi_cached_server_status', JSON.stringify(serverStatusRes.data.config_data)); } catch {}
+        }
 
         if (settingsRes.data?.config_data?.devices) {
           setTrialConfig(settingsRes.data.config_data as TrialConfig);
@@ -498,6 +524,7 @@ export default function App() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, fetchData)
       .subscribe();
 
     return () => {
@@ -565,7 +592,7 @@ export default function App() {
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
 
   // Clients & Code Modal State
-  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | null>(null);
+  const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | 'server-status' | null>(null);
   const [chatInitialClientCode, setChatInitialClientCode] = useState<string | null>(null);
   const [copiedCrmLogin, setCopiedCrmLogin] = useState(false);
   const [copiedCrmPassword, setCopiedCrmPassword] = useState(false);
@@ -1270,7 +1297,13 @@ export default function App() {
         transition={{ duration: 0.1 }}
         className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
       >
-        <div id="tour-announcements" className="w-full max-w-xl mb-6">
+                {serverStatus.statusKey !== 'operacional' && (
+          <div className="w-full max-w-xl mb-4 md:hidden">
+            <ServerStatusCard statusData={serverStatus} />
+          </div>
+        )}
+
+<div id="tour-announcements" className="w-full max-w-xl mb-6">
           <button 
             type="button"
             onClick={() => setIsAnnouncementsOpen(!isAnnouncementsOpen)}
@@ -3064,6 +3097,7 @@ export default function App() {
       'chat': { title: '💬 Central de Chat & Atendimento', subtitle: 'Converse em tempo real com seus clientes', icon: <MessageSquare size={24} />, color: 'indigo' },
       'crm-tbi': { title: '🌐 TBI Clientes — CRM', subtitle: 'Acesso ao portal externo e dados dos clientes', icon: <Globe size={24} />, color: 'cyan' },
       'suporte': { title: '🛠️ Suporte Técnico', subtitle: 'Chamados e problemas relatados pelos clientes', icon: <AlertTriangle size={24} />, color: 'red' },
+      'server-status': { title: '⚙️ Status do Servidor', subtitle: 'Disponibilidade e comunicados em tempo real', icon: <Activity size={24} />, color: 'emerald' },
     }[adminTab];
 
     return (
@@ -3142,6 +3176,16 @@ export default function App() {
                 ? 'flex-1 flex flex-col h-full'
                 : 'max-w-4xl mx-auto space-y-8 pb-16'
             }`}>
+
+              {/* ───────────────────────────────────── */}
+              {/* PÁGINA: STATUS DO SERVIDOR            */}
+              {/* ───────────────────────────────────── */}
+              {adminTab === 'server-status' && (
+                <AdminServerStatusPanel
+                  currentStatus={serverStatus}
+                  onSave={saveServerStatus}
+                />
+              )}
 
               {/* ───────────────────────────────────── */}
               {/* PÁGINA: CMS TESTE GRÁTIS              */}
@@ -5479,12 +5523,8 @@ export default function App() {
            <span className="text-base font-bold tracking-wider text-slate-300 uppercase shrink-0 group-hover:text-indigo-300 transition-colors">Suporte Técnico</span>
         </button>
         
-        <div className="mt-auto p-4 bg-[#1a1d24]/80 backdrop-blur-md border border-white/5 rounded-2xl">
-          <p className="text-xs text-slate-500 mb-1 font-semibold uppercase tracking-wider">Status do Servidor</p>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-            <span className="text-sm font-semibold text-emerald-500">Operacional</span>
-          </div>
+        <div className="mt-auto">
+          <ServerStatusCard statusData={serverStatus} />
         </div>
       </aside>
 

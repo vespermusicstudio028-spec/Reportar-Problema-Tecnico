@@ -955,10 +955,11 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
               </div>
             ) : (
               /* Interface de Conversa em Tempo Real */
-              <div className="flex-1 flex flex-col overflow-hidden max-w-5xl w-full mx-auto relative">
-                <div
-                  ref={messagesContainerRef}
-                  className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar bg-[#080b11]/80"
+              <div className="flex-1 flex flex-col overflow-hidden max-w-5xl w-full mx-auto">
+                <div className="flex-1 relative flex flex-col overflow-hidden min-h-0">
+                  <div
+                    ref={messagesContainerRef}
+                    className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar bg-[#080b11]/80"
                   onScroll={() => {
                     const el = messagesContainerRef.current;
                     if (!el) return;
@@ -1147,11 +1148,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                       setShowScrollBottomBtn(false);
                       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
                     }}
-                    className="absolute bottom-24 right-6 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 px-3 rounded-full shadow-lg backdrop-blur border border-indigo-400/30 flex items-center gap-1.5 transition-all z-20 cursor-pointer shadow-indigo-600/20 active:scale-95"
+                    className="absolute bottom-3 right-5 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 px-3 rounded-full shadow-lg backdrop-blur border border-indigo-400/30 flex items-center gap-1.5 transition-all z-20 cursor-pointer shadow-indigo-600/20 active:scale-95"
                   >
                     <ArrowDown size={14} /> Mensagens recentes
                   </button>
                 )}
+              </div>
 
                 {/* Sugestões Rápidas de Tópicos (Responsivas) */}
                 <div className="p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">

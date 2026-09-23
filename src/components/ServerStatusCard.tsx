@@ -79,8 +79,8 @@ export function ServerStatusCard({ statusData, className = '', isPreview = false
         </span>
       </div>
 
-      {/* Detalhes extras quando não estiver 100% operacional ou se tiver mensagem personalizada */}
-      {(!isOperacional || statusData?.customMessage?.trim()) && (
+      {/* Mensagem e detalhes exibidos para todos os status (incluindo Operacional) */}
+      {(displayMessage || estimatedTime) && (
         <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
           {displayMessage && (
             <p className="text-xs text-slate-300 leading-relaxed font-normal">

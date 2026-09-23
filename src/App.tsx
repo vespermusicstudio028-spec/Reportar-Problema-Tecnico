@@ -1297,11 +1297,10 @@ export default function App() {
         transition={{ duration: 0.1 }}
         className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
       >
-                {serverStatus.statusKey !== 'operacional' && (
-          <div className="w-full max-w-xl mb-4 md:hidden">
-            <ServerStatusCard statusData={serverStatus} />
-          </div>
-        )}
+        {/* Status do Servidor no Celular (sempre visível) */}
+        <div className="w-full max-w-xl mb-4 md:hidden">
+          <ServerStatusCard statusData={serverStatus} />
+        </div>
 
 <div id="tour-announcements" className="w-full max-w-xl mb-6">
           <button 

@@ -45,6 +45,7 @@ interface AdminChatPanelProps {
   clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
   onRegisterStepBack?: (handler: (() => boolean) | null) => void;
   onCloseToHome?: () => void;
+  initialClientCode?: string | null;
 }
 
 const QUICK_REPLIES = [
@@ -56,7 +57,7 @@ const QUICK_REPLIES = [
   { label: 'Tudo funcionando ðŸš€', message: 'Tudo pronto e funcionando 100%! Qualquer dÃºvida estou Ã  disposiÃ§Ã£o. ðŸš€' },
 ];
 
-export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack, onCloseToHome }) => {
+export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack, onCloseToHome, initialClientCode }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_chat_messages');
@@ -84,6 +85,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
   const selectedClientCodeRef = useRef<string | null>(null);
   const mobileShowChatRef = useRef(false);
+  const initialClientCodeAppliedRef = useRef(false);
+
+  // Aplicar cliente inicial (vindo da tela de Clientes) assim que o painel abrir
+  useEffect(() => {
+    if (initialClientCode && !initialClientCodeAppliedRef.current) {
+      initialClientCodeAppliedRef.current = true;
+      setSelectedClientCode(initialClientCode);
+      setMobileShowChat(true);
+    }
+  }, [initialClientCode]);
 
   useEffect(() => {
     selectedClientCodeRef.current = selectedClientCode;

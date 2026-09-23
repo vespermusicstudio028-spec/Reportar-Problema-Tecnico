@@ -566,6 +566,7 @@ export default function App() {
 
   // Clients & Code Modal State
   const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | null>(null);
+  const [chatInitialClientCode, setChatInitialClientCode] = useState<string | null>(null);
   const [copiedCrmLogin, setCopiedCrmLogin] = useState(false);
   const [copiedCrmPassword, setCopiedCrmPassword] = useState(false);
   const [showCrmPassword, setShowCrmPassword] = useState(false);
@@ -3722,12 +3723,14 @@ export default function App() {
                                       type="button" 
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleWhatsAppMessage(client.name, client.code);
+                                        setChatInitialClientCode(client.code);
+                                        setAdminTab('chat');
                                       }}
-                                      className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
-                                      title="Enviar código via WhatsApp"
+                                      className="flex items-center gap-1.5 px-3 py-2 text-indigo-300 hover:text-white bg-indigo-600/20 hover:bg-indigo-600/40 rounded-xl transition-all border border-indigo-500/30 hover:border-indigo-400/50 text-xs font-bold shadow-sm active:scale-95"
+                                      title="Abrir chat com este cliente"
                                     >
-                                      <MessageCircle size={18} />
+                                      <MessageCircle size={14} />
+                                      Chat
                                     </button>
                                     <button 
                                       type="button" 
@@ -4108,7 +4111,8 @@ export default function App() {
               {adminTab === 'chat' && (
                 <div className="flex-1 flex flex-col h-full overflow-hidden">
                   <AdminChatPanel 
-                    clientsList={clients} 
+                    clientsList={clients}
+                    initialClientCode={chatInitialClientCode}
                     onRegisterStepBack={(handler) => {
                       adminChatStepBackRef.current = handler;
                     }}

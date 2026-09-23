@@ -988,9 +988,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
           <button
             type="button"
             onClick={onBack}
-            className="mt-8 flex items-center justify-center w-full p-4 gap-4 bg-slate-800 hover:bg-slate-700 rounded-2xl transition-all text-white font-bold"
+            className="mt-8 flex items-center justify-center w-full p-4 gap-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:via-rose-500 hover:to-red-400 text-white font-extrabold text-base tracking-wider rounded-2xl transition-all shadow-xl shadow-red-600/30 border border-rose-400/50 hover:border-rose-300 hover:scale-[1.02] active:scale-[0.98] group"
           >
-            VOLTAR
+            <ChevronLeft size={22} className="stroke-[2.5] group-hover:-translate-x-1 transition-transform" />
+            <span className="drop-shadow-md">VOLTAR</span>
           </button>
         </div>
 
@@ -1034,9 +1035,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
             <button
               type="button"
               onClick={() => setSelectedDeviceId(null)}
-              className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
+              className="mt-4 flex items-center justify-center w-full p-4 gap-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:via-rose-500 hover:to-red-400 text-white font-extrabold text-base tracking-wider rounded-[1.5rem] transition-all shadow-xl shadow-red-600/30 border border-rose-400/50 hover:border-rose-300 hover:scale-[1.02] active:scale-[0.98] group"
             >
-              VOLTAR
+              <ChevronLeft size={22} className="stroke-[2.5] group-hover:-translate-x-1 transition-transform" />
+              <span className="drop-shadow-md">VOLTAR</span>
             </button>
           </div>
         </div>
@@ -1108,9 +1110,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
             <button
               type="button"
               onClick={onClose}
-              className="mt-4 flex items-center justify-center w-full p-4 gap-4 bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 hover:bg-slate-700/80 rounded-[1.5rem] transition-all text-slate-300 hover:text-white font-bold"
+              className="mt-4 flex items-center justify-center w-full p-4 gap-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:via-rose-500 hover:to-red-400 text-white font-extrabold text-base tracking-wider rounded-[1.5rem] transition-all shadow-xl shadow-red-600/30 border border-rose-400/50 hover:border-rose-300 hover:scale-[1.02] active:scale-[0.98] group"
             >
-              VOLTAR
+              <ChevronLeft size={22} className="stroke-[2.5] group-hover:-translate-x-1 transition-transform" />
+              <span className="drop-shadow-md">VOLTAR</span>
             </button>
           </div>
         </div>

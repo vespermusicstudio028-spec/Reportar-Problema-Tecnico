@@ -38,7 +38,7 @@ import { StoreSalesModal } from './StoreSalesModal';
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 import { getOrCreateClientMemory } from '../lib/clientMemoryService';
-import { processClientSupportMessage } from '../lib/automatedSupportEngine';
+import { processClientSupportMessage, getTimeBasedGreeting } from '../lib/automatedSupportEngine';
 import { fetchStoreSettings } from '../lib/storeService';
 
 export interface AccessPointScreen {
@@ -991,7 +991,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     </div>
                     <div className="p-4 rounded-2xl bg-[#151926] border border-slate-800 text-slate-200 text-xs md:text-sm leading-relaxed rounded-tl-none shadow-md">
                       <p>
-                        Olá <strong>{clientName || 'Cliente'}</strong>! 👋 {businessStatus.isOnline ? 'Como posso te ajudar hoje? Digite sua mensagem abaixo que responderei o mais breve possível.' : 'Nosso atendimento funciona de Seg a Sex (09h às 21h) e Sábado (09h às 12h). Deixe sua mensagem abaixo que responderemos assim que iniciarmos o expediente!'}
+                        {getTimeBasedGreeting()} Descreva o problema que está acontecendo. Vou analisar sua mensagem e tentar ajudar com uma solução.
                       </p>
                       <span className="block text-[10px] text-slate-500 text-right mt-1.5">
                         {businessStatus.isOnline ? 'Atendimento ao Vivo' : 'Atendimento Offline'}

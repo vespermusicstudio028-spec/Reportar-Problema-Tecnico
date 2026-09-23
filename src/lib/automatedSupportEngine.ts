@@ -1,3 +1,20 @@
+/**
+ * Retorna saudação dinâmica baseada no horário local do cliente:
+ * - 🌅 Bom dia (05:00 às 11:59)
+ * - ☀️ Boa tarde (12:00 às 17:59)
+ * - 🌙 Boa noite (18:00 às 04:59)
+ */
+export function getTimeBasedGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return 'Bom dia! 👋😊 Seja bem-vindo ao suporte técnico.';
+  } else if (hour >= 12 && hour < 18) {
+    return 'Boa tarde! 👋😊 Seja bem-vindo ao suporte técnico.';
+  } else {
+    return 'Boa noite! 👋😊 Seja bem-vindo ao suporte técnico.';
+  }
+}
+
 import { ClientSupportMemory, ContextualReply, SupportIntent } from '../types/clientMemory';
 import { recordIssueAndSolutionInMemory, saveSupportSession } from './clientMemoryService';
 import { fetchStoreProducts } from './storeService';
@@ -122,9 +139,82 @@ export function detectSupportIntent(text: string): SupportIntent {
     return 'LOJA_PRODUTOS';
   }
 
-  // 5. Sinal / Travamento / Queda de conexão
+    // 5. Problema de Internet / Conexão
+  if (
+    lower.includes('sem internet') ||
+    lower.includes('estou sem internet') ||
+    lower.includes('minha internet esta ruim') ||
+    lower.includes('minha internet ta ruim') ||
+    lower.includes('internet ruim') ||
+    lower.includes('internet caiu') ||
+    lower.includes('minha internet caiu') ||
+    lower.includes('nao conecta') ||
+    lower.includes('nao ta conectando') ||
+    lower.includes('nao esta conectando') ||
+    lower.includes('queda de internet') ||
+    lower.includes('sem conexao') ||
+    lower.includes('problema de internet') ||
+    lower.includes('sem wifi') ||
+    lower.includes('wifi nao funciona')
+  ) {
+    return 'PROBLEMA_INTERNET';
+  }
+
+    // 6. Mensagem de Erro
+  if (
+    lower.includes('mensagem de erro') ||
+    lower.includes('apareceu um erro') ||
+    lower.includes('apareceu erro') ||
+    lower.includes('codigo de erro') ||
+    lower.includes('deu erro') ||
+    lower.includes('mensagem erro') ||
+    lower.includes('aviso de erro')
+  ) {
+    return 'MENSAGEM_ERRO';
+  }
+
+  // 7. Imagem Preta / Tela Preta
+  if (
+    lower.includes('imagem preta') ||
+    lower.includes('tela preta') ||
+    lower.includes('sem imagem') ||
+    lower.includes('ficou preta') ||
+    lower.includes('tela escura')
+  ) {
+    return 'IMAGEM_PRETA';
+  }
+
+  // 8. Problema de Login / Credenciais
+  if (
+    lower.includes('nao consigo entrar') ||
+    lower.includes('usuario invalido') ||
+    lower.includes('minha senha nao funciona') ||
+    lower.includes('login dando erro') ||
+    lower.includes('erro de login') ||
+    lower.includes('senha errada') ||
+    lower.includes('usuario errado') ||
+    lower.includes('falha no login') ||
+    lower.includes('nao entra') ||
+    lower.includes('nao estou conseguindo entrar') ||
+    lower.includes('senha invalida') ||
+    lower.includes('login invalido') ||
+    lower.includes('erro no login')
+  ) {
+    return 'PROBLEMA_LOGIN';
+  }
+
+  // 7. Sinal / Travamento / Canais pararam
   // ATENÇÃO: 'canal' e 'canais' sozinhos NÃO disparam aqui — precisam de contexto de problema
   if (
+    lower.includes('o canal trava') ||
+    lower.includes('canais pararam') ||
+    lower.includes('os canais nao abrem') ||
+    lower.includes('canais nao abrem') ||
+    lower.includes('fica carregando') ||
+    lower.includes('esta lento') ||
+    lower.includes('ta lento') ||
+    lower.includes('parou de funcionar') ||
+    lower.includes('pararam de funcionar') ||
     lower.includes('travando') ||
     lower.includes('trava') ||
     lower.includes('fora do ar') ||
@@ -261,6 +351,12 @@ export function detectSupportIntent(text: string): SupportIntent {
   if (
     lower.includes('episodio') ||
     lower.includes('temporada') ||
+    lower.includes('o filme nao abre') ||
+    lower.includes('filme travando') ||
+    lower.includes('nao consigo assistir ao filme') ||
+    lower.includes('o filme fica carregando') ||
+    lower.includes('filme nao abre') ||
+    lower.includes('filme nao carrega') ||
     lower.includes('filme') ||
     lower.includes('serie') ||
     lower.includes('catalogo') ||
@@ -492,29 +588,164 @@ export async function processClientSupportMessage(
     };
   }
 
+    // ─────────────────────────────────────────────────────────────────────────
+  // INTENT: PROBLEMA DE INTERNET
   // ─────────────────────────────────────────────────────────────────────────
-  // INTENT: SINAL E TRAVAMENTO
+  if (intent === 'PROBLEMA_INTERNET') {
+    const reply = `“Entendi! 🌐
+O funcionamento do serviço depende da conexão com a internet.
+
+Faça este teste:
+1️⃣ Verifique se outros aplicativos conseguem acessar a internet.
+2️⃣ Reinicie o modem/roteador.
+3️⃣ Aguarde alguns minutos.
+4️⃣ Conecte novamente o aparelho à rede Wi-Fi.
+5️⃣ Verifique a conexão com a internet.
+6️⃣ Abra o aplicativo e faça um novo teste.
+
+Se outros aplicativos também estiverem sem internet, o problema pode estar na conexão do seu provedor.”`;
+
+    const summary = 'Cliente relatou falha ou lentidão na internet. Enviado passo a passo de reinício do modem e verificação da rede.';
+    await recordIssueAndSolutionInMemory(
+      memory.client_code,
+      'Problema de Internet/Conexão',
+      'Passo a passo de reinício de modem e verificação de rede',
+      device,
+      app
+    );
+    await saveSupportSession({
+      client_code: memory.client_code,
+      client_name: clientName,
+      topic: 'Problema de Internet',
+      status: 'resolvido',
+      summary,
+      detected_device: device,
+      detected_issue: 'Sem internet / conexão ruim',
+      applied_solution: 'Reinício de roteador e verificação Wi-Fi'
+    });
+
+    return {
+      intent,
+      replyText: reply,
+      summary,
+      detectedIssue: 'Problema de conexão/internet',
+      appliedSolution: 'Passo a passo de teste de rede e modem'
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTENT: PROBLEMA DE LOGIN
+  // ─────────────────────────────────────────────────────────────────────────
+  if (intent === 'PROBLEMA_LOGIN') {
+    const reply = `“🔑 Vamos verificar seu acesso.
+Confira se o usuário e a senha foram digitados exatamente como foram enviados.
+⚠️ Observe letras maiúsculas, números, espaços e caracteres especiais.
+
+Faça este teste:
+1️⃣ Feche o aplicativo.
+2️⃣ Abra o aplicativo.
+3️⃣ Digite novamente seu usuário e senha com atenção.
+4️⃣ Teste novamente.
+
+Se continuar aparecendo erro, envie uma captura de tela da mensagem apresentada para que possamos analisar.”`;
+
+    const summary = 'Cliente relatou erro de login/senha. Enviadas orientações de conferência de credenciais e teste.';
+    await recordIssueAndSolutionInMemory(
+      memory.client_code,
+      'Dificuldade de Login',
+      'Orientação de conferência de caracteres e reinserção de senha',
+      device,
+      app
+    );
+    await saveSupportSession({
+      client_code: memory.client_code,
+      client_name: clientName,
+      topic: 'Problema de Login',
+      status: 'resolvido',
+      summary,
+      detected_device: device,
+      detected_issue: 'Login ou senha inválida',
+      applied_solution: 'Revisão de credenciais'
+    });
+
+    return {
+      intent,
+      replyText: reply,
+      summary,
+      detectedIssue: 'Erro de login ou senha',
+      appliedSolution: 'Conferência exata de letras, números e símbolos'
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTENT: SINAL E TRAVAMENTO (com diagnóstico específico por aparelho)
   // ─────────────────────────────────────────────────────────────────────────
   if (intent === 'SINAL_TRAVAMENTO') {
-    let deviceMention = '';
-    if (hasKnownDevice && hasKnownApp) {
-      deviceMention = `identifiquei que você está utilizando o aplicativo *${app}* no aparelho *${device}*.`;
-    } else if (hasKnownDevice) {
-      deviceMention = `identifiquei que seu dispositivo principal é *${device}*.`;
-    } else if (hasKnownApp) {
-      deviceMention = `identifiquei que você utiliza o aplicativo *${app}*.`;
+    const lowerMsg = clientMessage.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const isTv = lowerMsg.includes('tv') || lowerMsg.includes('samsung') || lowerMsg.includes('lg') || lowerMsg.includes('smart') || device === 'Smart TV';
+    const isBox = lowerMsg.includes('box') || lowerMsg.includes('mxq') || lowerMsg.includes('aquario') || lowerMsg.includes('tx3') || device === 'TV Box';
+    const isCelular = lowerMsg.includes('celular') || lowerMsg.includes('cel') || lowerMsg.includes('smartphone') || lowerMsg.includes('iphone') || lowerMsg.includes('android') || device === 'Celular';
+
+    let reply = '';
+
+    if (isTv && !isBox) {
+      reply = `“📺 Vamos tentar resolver o problema na sua Smart TV.
+O funcionamento do serviço depende da conexão com a internet.
+
+🔧 Faça estes testes:
+1️⃣ Feche completamente o aplicativo.
+2️⃣ Reinicie o modem/roteador.
+3️⃣ Retire a TV da tomada por aproximadamente 30 segundos.
+4️⃣ Ligue novamente.
+5️⃣ Abra o aplicativo e faça um novo teste.
+6️⃣ Tente acessar novamente um canal.
+
+Se continuar apresentando problema, informe a marca e o modelo da sua TV.”`;
+    } else if (isBox) {
+      reply = `“📦 Vamos reiniciar sua TV Box.
+O funcionamento do serviço depende da conexão com a internet.
+
+🔧 Faça estes testes:
+1️⃣ Feche o aplicativo.
+2️⃣ Retire a TV Box da tomada por aproximadamente 30 segundos.
+3️⃣ Reinicie o modem/roteador.
+4️⃣ Ligue novamente a TV Box.
+5️⃣ Abra o aplicativo e faça um novo teste.
+
+Se o problema persistir, informe o modelo da sua TV Box e envie uma foto do erro pelo botão de foto.”`;
+    } else if (isCelular) {
+      reply = `“📱 Vamos testar seu acesso pelo celular.
+O funcionamento do serviço depende da conexão com a internet.
+
+Faça este teste:
+1️⃣ Feche completamente o aplicativo.
+2️⃣ Reinicie o celular.
+3️⃣ Verifique se está conectado ao Wi-Fi ou dados móveis.
+4️⃣ Abra novamente o aplicativo.
+5️⃣ Faça um novo teste.
+
+Se o problema continuar, informe o modelo do seu celular e envie uma captura de tela do erro.”`;
+    } else {
+      reply = `“Entendi! 📺 Vamos tentar resolver.
+O funcionamento do serviço depende da conexão com a internet.
+
+Faça este teste:
+1️⃣ Feche completamente o aplicativo.
+2️⃣ Reinicie seu aparelho.
+3️⃣ Verifique sua conexão com a internet.
+4️⃣ Abra novamente o aplicativo.
+5️⃣ Faça um novo teste. Se possível, teste outro canal.
+
+📌 Se apenas alguns canais apresentarem problema, informe quais são.
+Se todos os canais estiverem travando, informe também qual aparelho está utilizando.”`;
     }
 
-    const greetings = `🤖 Olá, **${clientName}**! Verifiquei seu acesso.${deviceMention ? ` Em meu sistema ${deviceMention}` : ''}`;
-
-    const reply = `${greetings}\n\n📡 **Diagnóstico Rápido de Conexão:**\nNossos servidores centrais estão operando com 99.8% de estabilidade neste momento. Para resolver travamentos ou lentidão:\n\n1. **Troca de Player:** No menu do seu app, altere o reprodutor de vídeo para *VLC* ou *ExoPlayer (Hardware)*.\n2. **Conexão:** Se o seu aparelho estiver no Wi-Fi 2.4GHz, tente conectar via cabo de rede ou na rede 5GHz.\n3. **Atualização da Lista:** No menu do app, clique em *Atualizar Conteúdo / Refresh* para sincronizar os canais.\n\nMe avise se o travamento ocorre em todos os canais ou apenas em algum canal específico! 📺`;
-
-    const summary = `Cliente relatou travamento ou instabilidade de sinal. Enviadas orientações de player e rede adaptadas ao dispositivo.`;
+    const summary = `Cliente relatou travamento ou canais que não abrem (${isTv ? 'Smart TV' : isBox ? 'TV Box' : isCelular ? 'Celular' : 'Geral'}). Enviado passo a passo de solução.`;
 
     await recordIssueAndSolutionInMemory(
       memory.client_code,
       'Sinal com travamento/instabilidade',
-      'Orientação de Player e sincronização de rota',
+      'Passo a passo numerado de reinício de aparelho e modem',
       device,
       app
     );
@@ -526,16 +757,16 @@ export async function processClientSupportMessage(
       status: 'resolvido',
       summary,
       detected_device: device,
-      detected_issue: 'Travamento de sinal',
-      applied_solution: 'Ajuste de player e conexão'
+      detected_issue: 'Travamento ou canais parados',
+      applied_solution: 'Passo a passo de reinício de aparelho e rede'
     });
 
     return {
       intent,
       replyText: reply,
       summary,
-      detectedIssue: 'Travamento de sinal/canais',
-      appliedSolution: 'Ajuste de player de vídeo e atualização de rota'
+      detectedIssue: 'Canais travando ou parados',
+      appliedSolution: 'Passo a passo detalhado de solução'
     };
   }
 
@@ -630,17 +861,25 @@ export async function processClientSupportMessage(
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
   // INTENT: SEM ÁUDIO OU LEGENDA
   // ─────────────────────────────────────────────────────────────────────────
   if (intent === 'SEM_AUDIO_LEGENDA') {
-    const reply = `🤖 Olá, **${clientName}**! Para ajustar o idioma ou áudio:\n\n1. Durante a reprodução do canal ou filme, pressione o botão **OK** do controle.\n2. Procure o ícone de **Balão / Faixa de Áudio** (canto superior ou inferior direito).\n3. Alterne a faixa de áudio de *Inglês* para *Português (Brasil)*.\n4. Para legendas, você pode desativá-las no menu *Subtitles / Legendas*.\n\nFaça esse teste rápido e me confirme se o áudio ficou normal! 🔊`;
+    const reply = `“🔊 Vamos verificar o áudio.
+1️⃣ Aumente o volume do aparelho.
+2️⃣ Verifique se o modo silencioso está ativado.
+3️⃣ Teste outro canal ou conteúdo.
+4️⃣ Reinicie o aplicativo.
+5️⃣ Se possível, reinicie o aparelho.
+
+Se outros aplicativos também estiverem sem áudio, verifique as configurações de som do aparelho.”`;
+
     return {
       intent,
       replyText: reply,
-      summary: 'Orientação técnica para correção de faixa de áudio e legendas.',
-      detectedIssue: 'Áudio em inglês ou sem som',
-      appliedSolution: 'Ajuste de trilha de áudio no reprodutor'
+      summary: 'Orientação técnica para conferência de áudio, volume e configurações.',
+      detectedIssue: 'Sem áudio no conteúdo',
+      appliedSolution: 'Passo a passo de verificação de volume, app e aparelho'
     };
   }
 
@@ -684,18 +923,78 @@ export async function processClientSupportMessage(
     };
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // INTENT: EPISÓDIO / CONTEÚDO / CATÁLOGO
+    // ─────────────────────────────────────────────────────────────────────────
+  // INTENT: EPISÓDIO / CONTEÚDO / FILME
   // ─────────────────────────────────────────────────────────────────────────
   if (intent === 'EPISODIO_CONTEUDO') {
-    const reply = `🤖 Olá, **${clientName}**! Nosso catálogo possui milhares de filmes, séries, canais ao vivo, documentários e muito mais! 🎬🍿\n\n📌 **Para encontrar um conteúdo específico:**\n1. Abra o aplicativo e use a função **🔍 Pesquisar** (lupa)\n2. Digite o nome do filme, série ou canal que deseja\n3. Para séries, você encontrará todas as temporadas e episódios organizados\n\nSe o conteúdo que você procura não estiver disponível, você pode **solicitar** usando o atalho **🎬 Pedir Conteúdo** no chat! Analisamos e adicionamos regularmente. 🎯`;
+    const lower = clientMessage.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const isFilmIssue = lower.includes('filme') || lower.includes('assistir') || lower.includes('carregando') || lower.includes('travando') || lower.includes('nao abre');
+
+    let reply = '';
+    if (isFilmIssue) {
+      reply = `“🎬 Vamos verificar.
+Primeiro, tente abrir outro filme ou conteúdo.
+
+Se outros conteúdos funcionarem normalmente e apenas esse filme apresentar problema, envie o nome do filme para verificarmos.
+
+Se vários conteúdos apresentarem o mesmo problema, reinicie o aparelho e sua conexão com a internet e tente novamente.”`;
+    } else {
+      reply = `🤖 Olá, **${clientName}**! Nosso catálogo possui milhares de filmes, séries, canais ao vivo, documentários e muito mais! 🎬🍿\n\n📌 **Para encontrar um conteúdo específico:**\n1. Abra o aplicativo e use a função **🔍 Pesquisar** (lupa)\n2. Digite o nome do filme, série ou canal que deseja\n3. Para séries, você encontrará todas as temporadas e episódios organizados\n\nSe o conteúdo que você procura não estiver disponível, você pode **solicitar** usando o atalho **🎬 Pedir Conteúdo** no chat! Analisamos e adicionamos regularmente. 🎯`;
+    }
 
     return {
       intent,
       replyText: reply,
-      summary: 'Orientado sobre busca de conteúdo no catálogo e solicitação de títulos.',
-      detectedIssue: 'Dúvida sobre catálogo/conteúdo',
-      appliedSolution: 'Orientação de pesquisa e atalho para pedido de conteúdo'
+      summary: 'Orientado sobre teste de conteúdo e envio do título do filme em caso de falha.',
+      detectedIssue: 'Filme não abre ou travando',
+      appliedSolution: 'Teste de outro conteúdo e envio do nome do filme'
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTENT: IMAGEM PRETA
+  // ─────────────────────────────────────────────────────────────────────────
+  if (intent === 'IMAGEM_PRETA') {
+    const reply = `“🖥️ Entendi. A imagem está preta.
+
+Faça este teste:
+1️⃣ Feche o conteúdo.
+2️⃣ Abra outro canal ou filme.
+3️⃣ Reinicie o aplicativo.
+4️⃣ Reinicie o aparelho.
+5️⃣ Verifique sua conexão com a internet.
+
+Se somente um conteúdo estiver com a tela preta, informe qual é.
+Se todos apresentarem o problema, envie uma foto ou vídeo para análise.”`;
+
+    return {
+      intent,
+      replyText: reply,
+      summary: 'Orientações para tela ou imagem preta.',
+      detectedIssue: 'Imagem preta / tela preta',
+      appliedSolution: 'Passo a passo de troca de conteúdo, reinício e conexão'
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // INTENT: MENSAGEM DE ERRO
+  // ─────────────────────────────────────────────────────────────────────────
+  if (intent === 'MENSAGEM_ERRO') {
+    const reply = `“⚠️ Entendi. Apareceu uma mensagem de erro.
+
+Faça este teste:
+1️⃣ Feche o aplicativo.
+2️⃣ Abra novamente e tente reproduzir o conteúdo.
+3️⃣ Verifique sua conexão com a internet.
+
+Se o erro continuar aparecendo, envie uma captura de tela da mensagem apresentada para que possamos analisar.”`;
+
+    return {
+      intent,
+      replyText: reply,
+      summary: 'Instruções para mensagem de erro com solicitação de captura de tela.',
+      detectedIssue: 'Mensagem de erro em tela',
+      appliedSolution: 'Reinício de app, verificação de internet e captura de tela'
     };
   }
 
@@ -723,7 +1022,17 @@ export async function processClientSupportMessage(
   // ─────────────────────────────────────────────────────────────────────────
   // INTENT: DÚVIDA GERAL / PADRÃO
   // ─────────────────────────────────────────────────────────────────────────
-  const reply = `🤖 Olá, **${clientName}**! Recebi sua mensagem e estou aqui para ajudar! 😊\n\nVocê pode usar os atalhos rápidos abaixo para agilizar seu atendimento:\n\n🔄 **Renovar** — Renovar plano ou sinal\n🛍️ **Loja** — Ver planos e produtos disponíveis\n🛠️ **Suporte** — Problemas técnicos\n➕ **1 Ponto** — Adicionar nova tela\n🎬 **Pedir Conteúdo** — Solicitar filme ou série\n\nOu descreva aqui o que você precisa e resolvo rapidinho! Nossa equipe está sempre acompanhando. 🚀✨`;
+  const greeting = getTimeBasedGreeting();
+  const reply = `${greeting}
+
+Descreva o problema que está acontecendo. Vou analisar sua mensagem e tentar ajudar com uma solução. 😊
+
+Você também pode usar os atalhos rápidos abaixo:
+🔄 **Renovar** — Renovar plano ou sinal
+🛍️ **Loja** — Ver planos e produtos disponíveis
+🛠️ **Suporte** — Problemas técnicos
+➕ **1 Ponto** — Adicionar nova tela
+🎬 **Pedir Conteúdo** — Solicitar filme ou série`;
 
   return {
     intent: 'DUVIDA_GERAL',

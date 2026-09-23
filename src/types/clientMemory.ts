@@ -57,6 +57,10 @@ export interface ClientSupportSession {
 
 export type SupportIntent =
   | 'SINAL_TRAVAMENTO'
+  | 'PROBLEMA_INTERNET'
+  | 'PROBLEMA_LOGIN'
+  | 'IMAGEM_PRETA'
+  | 'MENSAGEM_ERRO'
   | 'SEM_AUDIO_LEGENDA'
   | 'EPISODIO_CONTEUDO'
   | 'PAGAMENTO_RENOVACAO'

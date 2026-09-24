@@ -36,13 +36,15 @@ interface AdminExpiryAlertModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenClientChat?: (clientCode: string) => void;
+  onRenewClient?: (clientId: string, days?: number) => void;
 }
 
 export function AdminExpiryAlertModal({
   clients,
   isOpen,
   onClose,
-  onOpenClientChat
+  onOpenClientChat,
+  onRenewClient
 }: AdminExpiryAlertModalProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(100);
@@ -290,20 +292,33 @@ export function AdminExpiryAlertModal({
                   </div>
                 </div>
 
-                {onOpenClientChat && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onOpenClientChat(item.code);
-                      onClose();
-                    }}
-                    className="px-2.5 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1"
-                    title={`Abrir chat com ${item.name}`}
-                  >
-                    <MessageSquare size={13} />
-                    <span className="hidden sm:inline">Chat</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {onRenewClient && (
+                    <button
+                      type="button"
+                      onClick={() => onRenewClient(item.id, 30)}
+                      className="px-2.5 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 hover:text-emerald-100 border border-emerald-500/40 rounded-xl text-xs font-extrabold transition-all active:scale-95 shadow-sm flex items-center gap-1"
+                      title={`Renovar sinal de ${item.name} por +30 dias`}
+                    >
+                      <span>+30</span>
+                    </button>
+                  )}
+
+                  {onOpenClientChat && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onOpenClientChat(item.code);
+                        onClose();
+                      }}
+                      className="px-2.5 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 hover:text-white border border-indigo-500/40 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1"
+                      title={`Abrir chat com ${item.name}`}
+                    >
+                      <MessageSquare size={13} />
+                      <span className="hidden sm:inline">Chat</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ))
           )}

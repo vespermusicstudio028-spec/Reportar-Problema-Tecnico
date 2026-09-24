@@ -2732,6 +2732,40 @@ export default function App() {
     }
   };
 
+  const handleQuickRenewClient = async (clientId: string, daysToAdd: number = 30) => {
+    const targetClient = clients.find(c => c.id === clientId);
+    if (!targetClient) return;
+
+    const now = new Date();
+    let baseDate = now;
+    if (targetClient.expirationDate) {
+      const currentExp = new Date(targetClient.expirationDate);
+      if (!isNaN(currentExp.getTime()) && currentExp > now) {
+        baseDate = currentExp;
+      }
+    }
+
+    const nextDate = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
+    const nextDateISO = nextDate.toISOString();
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ expiration_date: nextDateISO })
+        .eq('id', clientId);
+
+      if (error) throw error;
+
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, expirationDate: nextDateISO } : c));
+
+      const formattedDate = nextDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const formattedTime = nextDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      alert(`✅ Sinal de "${targetClient.name}" renovado por mais ${daysToAdd} dias corridos!\n\n📅 Novo vencimento: ${formattedDate} às ${formattedTime}`);
+    } catch (err: any) {
+      alert('Erro ao renovar sinal: ' + (err.message || 'Erro desconhecido.'));
+    }
+  };
+
   const handleRecoverCode = async () => {
     if (!forgotCodePhone.trim()) {
       alert('Por favor, digite o seu telefone.');
@@ -3809,63 +3843,77 @@ export default function App() {
                                           {client.plan ? ` – ${client.plan}` : ''}
                                         </span>
                                       )}
-                                      {/* Badge de Vencimento do Sinal */}
-                                      {client.expirationDate ? (() => {
-                                        const exp = new Date(client.expirationDate);
-                                        const now = new Date();
-                                        const diffHours = (exp.getTime() - now.getTime()) / (1000 * 60 * 60);
-                                        const diffDays = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                                        const isExpired = diffHours < 0;
-                                        const isToday = !isExpired && diffDays <= 1 && exp.getDate() === now.getDate();
-                                        const isTomorrow = !isExpired && (diffDays === 1 && exp.getDate() !== now.getDate() || diffDays === 2 && exp.getDate() === now.getDate() + 1);
+                                      {/* Badge de Vencimento do Sinal e Botão de Atalho +30 */}
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        {client.expirationDate ? (() => {
+                                          const exp = new Date(client.expirationDate);
+                                          const now = new Date();
+                                          const diffHours = (exp.getTime() - now.getTime()) / (1000 * 60 * 60);
+                                          const diffDays = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                          const isExpired = diffHours < 0;
+                                          const isToday = !isExpired && diffDays <= 1 && exp.getDate() === now.getDate();
+                                          const isTomorrow = !isExpired && (diffDays === 1 && exp.getDate() !== now.getDate() || diffDays === 2 && exp.getDate() === now.getDate() + 1);
 
-                                        const formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-                                        const formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                                          const formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                          const formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-                                        if (isExpired) {
+                                          if (isExpired) {
+                                            return (
+                                              <span className="text-xs px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 border border-red-500/40 font-bold flex items-center gap-1.5">
+                                                <Clock size={12} className="text-red-400" />
+                                                Vencido em {formattedDate} {formattedTime}
+                                              </span>
+                                            );
+                                          }
+                                          if (isToday) {
+                                            return (
+                                              <span className="text-xs px-2.5 py-1 rounded-lg bg-rose-600/30 text-rose-200 border border-rose-500/50 font-extrabold flex items-center gap-1.5 animate-pulse">
+                                                <Clock size={12} className="text-rose-400" />
+                                                Vence HOJE às {formattedTime}
+                                              </span>
+                                            );
+                                          }
+                                          if (isTomorrow) {
+                                            return (
+                                              <span className="text-xs px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-200 border border-orange-500/40 font-bold flex items-center gap-1.5">
+                                                <Clock size={12} className="text-orange-400" />
+                                                Vence AMANHÃ ({formattedDate} {formattedTime})
+                                              </span>
+                                            );
+                                          }
+                                          if (diffDays <= 3) {
+                                            return (
+                                              <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40 font-bold flex items-center gap-1.5">
+                                                <Clock size={12} className="text-amber-400" />
+                                                Vence em {diffDays} dias ({formattedDate} {formattedTime})
+                                              </span>
+                                            );
+                                          }
                                           return (
-                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 border border-red-500/40 font-bold flex items-center gap-1.5">
-                                              <Clock size={12} className="text-red-400" />
-                                              Vencido em {formattedDate} {formattedTime}
+                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium flex items-center gap-1.5">
+                                              <Clock size={12} className="text-emerald-400" />
+                                              Vence em {formattedDate} {formattedTime}
                                             </span>
                                           );
-                                        }
-                                        if (isToday) {
-                                          return (
-                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-rose-600/30 text-rose-200 border border-rose-500/50 font-extrabold flex items-center gap-1.5 animate-pulse">
-                                              <Clock size={12} className="text-rose-400" />
-                                              Vence HOJE às {formattedTime}
-                                            </span>
-                                          );
-                                        }
-                                        if (isTomorrow) {
-                                          return (
-                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-200 border border-orange-500/40 font-bold flex items-center gap-1.5">
-                                              <Clock size={12} className="text-orange-400" />
-                                              Vence AMANHÃ ({formattedDate} {formattedTime})
-                                            </span>
-                                          );
-                                        }
-                                        if (diffDays <= 3) {
-                                          return (
-                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40 font-bold flex items-center gap-1.5">
-                                              <Clock size={12} className="text-amber-400" />
-                                              Vence em {diffDays} dias ({formattedDate} {formattedTime})
-                                            </span>
-                                          );
-                                        }
-                                        return (
-                                          <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium flex items-center gap-1.5">
-                                            <Clock size={12} className="text-emerald-400" />
-                                            Vence em {formattedDate} {formattedTime}
+                                        })() : (
+                                          <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/60 font-medium flex items-center gap-1">
+                                            <Clock size={12} className="text-slate-500" />
+                                            Sem vencimento
                                           </span>
-                                        );
-                                      })() : (
-                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/60 font-medium flex items-center gap-1">
-                                          <Clock size={12} className="text-slate-500" />
-                                          Sem vencimento
-                                        </span>
-                                      )}
+                                        )}
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleQuickRenewClient(client.id, 30);
+                                          }}
+                                          className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 hover:text-emerald-100 border border-emerald-500/40 font-extrabold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                                          title={`Renovar sinal de ${client.name} por +30 dias corridos`}
+                                        >
+                                          <span>+30</span>
+                                        </button>
+                                      </div>
                                     </div>
 
                                     {/* Badges de MAC / Login / Key */}
@@ -5845,6 +5893,7 @@ export default function App() {
             setAdminTab('chat');
             setShowLoginModal(false);
           }}
+          onRenewClient={handleQuickRenewClient}
         />
       )}
 

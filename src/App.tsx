@@ -2738,7 +2738,9 @@ export default function App() {
 
     const now = new Date();
     let baseDate = now;
-    if (targetClient.expirationDate) {
+    const isTrial = targetClient.plan === 'Teste 3h' || (targetClient.plan && targetClient.plan.toLowerCase().includes('teste'));
+
+    if (targetClient.expirationDate && !isTrial) {
       const currentExp = new Date(targetClient.expirationDate);
       if (!isNaN(currentExp.getTime()) && currentExp > now) {
         baseDate = currentExp;
@@ -2747,16 +2749,20 @@ export default function App() {
 
     const nextDate = new Date(baseDate.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
     const nextDateISO = nextDate.toISOString();
+    const newPlan = isTrial ? 'Sinal do Streaming' : (targetClient.plan || 'Sinal do Streaming');
 
     try {
       const { error } = await supabase
         .from('clients')
-        .update({ expiration_date: nextDateISO })
+        .update({ 
+          expiration_date: nextDateISO,
+          plan: newPlan
+        })
         .eq('id', clientId);
 
       if (error) throw error;
 
-      setClients(prev => prev.map(c => c.id === clientId ? { ...c, expirationDate: nextDateISO } : c));
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, expirationDate: nextDateISO, plan: newPlan } : c));
 
       const formattedDate = nextDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const formattedTime = nextDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -3845,7 +3851,27 @@ export default function App() {
                                       )}
                                       {/* Badge de Vencimento do Sinal e Botão de Atalho +30 */}
                                       <div className="flex items-center gap-1.5 flex-wrap">
-                                        {client.expirationDate ? (() => {
+                                        {(() => {
+                                          const isTrialClient = client.plan === 'Teste 3h' || (client.plan && client.plan.toLowerCase().includes('teste'));
+
+                                          if (isTrialClient) {
+                                            return (
+                                              <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1.5 shadow-sm animate-pulse">
+                                                <Clock size={12} className="text-amber-400" />
+                                                Teste de 3h
+                                              </span>
+                                            );
+                                          }
+
+                                          if (!client.expirationDate) {
+                                            return (
+                                              <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/60 font-medium flex items-center gap-1">
+                                                <Clock size={12} className="text-slate-500" />
+                                                Sem vencimento
+                                              </span>
+                                            );
+                                          }
+
                                           const exp = new Date(client.expirationDate);
                                           const now = new Date();
                                           const diffHours = (exp.getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -3895,13 +3921,7 @@ export default function App() {
                                               Vence em {formattedDate} {formattedTime}
                                             </span>
                                           );
-                                        })() : (
-                                          <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/60 font-medium flex items-center gap-1">
-                                            <Clock size={12} className="text-slate-500" />
-                                            Sem vencimento
-                                          </span>
-                                        )}
-
+                                         })()}
                                         <button
                                           type="button"
                                           onClick={(e) => {

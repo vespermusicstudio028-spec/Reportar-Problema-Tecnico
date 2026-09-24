@@ -42,6 +42,7 @@ interface Props {
     price?: number;
     activeApp?: string;
     accessPoints?: any[];
+    expirationDate?: string;
   }) => void;
   onPointAdded?: (client: any) => void;
 }
@@ -423,7 +424,8 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
 
       // TV Android, Celular e TV Box: R$ 30,00 (1 Tela). Se for outro dispositivo: R$ 40,00.
       const calculatedPrice = isPromo30Device ? 30 : 40;
-      const calculatedPlan = 'Sinal do Streaming';
+      const calculatedPlan = 'Teste 3h';
+      const trialExpirationDate = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
 
       const clientAccessPoints = [{
         screenNumber: 1,
@@ -446,7 +448,8 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         plan: calculatedPlan,
         price: calculatedPrice,
         active_app: appName,
-        access_points: clientAccessPoints
+        access_points: clientAccessPoints,
+        expiration_date: trialExpirationDate
       }]).select();
 
       if (clientInsertErr) {
@@ -471,6 +474,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
           price: calculatedPrice,
           activeApp: appName,
           accessPoints: clientAccessPoints,
+          expirationDate: trialExpirationDate,
           addedAt: new Date().toISOString()
         });
       }

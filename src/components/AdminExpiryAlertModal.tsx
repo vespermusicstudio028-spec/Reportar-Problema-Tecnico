@@ -32,6 +32,7 @@ interface AdminExpiryAlertModalProps {
     code: string;
     phone?: string;
     expirationDate?: string;
+    plan?: string;
   }>;
   isOpen: boolean;
   onClose: () => void;
@@ -69,6 +70,34 @@ export function AdminExpiryAlertModal({
     const list: ExpiringClientItem[] = [];
 
     for (const c of clients) {
+      // Clientes de teste de 3h aparecem diretamente em "Vence Hoje"
+      const isTrial = c.plan === 'Teste 3h' || (c.plan && c.plan.toLowerCase().includes('teste'));
+      if (isTrial) {
+        let formattedDate = 'Hoje';
+        let formattedTime = 'Teste de 3h';
+        if (c.expirationDate) {
+          const exp = new Date(c.expirationDate);
+          if (!isNaN(exp.getTime())) {
+            formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+            formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          }
+        }
+
+        list.push({
+          id: c.id,
+          name: c.name,
+          code: c.code,
+          phone: c.phone,
+          expirationDate: c.expirationDate || new Date().toISOString(),
+          category: 'hoje',
+          categoryLabel: 'Vence Hoje (Teste 3h)',
+          badgeStyle: 'bg-rose-600/30 text-rose-200 border-rose-500/50 font-extrabold animate-pulse',
+          formattedDate,
+          formattedTime,
+        });
+        continue;
+      }
+
       if (!c.expirationDate) continue;
       const exp = new Date(c.expirationDate);
       if (isNaN(exp.getTime())) continue;

@@ -1189,7 +1189,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                 );
               }
 
-              // ── Card principal com imagem flutuando acima ──
+              // ── Card principal com imagem integrada dentro do botão ──
               return (
                 <div
                   key={device.id}
@@ -1197,50 +1197,66 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                   tabIndex={0}
                   onClick={() => setSelectedDeviceId(device.id)}
                   onKeyDown={e => e.key === 'Enter' && setSelectedDeviceId(device.id)}
-                  className="relative w-full group cursor-pointer select-none outline-none"
-                  style={{ paddingTop: '30px' }}   /* espaço para a imagem flutuar acima */
+                  className="relative w-full h-[105px] sm:h-[115px] rounded-[1.75rem] overflow-hidden flex items-center border-2 transition-all duration-300 group hover:brightness-110 hover:scale-[1.01] active:scale-[0.98] cursor-pointer select-none outline-none shadow-2xl"
+                  style={{
+                    borderColor: visual.borderColor,
+                    boxShadow: `0 0 25px ${visual.glowColor}, inset 0 0 15px rgba(0,0,0,0.5)`,
+                    backgroundColor: visual.cardDarkBg,
+                  }}
                 >
-                  {/* ── Corpo do card com borda colorida ── */}
-                  <div
-                    className="relative h-[100px] sm:h-[110px] rounded-[1.5rem] overflow-hidden flex items-stretch border-2 transition-all duration-300 group-hover:brightness-110 group-hover:scale-[1.015] active:scale-[0.98]"
-                    style={{
-                      borderColor: visual.borderColor,
-                      boxShadow: `0 0 28px ${visual.glowColor}, 0 4px 20px rgba(0,0,0,0.6)`,
-                      background: visual.cardDarkBg,
-                    }}
-                  >
-                    {/* Espaço à esquerda reservado para a imagem que flutua por cima */}
-                    <div className="w-[44%] sm:w-[42%] flex-shrink-0" />
-
-                    {/* Linha divisória suave */}
-                    <div className="w-px bg-white/10 flex-shrink-0 my-4" />
-
-                    {/* Lado direito: ícone + nome */}
-                    <div className="flex-1 flex items-center justify-center gap-3 sm:gap-4 px-3 sm:px-5">
-                      {visual.icon}
-                      <span
-                        className="font-black text-white text-lg sm:text-xl md:text-2xl leading-tight text-left"
-                        style={{ textShadow: '0 2px 10px rgba(0,0,0,0.95)' }}
-                      >
-                        {device.name}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* ── Imagem do dispositivo — flutua acima da borda do card ── */}
-                  <div
-                    className="absolute top-0 left-1 sm:left-2 w-[44%] sm:w-[42%] pointer-events-none z-20"
-                    style={{ height: 'calc(100% + 2px)' }}
-                  >
+                  {/* ── Imagem integrada no lado esquerdo — estritamente contida pelo overflow-hidden ── */}
+                  <div className="absolute left-0 top-0 bottom-0 w-[42%] sm:w-[40%] overflow-hidden pointer-events-none z-0">
                     <img
                       src={visual.cardImg}
                       alt={device.name}
-                      className="w-full h-full object-contain object-bottom"
+                      className="w-full h-full object-cover object-center"
                       draggable={false}
+                    />
+                    {/* Gradiente escuro para mesclar perfeitamente com o fundo do botão */}
+                    <div
+                      className="absolute inset-0"
                       style={{
-                        filter: 'drop-shadow(0 6px 20px rgba(0,0,0,0.85))',
+                        background: `linear-gradient(to right, transparent 50%, ${visual.cardDarkBg} 100%)`
                       }}
                     />
+                  </div>
+
+                  {/* ── Conteúdo em camada superior (z-10): Ícone e Texto no lado direito ── */}
+                  <div className="relative z-10 w-full h-full flex items-center">
+                    {/* Espaçador que reserva a área da imagem à esquerda */}
+                    <div className="w-[40%] sm:w-[38%] flex-shrink-0" />
+
+                    {/* Lado direito com Ícone e Texto */}
+                    <div className="flex-1 flex items-center justify-center sm:justify-start gap-3 sm:gap-4 pl-1 sm:pl-3 pr-4 sm:pr-6">
+                      <div className="shrink-0 drop-shadow-lg">
+                        {visual.icon}
+                      </div>
+                      <div className="flex flex-col text-left">
+                        {device.id === 'android-tv' ? (
+                          <>
+                            <span
+                              className="font-black text-white text-lg sm:text-xl md:text-2xl leading-tight"
+                              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.95)' }}
+                            >
+                              TV Android
+                            </span>
+                            <span
+                              className="font-black text-white text-base sm:text-lg md:text-xl leading-tight"
+                              style={{ textShadow: '0 2px 8px rgba(0,0,0,0.95)' }}
+                            >
+                              (Play Store)
+                            </span>
+                          </>
+                        ) : (
+                          <span
+                            className="font-black text-white text-xl sm:text-2xl md:text-3xl leading-tight"
+                            style={{ textShadow: '0 2px 8px rgba(0,0,0,0.95)' }}
+                          >
+                            {device.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

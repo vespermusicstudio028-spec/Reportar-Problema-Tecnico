@@ -517,73 +517,50 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
   return (
     <div className="bg-[#0f131c] border border-slate-800/80 rounded-none overflow-hidden shadow-2xl flex flex-col h-full">
-      {/* Topo do Painel de Chat */}
-      <div className="p-4 md:px-6 py-4 bg-[#141824] border-b border-slate-800/80 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-            <MessageSquare size={20} />
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              Central de Atendimento ao Cliente
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              Converse em tempo real com clientes logados nos painÃ©is
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {onCloseToHome && (
-            <button
-              onClick={onCloseToHome}
-              className="p-2 px-3 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white transition-all text-xs font-bold flex items-center gap-1.5 border border-indigo-500/40 active:scale-95 shadow-sm"
-              title="Sair do chat e voltar imediatamente para a tela inicial"
-            >
-              <Home size={14} className="text-indigo-400 group-hover:text-white" />
-              <span>Tela Inicial</span>
-            </button>
-          )}
-
-          <button
-            onClick={() => setShowStoreManager(true)}
-            className="p-2 px-3 rounded-xl bg-gradient-to-r from-amber-600/30 to-orange-600/20 hover:from-amber-600/50 hover:to-orange-600/40 text-amber-300 transition-all text-xs font-bold flex items-center gap-1.5 border border-amber-500/40 active:scale-95 shadow-sm"
-            title="Gerenciar produtos, fotos e vÃ­deos da loja"
-          >
-            <ShoppingBag size={14} className="text-amber-400" />
-            <span>Loja & Produtos</span>
-          </button>
-
-          <button
-            onClick={fetchMessages}
-            className="p-2 rounded-xl bg-slate-800/60 hover:bg-slate-700 text-slate-300 hover:text-white transition-all text-xs flex items-center gap-1.5 border border-slate-700/60"
-            title="Atualizar mensagens"
-          >
-            <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-            <span className="hidden sm:inline">Atualizar</span>
-          </button>
-        </div>
-      </div>
-
       {/* Grid Principal: Lista de Conversas (Esquerda) e Chat Ativo (Direita) */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Coluna da Esquerda: Lista de Conversas */}
         <div className={`${
           mobileShowChat ? 'hidden' : 'flex'
         } sm:flex w-full sm:w-80 md:w-96 border-r border-slate-800/80 bg-[#0d1017]/80 flex-col`}>
-          {/* Busca de Conversas */}
-          <div className="p-3 border-b border-slate-800/60">
-            <div className="relative">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          {/* Busca de Conversas e Ações Rápidas Compactas */}
+          <div className="p-2.5 border-b border-slate-800/60 flex items-center gap-1.5">
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Buscar por cliente ou cÃ³digo..."
+                placeholder="Buscar cliente ou código..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#151922] border border-slate-800 text-slate-200 placeholder-slate-500 pl-9 pr-4 py-2 rounded-xl text-xs focus:border-indigo-500 outline-none transition-all"
+                className="w-full bg-[#151922] border border-slate-800 text-slate-200 placeholder-slate-500 pl-8 pr-3 py-1.5 rounded-xl text-xs focus:border-indigo-500 outline-none transition-all"
               />
             </div>
+
+            <button
+              onClick={() => setShowStoreManager(true)}
+              className="p-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/35 text-amber-300 border border-amber-500/30 transition-all shrink-0"
+              title="Loja & Produtos"
+            >
+              <ShoppingBag size={15} />
+            </button>
+
+            <button
+              onClick={fetchMessages}
+              className="p-2 rounded-xl bg-slate-800/70 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-all shrink-0"
+              title="Atualizar mensagens"
+            >
+              <RefreshCw size={15} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+
+            {onCloseToHome && (
+              <button
+                onClick={onCloseToHome}
+                className="p-2 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/35 text-indigo-300 hover:text-white border border-indigo-500/30 transition-all shrink-0"
+                title="Voltar para tela inicial"
+              >
+                <Home size={15} />
+              </button>
+            )}
           </div>
 
           {/* Lista de Clientes com Conversa */}

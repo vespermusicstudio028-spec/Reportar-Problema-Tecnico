@@ -1094,18 +1094,70 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
           <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md uppercase">QUAL É O SEU DISPOSITIVO PRINCIPAL ?</h2>
           </div>
-          
+
           <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
-            {config.devices.filter(d => d.visible !== false).map(device => (
-              <button
-                key={device.id}
-                type="button"
-                onClick={() => setSelectedDeviceId(device.id)}
-                className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
-              >
-                <span className="font-bold text-white text-lg tracking-wide">{device.name}</span>
-              </button>
-            ))}
+            {config.devices.filter(d => d.visible !== false).map(device => {
+              // Mapeia IDs de dispositivos para imagens de fundo e ícones
+              const deviceBgMap: Record<string, { bg: string; icon: string; accent: string }> = {
+                'android-tv': {
+                  bg: '/tv-android-bg.jpg',
+                  icon: '▶',
+                  accent: 'from-blue-600/70 via-indigo-600/50 to-transparent'
+                },
+                'celular': {
+                  bg: '/celular-bg.jpg',
+                  icon: '📱',
+                  accent: 'from-emerald-600/70 via-teal-600/50 to-transparent'
+                },
+                'tvbox': {
+                  bg: '/tvbox-bg.jpg',
+                  icon: '📺',
+                  accent: 'from-purple-700/70 via-violet-600/50 to-transparent'
+                },
+              };
+
+              const deviceMeta = deviceBgMap[device.id];
+              const hasBg = !!deviceMeta;
+
+              return (
+                <button
+                  key={device.id}
+                  type="button"
+                  onClick={() => setSelectedDeviceId(device.id)}
+                  className={[
+                    'relative w-full overflow-hidden rounded-[1.5rem] shadow-xl border transition-all group',
+                    hasBg
+                      ? 'h-[100px] sm:h-[115px] border-white/10 hover:border-white/30 hover:shadow-2xl'
+                      : 'flex items-center justify-center p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40',
+                  ].join(' ')}
+                  style={hasBg ? {} : undefined}
+                >
+                  {hasBg ? (
+                    <>
+                      {/* Imagem de fundo com zoom no hover */}
+                      <div
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+                        style={{ backgroundImage: `url(${deviceMeta.bg})` }}
+                        aria-hidden="true"
+                      />
+                      {/* Overlay escuro gradiente para leitura */}
+                      <div
+                        className={`absolute inset-0 bg-gradient-to-r ${deviceMeta.accent} via-black/40 to-black/70`}
+                        aria-hidden="true"
+                      />
+                      {/* Texto e ícone sobre a imagem */}
+                      <div className="relative z-10 flex items-center justify-end w-full h-full px-6 gap-3">
+                        <span className="font-extrabold text-white text-xl sm:text-2xl tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
+                          {device.name}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <span className="font-bold text-white text-lg tracking-wide">{device.name}</span>
+                  )}
+                </button>
+              );
+            })}
 
             <button
               type="button"

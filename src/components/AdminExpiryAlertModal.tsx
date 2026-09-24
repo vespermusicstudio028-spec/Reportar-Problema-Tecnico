@@ -18,7 +18,7 @@ export interface ExpiringClientItem {
   code: string;
   phone?: string;
   expirationDate: string;
-  category: 'vencido' | 'hoje' | 'amanha' | '2dias' | '3dias';
+  category: 'hoje' | 'amanha' | '2dias' | '3dias';
   categoryLabel: string;
   badgeStyle: string;
   formattedDate: string;
@@ -52,10 +52,10 @@ export function AdminExpiryAlertModal({
   const DURATION_MS = 5000;
   const INTERVAL_MS = 50;
 
-  // Filtra e classifica os clientes por vencimento
+  // Filtra e classifica os clientes por vencimento estritamente dentro dos períodos: Hoje, Amanhã, 2 dias e 3 dias
   const expiringClients: ExpiringClientItem[] = React.useMemo(() => {
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
     
     const tomorrowStart = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
@@ -70,55 +70,20 @@ export function AdminExpiryAlertModal({
     const list: ExpiringClientItem[] = [];
 
     for (const c of clients) {
-      // Clientes de teste de 3h aparecem diretamente em "Vence Hoje"
-      const isTrial = c.plan === 'Teste 3h' || (c.plan && c.plan.toLowerCase().includes('teste'));
-      if (isTrial) {
-        let formattedDate = 'Hoje';
-        let formattedTime = 'Teste de 3h';
-        if (c.expirationDate) {
-          const exp = new Date(c.expirationDate);
-          if (!isNaN(exp.getTime())) {
-            formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-            formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-          }
-        }
-
-        list.push({
-          id: c.id,
-          name: c.name,
-          code: c.code,
-          phone: c.phone,
-          expirationDate: c.expirationDate || new Date().toISOString(),
-          category: 'hoje',
-          categoryLabel: 'Vence Hoje (Teste 3h)',
-          badgeStyle: 'bg-rose-600/30 text-rose-200 border-rose-500/50 font-extrabold animate-pulse',
-          formattedDate,
-          formattedTime,
-        });
-        continue;
-      }
-
       if (!c.expirationDate) continue;
       const exp = new Date(c.expirationDate);
       if (isNaN(exp.getTime())) continue;
 
+      // Só inclui se estiver estritamente dentro dos períodos: de hoje até no máximo 3 dias
+      // Clientes vencidos em dias anteriores (passado) ou além de 3 dias NÃO entram
+      if (exp < todayStart || exp > day3End) continue;
+
       const formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       const formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      if (exp < now) {
-        list.push({
-          id: c.id,
-          name: c.name,
-          code: c.code,
-          phone: c.phone,
-          expirationDate: c.expirationDate,
-          category: 'vencido',
-          categoryLabel: 'Vencido',
-          badgeStyle: 'bg-red-500/20 text-red-300 border-red-500/40',
-          formattedDate,
-          formattedTime,
-        });
-      } else if (exp <= todayEnd) {
+      const isTrial = c.plan === 'Teste 3h' || (c.plan && c.plan.toLowerCase().includes('teste'));
+
+      if (exp >= todayStart && exp <= todayEnd) {
         list.push({
           id: c.id,
           name: c.name,
@@ -126,7 +91,7 @@ export function AdminExpiryAlertModal({
           phone: c.phone,
           expirationDate: c.expirationDate,
           category: 'hoje',
-          categoryLabel: 'Vence Hoje',
+          categoryLabel: isTrial ? 'Vence Hoje (Teste 3h)' : 'Vence Hoje',
           badgeStyle: 'bg-rose-600/30 text-rose-200 border-rose-500/50 font-extrabold animate-pulse',
           formattedDate,
           formattedTime,
@@ -173,7 +138,7 @@ export function AdminExpiryAlertModal({
       }
     }
 
-    const priority = { hoje: 1, amanha: 2, '2dias': 3, '3dias': 4, vencido: 0 };
+    const priority: Record<string, number> = { hoje: 1, amanha: 2, '2dias': 3, '3dias': 4 };
     return list.sort((a, b) => priority[a.category] - priority[b.category]);
   }, [clients]);
 
@@ -203,13 +168,13 @@ export function AdminExpiryAlertModal({
     return () => clearInterval(timer);
   }, [isOpen, isPaused, onClose]);
 
-  if (!isOpen) return null;
+  // Se não estiver aberto ou não houver nenhum cliente vencendo nesses períodos específicos, não exibe nada
+  if (!isOpen || expiringClients.length === 0) return null;
 
   const countHoje = expiringClients.filter(c => c.category === 'hoje').length;
   const countAmanha = expiringClients.filter(c => c.category === 'amanha').length;
   const count2Dias = expiringClients.filter(c => c.category === '2dias').length;
   const count3Dias = expiringClients.filter(c => c.category === '3dias').length;
-  const countVencidos = expiringClients.filter(c => c.category === 'vencido').length;
 
   return (
     <AnimatePresence>
@@ -274,11 +239,6 @@ export function AdminExpiryAlertModal({
             {count3Dias > 0 && (
               <span className="px-2 py-0.5 rounded-md bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 font-bold">
                 Em 3 dias: {count3Dias}
-              </span>
-            )}
-            {countVencidos > 0 && (
-              <span className="px-2 py-0.5 rounded-md bg-red-500/20 text-red-300 border border-red-500/30 font-bold">
-                Vencidos: {countVencidos}
               </span>
             )}
           </div>

@@ -605,12 +605,7 @@ export default function App() {
   // Clients & Code Modal State
   const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | 'server-status' | null>(null);
 
-  // Alerta automático de vencimentos de clientes (5 segundos) ao entrar na tela inicial como admin
-  useEffect(() => {
-    if (isAdminLogged && activeView === 'dashboard' && !adminTab) {
-      setShowExpiryAlert(true);
-    }
-  }, [isAdminLogged, activeView, adminTab]);
+
 
   const [chatInitialClientCode, setChatInitialClientCode] = useState<string | null>(null);
   const [copiedCrmLogin, setCopiedCrmLogin] = useState(false);
@@ -716,6 +711,29 @@ export default function App() {
       setClientCode(generateUniqueClientCode());
     }
   }, [adminTab, clientCode]);
+
+  // Alerta automático de vencimentos de clientes (5 segundos) ao entrar na tela inicial como admin
+  // Só abre se REALMENTE houver clientes vencendo hoje, amanhã, em 2 dias ou em 3 dias
+  useEffect(() => {
+    if (isAdminLogged && activeView === 'dashboard' && !adminTab) {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const day3End = new Date(todayStart.getTime() + 4 * 24 * 60 * 60 * 1000 - 1);
+
+      const hasExpiring = clients.some(c => {
+        if (!c.expirationDate) return false;
+        const exp = new Date(c.expirationDate);
+        if (isNaN(exp.getTime())) return false;
+        return exp >= todayStart && exp <= day3End;
+      });
+
+      if (hasExpiring) {
+        setShowExpiryAlert(true);
+      } else {
+        setShowExpiryAlert(false);
+      }
+    }
+  }, [isAdminLogged, activeView, adminTab, clients]);
 
   // Image Viewer State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -5857,11 +5875,42 @@ export default function App() {
             {isAdminLogged && (
               <button
                 type="button"
-                onClick={() => setShowExpiryAlert(true)}
+                onClick={() => {
+                  const now = new Date();
+                  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+                  const day3End = new Date(todayStart.getTime() + 4 * 24 * 60 * 60 * 1000 - 1);
+                  const count = clients.filter(c => {
+                    if (!c.expirationDate) return false;
+                    const exp = new Date(c.expirationDate);
+                    return !isNaN(exp.getTime()) && exp >= todayStart && exp <= day3End;
+                  }).length;
+
+                  if (count > 0) {
+                    setShowExpiryAlert(true);
+                  } else {
+                    alert('Nenhum cliente com sinal de streaming vencendo hoje, amanhã, em 2 dias ou em 3 dias.');
+                  }
+                }}
                 className="flex items-center justify-center bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-2xl text-amber-300 hover:text-amber-200 transition-all h-11 w-11 sm:h-12 sm:w-12 active:scale-95 shadow-lg shadow-black/30 shrink-0 relative"
-                title="Avisos de Vencimentos de Clientes (5s)"
+                title="Avisos de Vencimentos (hoje, amanhã, 2 dias e 3 dias)"
               >
                 <Bell size={20} className="sm:w-[22px] sm:h-[22px]" />
+                {(() => {
+                  const now = new Date();
+                  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+                  const day3End = new Date(todayStart.getTime() + 4 * 24 * 60 * 60 * 1000 - 1);
+                  const count = clients.filter(c => {
+                    if (!c.expirationDate) return false;
+                    const exp = new Date(c.expirationDate);
+                    return !isNaN(exp.getTime()) && exp >= todayStart && exp <= day3End;
+                  }).length;
+                  if (count === 0) return null;
+                  return (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-slate-900 shadow">
+                      {count}
+                    </span>
+                  );
+                })()}
               </button>
             )}
             {isAdminLogged && (

@@ -11,6 +11,7 @@ import { AdminStoreManagerModal } from './components/AdminStoreManagerModal';
 import { ServerStatusData, DEFAULT_SERVER_STATUS, SERVER_STATUS_OPTIONS } from './types/serverStatus';
 import { ServerStatusCard } from './components/ServerStatusCard';
 import { AdminServerStatusPanel } from './components/AdminServerStatusPanel';
+import { AdminExpiryAlertModal } from './components/AdminExpiryAlertModal';
 
 import { 
   RefreshCcw,
@@ -62,6 +63,7 @@ import {
   Globe,
   Check,
   Building2,
+  Clock,
   Activity,
   Users,
   ShoppingBag
@@ -351,6 +353,7 @@ export default function App() {
   };
 
 
+
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
     // 1. Carregamento instantâneo e prioritário de Avisos Importantes (leve e filtrado)
@@ -483,7 +486,8 @@ export default function App() {
             plan: c.plan || '', price: c.price ?? undefined,
             activeApp: c.active_app || '',
             accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
-            addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at
+            addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at,
+            expirationDate: c.expiration_date || undefined
           }));
           setClients(mapped);
           try { localStorage.setItem('tbi_cached_clients', JSON.stringify(mapped)); } catch {}
@@ -600,6 +604,14 @@ export default function App() {
 
   // Clients & Code Modal State
   const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | 'server-status' | null>(null);
+
+  // Alerta automático de vencimentos de clientes (5 segundos) ao entrar na tela inicial como admin
+  useEffect(() => {
+    if (isAdminLogged && activeView === 'dashboard' && !adminTab) {
+      setShowExpiryAlert(true);
+    }
+  }, [isAdminLogged, activeView, adminTab]);
+
   const [chatInitialClientCode, setChatInitialClientCode] = useState<string | null>(null);
   const [copiedCrmLogin, setCopiedCrmLogin] = useState(false);
   const [copiedCrmPassword, setCopiedCrmPassword] = useState(false);
@@ -651,6 +663,8 @@ export default function App() {
     return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   });
   const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
+  const [clientExpiry, setClientExpiry] = useState('');
+  const [showExpiryAlert, setShowExpiryAlert] = useState(false);
   
   const [loggedClientCode, setLoggedClientCode] = useState(() => {
     return localStorage.getItem('iptv_access_code_v1') || '';
@@ -685,6 +699,7 @@ export default function App() {
     accessPoints?: AccessPointScreen[];
     addedAt: string;
     lastRecoveryAt?: string;
+    expirationDate?: string;
   }
   const [clients, setClients] = useState<Client[]>(() => {
     try {
@@ -2645,7 +2660,8 @@ export default function App() {
       const { data, error } = await supabase.from('clients').insert([{
         name: clientName,
         code: clientCode,
-        canvas_link: clientLink
+        canvas_link: clientLink,
+        expiration_date: clientExpiry ? new Date(clientExpiry).toISOString() : null
       }]).select();
 
       if (error) {
@@ -2680,6 +2696,7 @@ export default function App() {
       setClientName('');
       setClientCode(generateUniqueClientCode());
       setClientLink('https://testetestettt.my.canva.site/sr-carlos');
+      setClientExpiry('');
       alert(`✅ Cliente "${clientName}" cadastrado com sucesso!`);
     } catch (err: any) {
       console.error('Erro inesperado ao cadastrar:', err);
@@ -2701,6 +2718,7 @@ export default function App() {
           price: updatedClient.price ?? null,
           access_points: updatedClient.accessPoints || [],
           active_app: updatedClient.activeApp || updatedClient.accessPoints?.[0]?.appName || null,
+          expiration_date: updatedClient.expirationDate ? new Date(updatedClient.expirationDate).toISOString() : null,
         })
         .eq('id', updatedClient.id);
 
@@ -3612,6 +3630,38 @@ export default function App() {
                       />
                     </div>
 
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-1 text-amber-300">
+                          <Clock size={13} /> Vencimento do Sinal de Streaming (Opcional)
+                        </span>
+                        <span className="text-[11px] text-slate-500 font-normal">Ex: 23/09/2026 01:12</span>
+                      </label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="datetime-local"
+                          value={clientExpiry}
+                          onChange={(e) => setClientExpiry(e.target.value)}
+                          className="flex-1 bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-amber-500 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const now = new Date();
+                            const next = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                            const offset = next.getTimezoneOffset() * 60000;
+                            const localISOTime = new Date(next.getTime() - offset).toISOString().slice(0, 16);
+                            setClientExpiry(localISOTime);
+                          }}
+                          className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-slate-700 transition-colors shrink-0"
+                          title="Definir vencimento para 30 dias a partir de agora"
+                        >
+                          +30 Dias
+                        </button>
+                      </div>
+                    </div>
+
+
                     <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 text-sm">
                       Cadastrar Cliente
                     </button>
@@ -3757,6 +3807,63 @@ export default function App() {
                                         <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-900/40 text-emerald-300 font-bold border border-emerald-700/40">
                                           💰 R$ {Number(client.price).toFixed(2).replace('.', ',')}
                                           {client.plan ? ` – ${client.plan}` : ''}
+                                        </span>
+                                      )}
+                                      {/* Badge de Vencimento do Sinal */}
+                                      {client.expirationDate ? (() => {
+                                        const exp = new Date(client.expirationDate);
+                                        const now = new Date();
+                                        const diffHours = (exp.getTime() - now.getTime()) / (1000 * 60 * 60);
+                                        const diffDays = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                                        const isExpired = diffHours < 0;
+                                        const isToday = !isExpired && diffDays <= 1 && exp.getDate() === now.getDate();
+                                        const isTomorrow = !isExpired && (diffDays === 1 && exp.getDate() !== now.getDate() || diffDays === 2 && exp.getDate() === now.getDate() + 1);
+
+                                        const formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                        const formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                                        if (isExpired) {
+                                          return (
+                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 border border-red-500/40 font-bold flex items-center gap-1.5">
+                                              <Clock size={12} className="text-red-400" />
+                                              Vencido em {formattedDate} {formattedTime}
+                                            </span>
+                                          );
+                                        }
+                                        if (isToday) {
+                                          return (
+                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-rose-600/30 text-rose-200 border border-rose-500/50 font-extrabold flex items-center gap-1.5 animate-pulse">
+                                              <Clock size={12} className="text-rose-400" />
+                                              Vence HOJE às {formattedTime}
+                                            </span>
+                                          );
+                                        }
+                                        if (isTomorrow) {
+                                          return (
+                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-200 border border-orange-500/40 font-bold flex items-center gap-1.5">
+                                              <Clock size={12} className="text-orange-400" />
+                                              Vence AMANHÃ ({formattedDate} {formattedTime})
+                                            </span>
+                                          );
+                                        }
+                                        if (diffDays <= 3) {
+                                          return (
+                                            <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40 font-bold flex items-center gap-1.5">
+                                              <Clock size={12} className="text-amber-400" />
+                                              Vence em {diffDays} dias ({formattedDate} {formattedTime})
+                                            </span>
+                                          );
+                                        }
+                                        return (
+                                          <span className="text-xs px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium flex items-center gap-1.5">
+                                            <Clock size={12} className="text-emerald-400" />
+                                            Vence em {formattedDate} {formattedTime}
+                                          </span>
+                                        );
+                                      })() : (
+                                        <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-800/80 text-slate-400 border border-slate-700/60 font-medium flex items-center gap-1">
+                                          <Clock size={12} className="text-slate-500" />
+                                          Sem vencimento
                                         </span>
                                       )}
                                     </div>
@@ -5592,6 +5699,16 @@ export default function App() {
             {isAdminLogged && (
               <button
                 type="button"
+                onClick={() => setShowExpiryAlert(true)}
+                className="flex items-center justify-center bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-2xl text-amber-300 hover:text-amber-200 transition-all h-11 w-11 sm:h-12 sm:w-12 active:scale-95 shadow-lg shadow-black/30 shrink-0 relative"
+                title="Avisos de Vencimentos de Clientes (5s)"
+              >
+                <Bell size={20} className="sm:w-[22px] sm:h-[22px]" />
+              </button>
+            )}
+            {isAdminLogged && (
+              <button
+                type="button"
                 onClick={() => setShowLoginModal(true)}
                 className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold transition-all text-xs sm:text-sm h-11 sm:h-12 rounded-2xl shadow-lg shadow-amber-600/25 border border-amber-500/40 active:scale-95 shrink-0 relative"
                 title="Abrir Painel do Administrador"
@@ -5627,6 +5744,20 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
+      {/* Alerta de Vencimentos de Clientes para o Administrador (5s) */}
+      {isAdminLogged && (
+        <AdminExpiryAlertModal
+          clients={clients}
+          isOpen={showExpiryAlert}
+          onClose={() => setShowExpiryAlert(false)}
+          onOpenClientChat={(code) => {
+            setChatInitialClientCode(code);
+            setAdminTab('chat');
+            setShowLoginModal(false);
+          }}
+        />
+      )}
+
       {renderClientEditModal()}
       {renderQuotaModal()}
       {renderForgotCodeModal()}

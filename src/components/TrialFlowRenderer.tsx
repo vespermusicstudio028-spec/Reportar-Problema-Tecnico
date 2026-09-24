@@ -1135,13 +1135,12 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                   glowColor: 'rgba(59,130,246,0.55)',
                   cardDarkBg: '#060d1f',
                   icon: (
-                    /* Google Play Store triangle — colorido */
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-lg flex-shrink-0">
-                      <path d="M3 2.8v18.4L13.6 12 3 2.8z" fill="#4285F4"/>
-                      <path d="M3 2.8l10.6 6.1 3-3L7.1.3 3 2.8z" fill="#34A853"/>
-                      <path d="M3 21.2l4.1 2.5 9.5-5.6-3-3L3 21.2z" fill="#EA4335"/>
-                      <path d="M16.6 15.1l3.8-2.2c.8-.5.8-1.3 0-1.8l-3.8-2.2-3 3 3 3.2z" fill="#FBBC04"/>
-                    </svg>
+                    <img
+                      src="/google-play-icon.png"
+                      alt="Google Play Store"
+                      className="w-10 h-10 sm:w-12 sm:h-12 object-contain drop-shadow-lg flex-shrink-0"
+                      draggable={false}
+                    />
                   )
                 },
                 'celular': {

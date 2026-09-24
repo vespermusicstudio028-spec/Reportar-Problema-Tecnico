@@ -1090,79 +1090,163 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         exit={{ opacity: 0, x: -20 }}
         className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
       >
-        <div className="w-full max-w-lg mx-auto">
-          <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white drop-shadow-md uppercase">QUAL É O SEU DISPOSITIVO PRINCIPAL ?</h2>
+        <div className="w-full max-w-lg mx-auto px-1">
+
+          {/* ── Título ── */}
+          <div className="text-center mb-6 mt-2 relative z-10">
+            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight uppercase leading-snug drop-shadow-lg">
+              <span className="text-white">QUAL É O SEU DISPOSITIVO </span>
+              <br />
+              <span
+                className="text-cyan-400"
+                style={{ textShadow: '0 0 18px rgba(34,211,238,0.8)' }}
+              >
+                PRINCIPAL ?
+              </span>
+            </h2>
           </div>
 
-          <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
+          {/* ── Cards de Dispositivos ── */}
+          {/*
+            Cada card "principal" (android-tv, celular, tvbox) usa a técnica de
+            padding-top + image absoluta para fazer o dispositivo "flutuar" acima
+            da borda do card, exatamente como na imagem de referência.
+          */}
+          <div className="flex flex-col gap-2 sm:gap-3 w-full relative z-10">
             {config.devices.filter(d => d.visible !== false).map(device => {
-              // Mapeia IDs de dispositivos para imagens de fundo e ícones
-              const deviceBgMap: Record<string, { bg: string; icon: string; accent: string }> = {
+
+              // ── Mapa visual por ID de dispositivo ──
+              type DevVisual = {
+                cardImg: string;
+                borderColor: string;
+                glowColor: string;
+                cardDarkBg: string;
+                icon: React.ReactNode;
+              };
+
+              const DEV_VISUALS: Record<string, DevVisual> = {
                 'android-tv': {
-                  bg: '/tv-android-bg.jpg',
-                  icon: '▶',
-                  accent: 'from-blue-600/70 via-indigo-600/50 to-transparent'
+                  cardImg: '/tv-android-card.jpg',
+                  borderColor: '#3b82f6',
+                  glowColor: 'rgba(59,130,246,0.55)',
+                  cardDarkBg: '#060d1f',
+                  icon: (
+                    /* Google Play Store triangle — colorido */
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-lg flex-shrink-0">
+                      <path d="M3 2.8v18.4L13.6 12 3 2.8z" fill="#4285F4"/>
+                      <path d="M3 2.8l10.6 6.1 3-3L7.1.3 3 2.8z" fill="#34A853"/>
+                      <path d="M3 21.2l4.1 2.5 9.5-5.6-3-3L3 21.2z" fill="#EA4335"/>
+                      <path d="M16.6 15.1l3.8-2.2c.8-.5.8-1.3 0-1.8l-3.8-2.2-3 3 3 3.2z" fill="#FBBC04"/>
+                    </svg>
+                  )
                 },
                 'celular': {
-                  bg: '/celular-bg.jpg',
-                  icon: '📱',
-                  accent: 'from-emerald-600/70 via-teal-600/50 to-transparent'
+                  cardImg: '/celular-card.jpg',
+                  borderColor: '#2dd4bf',
+                  glowColor: 'rgba(45,212,191,0.50)',
+                  cardDarkBg: '#040f0d',
+                  icon: (
+                    /* Ícone de smartphone outline — branco */
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-lg flex-shrink-0">
+                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+                      <circle cx="12" cy="18" r="1" fill="white" stroke="none"/>
+                    </svg>
+                  )
                 },
                 'tvbox': {
-                  bg: '/tvbox-bg.jpg',
-                  icon: '📺',
-                  accent: 'from-purple-700/70 via-violet-600/50 to-transparent'
+                  cardImg: '/tvbox-card.jpg',
+                  borderColor: '#8b5cf6',
+                  glowColor: 'rgba(139,92,246,0.55)',
+                  cardDarkBg: '#0a0514',
+                  icon: (
+                    /* Ícone de TV com antenas — branco */
+                    <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10 sm:w-12 sm:h-12 drop-shadow-lg flex-shrink-0">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                      <path d="M7 7L12 2l5 5"/>
+                      <line x1="12" y1="2" x2="12" y2="7"/>
+                    </svg>
+                  )
                 },
               };
 
-              const deviceMeta = deviceBgMap[device.id];
-              const hasBg = !!deviceMeta;
+              const visual = DEV_VISUALS[device.id];
 
+              // ── Dispositivos sem visual especial (Smart TV, Computador, etc.) ──
+              if (!visual) {
+                return (
+                  <button
+                    key={device.id}
+                    type="button"
+                    onClick={() => setSelectedDeviceId(device.id)}
+                    className="flex items-center justify-center w-full p-4 bg-[#1a1d2e]/70 backdrop-blur-xl border border-white/10 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.25rem] transition-all shadow-xl text-white font-bold text-lg active:scale-[0.98]"
+                  >
+                    {device.name}
+                  </button>
+                );
+              }
+
+              // ── Card principal com imagem flutuando acima ──
               return (
-                <button
+                <div
                   key={device.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedDeviceId(device.id)}
-                  className={[
-                    'relative w-full overflow-hidden rounded-[1.5rem] shadow-xl border transition-all group',
-                    hasBg
-                      ? 'h-[100px] sm:h-[115px] border-white/10 hover:border-white/30 hover:shadow-2xl'
-                      : 'flex items-center justify-center p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40',
-                  ].join(' ')}
-                  style={hasBg ? {} : undefined}
+                  onKeyDown={e => e.key === 'Enter' && setSelectedDeviceId(device.id)}
+                  className="relative w-full group cursor-pointer select-none outline-none"
+                  style={{ paddingTop: '30px' }}   /* espaço para a imagem flutuar acima */
                 >
-                  {hasBg ? (
-                    <>
-                      {/* Imagem de fundo com zoom no hover */}
-                      <div
-                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
-                        style={{ backgroundImage: `url(${deviceMeta.bg})` }}
-                        aria-hidden="true"
-                      />
-                      {/* Overlay escuro gradiente para leitura */}
-                      <div
-                        className={`absolute inset-0 bg-gradient-to-r ${deviceMeta.accent} via-black/40 to-black/70`}
-                        aria-hidden="true"
-                      />
-                      {/* Texto e ícone sobre a imagem */}
-                      <div className="relative z-10 flex items-center justify-end w-full h-full px-6 gap-3">
-                        <span className="font-extrabold text-white text-xl sm:text-2xl tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">
-                          {device.name}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="font-bold text-white text-lg tracking-wide">{device.name}</span>
-                  )}
-                </button>
+                  {/* ── Corpo do card com borda colorida ── */}
+                  <div
+                    className="relative h-[100px] sm:h-[110px] rounded-[1.5rem] overflow-hidden flex items-stretch border-2 transition-all duration-300 group-hover:brightness-110 group-hover:scale-[1.015] active:scale-[0.98]"
+                    style={{
+                      borderColor: visual.borderColor,
+                      boxShadow: `0 0 28px ${visual.glowColor}, 0 4px 20px rgba(0,0,0,0.6)`,
+                      background: visual.cardDarkBg,
+                    }}
+                  >
+                    {/* Espaço à esquerda reservado para a imagem que flutua por cima */}
+                    <div className="w-[44%] sm:w-[42%] flex-shrink-0" />
+
+                    {/* Linha divisória suave */}
+                    <div className="w-px bg-white/10 flex-shrink-0 my-4" />
+
+                    {/* Lado direito: ícone + nome */}
+                    <div className="flex-1 flex items-center justify-center gap-3 sm:gap-4 px-3 sm:px-5">
+                      {visual.icon}
+                      <span
+                        className="font-black text-white text-lg sm:text-xl md:text-2xl leading-tight text-left"
+                        style={{ textShadow: '0 2px 10px rgba(0,0,0,0.95)' }}
+                      >
+                        {device.name}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ── Imagem do dispositivo — flutua acima da borda do card ── */}
+                  <div
+                    className="absolute top-0 left-1 sm:left-2 w-[44%] sm:w-[42%] pointer-events-none z-20"
+                    style={{ height: 'calc(100% + 2px)' }}
+                  >
+                    <img
+                      src={visual.cardImg}
+                      alt={device.name}
+                      className="w-full h-full object-contain object-bottom"
+                      draggable={false}
+                      style={{
+                        filter: 'drop-shadow(0 6px 20px rgba(0,0,0,0.85))',
+                      }}
+                    />
+                  </div>
+                </div>
               );
             })}
 
+            {/* ── Botão VOLTAR ── */}
             <button
               type="button"
               onClick={onClose}
-              className="mt-4 flex items-center justify-center w-full p-4 gap-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:via-rose-500 hover:to-red-400 text-white font-extrabold text-base tracking-wider rounded-[1.5rem] transition-all shadow-xl shadow-red-600/30 border border-rose-400/50 hover:border-rose-300 hover:scale-[1.02] active:scale-[0.98] group"
+              className="mt-3 flex items-center justify-center w-full p-4 gap-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:via-rose-500 hover:to-red-400 text-white font-extrabold text-base tracking-wider rounded-[1.5rem] transition-all shadow-xl shadow-red-600/30 border border-rose-400/50 hover:border-rose-300 hover:scale-[1.02] active:scale-[0.98] group"
             >
               <ChevronLeft size={22} className="stroke-[2.5] group-hover:-translate-x-1 transition-transform" />
               <span className="drop-shadow-md">VOLTAR</span>
@@ -1174,3 +1258,4 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
     </>
   );
 }
+

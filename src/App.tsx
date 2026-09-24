@@ -4737,6 +4737,96 @@ export default function App() {
                 />
               </div>
 
+              {/* Vencimento do Sinal de Streaming */}
+              <div className="bg-[#141824] p-4 sm:p-5 rounded-2xl border border-amber-500/30 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock size={16} className="text-amber-400" />
+                    Vencimento do Sinal de Streaming
+                  </label>
+                  {editingClient.expirationDate && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingClient({ ...editingClient, expirationDate: undefined })}
+                      className="text-[11px] text-red-400 hover:text-red-300 font-semibold transition-colors flex items-center gap-1"
+                    >
+                      <Trash2 size={12} /> Remover vencimento
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <input
+                    type="datetime-local"
+                    value={(() => {
+                      if (!editingClient.expirationDate) return '';
+                      try {
+                        const d = new Date(editingClient.expirationDate);
+                        const offset = d.getTimezoneOffset() * 60000;
+                        return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+                      } catch {
+                        return '';
+                      }
+                    })()}
+                    onChange={(e) => {
+                      if (!e.target.value) {
+                        setEditingClient({ ...editingClient, expirationDate: undefined });
+                      } else {
+                        setEditingClient({ ...editingClient, expirationDate: new Date(e.target.value).toISOString() });
+                      }
+                    }}
+                    className="flex-1 bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm transition-all"
+                  />
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const baseDate = editingClient.expirationDate ? new Date(editingClient.expirationDate) : new Date();
+                        const next = new Date(baseDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+                        setEditingClient({ ...editingClient, expirationDate: next.toISOString() });
+                      }}
+                      className="px-3.5 py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all active:scale-95"
+                      title="Adicionar 30 dias a partir da data de vencimento atual"
+                    >
+                      +30 Dias
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        const next = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+                        setEditingClient({ ...editingClient, expirationDate: next.toISOString() });
+                      }}
+                      className="px-3.5 py-2.5 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition-all active:scale-95"
+                      title="Definir vencimento para 30 dias a partir de hoje"
+                    >
+                      Hoje + 30d
+                    </button>
+                  </div>
+                </div>
+
+                {editingClient.expirationDate && (() => {
+                  try {
+                    const exp = new Date(editingClient.expirationDate);
+                    const now = new Date();
+                    const diffDays = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                    const isExpired = exp < now;
+                    const formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                    const formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                    return (
+                      <p className="text-xs text-slate-400 font-medium">
+                        Situação atual: <strong className={isExpired ? 'text-red-400' : diffDays <= 3 ? 'text-amber-400' : 'text-emerald-400'}>
+                          {isExpired ? 'Vencido' : diffDays === 0 ? 'Vence Hoje' : diffDays === 1 ? 'Vence Amanhã' : `Vence em ${diffDays} dias`}
+                        </strong> ({formattedDate} às {formattedTime})
+                      </p>
+                    );
+                  } catch {
+                    return null;
+                  }
+                })()}
+              </div>
+
               {/* ───────────────────────────────────────────────────────────── */}
               {/* PONTOS DE ACESSO (TELAS) & APLICATIVO DO CLIENTE              */}
               {/* ───────────────────────────────────────────────────────────── */}

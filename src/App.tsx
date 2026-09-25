@@ -2219,6 +2219,151 @@ export default function App() {
             <div className="absolute -top-10 -left-10 w-48 h-48 bg-black/20 rounded-full blur-3xl" />
           </div>
 
+          {/* ─── Card: Sinal de Streaming & Aplicativo (somente para clientes) ─── */}
+          {isClientSession && currentClient && (() => {
+            const now = new Date();
+            const streamExp = currentClient.expirationDate ? new Date(currentClient.expirationDate) : null;
+            const isTrial = currentClient.plan === 'Teste 3h' || (currentClient.plan?.toLowerCase().includes('teste') ?? false);
+
+            const streamStatus = (() => {
+              if (!streamExp || isNaN(streamExp.getTime())) return { label: 'Sem data', color: 'text-slate-400', bg: 'bg-slate-700/30', border: 'border-slate-600/40', dot: 'bg-slate-500' };
+              if (isTrial) return { label: 'Teste de 3h', color: 'text-amber-300', bg: 'bg-amber-500/15', border: 'border-amber-500/30', dot: 'bg-amber-400 animate-pulse' };
+              const diffMs = streamExp.getTime() - now.getTime();
+              const diffH = diffMs / (1000 * 60 * 60);
+              if (diffMs < 0) return { label: 'Expirado', color: 'text-red-400', bg: 'bg-red-500/15', border: 'border-red-500/30', dot: 'bg-red-400' };
+              if (diffH <= 24) return { label: 'Vence Hoje', color: 'text-red-300', bg: 'bg-red-500/15', border: 'border-red-500/30', dot: 'bg-red-400 animate-pulse' };
+              if (diffH <= 48) return { label: 'Vence Amanhã', color: 'text-orange-300', bg: 'bg-orange-500/15', border: 'border-orange-500/30', dot: 'bg-orange-400 animate-pulse' };
+              if (diffH <= 72) return { label: 'Vence em 3 dias', color: 'text-yellow-300', bg: 'bg-yellow-500/15', border: 'border-yellow-500/30', dot: 'bg-yellow-400 animate-pulse' };
+              return { label: 'Ativo', color: 'text-emerald-400', bg: 'bg-emerald-500/12', border: 'border-emerald-500/30', dot: 'bg-emerald-400 animate-pulse' };
+            })();
+
+            const formatDatePtBR = (d: Date) =>
+              d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+              ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+            const accessPoints = currentClient.accessPoints ?? [];
+
+            const getAppExpLabel = (ap: AccessPointScreen): string => {
+              const appNameLow = (ap.appName || '').toLowerCase();
+              if (appNameLow.includes('hybrid')) return 'Indeterminado';
+              if (ap.isLifetime) return 'Indeterminado';
+              if (!ap.expiresAt) return 'Indeterminado';
+              const d = new Date(ap.expiresAt);
+              if (isNaN(d.getTime())) return 'Indeterminado';
+              return formatDatePtBR(d);
+            };
+
+            // Fallback: se não há accessPoints, usar activeApp
+            const fallbackApp = currentClient.activeApp || 'New Hybrid';
+            const fallbackIsHybrid = fallbackApp.toLowerCase().includes('hybrid');
+
+            return (
+              <div className="bg-gradient-to-br from-[#0f1522] to-[#131a2a] border border-indigo-500/20 rounded-2xl overflow-hidden shadow-xl">
+                {/* Cabeçalho do card */}
+                <div className="px-6 py-4 border-b border-indigo-500/15 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                    <Wifi size={16} className="text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-bold text-sm">Sinal de Streaming & Aplicativo</h4>
+                    <p className="text-slate-500 text-[11px]">Informações do seu ponto de acesso</p>
+                  </div>
+                </div>
+
+                <div className="p-6 space-y-5">
+                  {/* Bloco: Ponto de Streaming */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-widest">Ponto de Streaming</span>
+                    <div className={`flex items-center justify-between gap-3 p-3.5 rounded-xl ${streamStatus.bg} border ${streamStatus.border}`}>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${streamStatus.dot}`} />
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-semibold truncate">
+                            {streamExp && !isNaN(streamExp.getTime())
+                              ? formatDatePtBR(streamExp)
+                              : '—'}
+                          </p>
+                          {isTrial && (
+                            <p className="text-amber-400/70 text-[10px] font-medium mt-0.5">Válido por apenas 3 horas</p>
+                          )}
+                        </div>
+                      </div>
+                      <span className={`text-[11px] font-extrabold uppercase tracking-wider shrink-0 px-2.5 py-1 rounded-lg border ${streamStatus.bg} ${streamStatus.border} ${streamStatus.color}`}>
+                        {streamStatus.label}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bloco: Aplicativos / Pontos de Acesso */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-widest">
+                      {accessPoints.length > 1 ? `Aplicativos (${accessPoints.length} telas)` : 'Aplicativo'}
+                    </span>
+                    {accessPoints.length > 0 ? (
+                      <div className="space-y-2">
+                        {accessPoints.map((ap, idx) => {
+                          const appLabel = getAppExpLabel(ap);
+                          const isHybrid = (ap.appName || '').toLowerCase().includes('hybrid');
+                          const isIndet = appLabel === 'Indeterminado';
+                          return (
+                            <div key={idx} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/4 border border-white/6">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {ap.appIcon ? (
+                                  <img src={ap.appIcon} alt={ap.appName} className="w-8 h-8 rounded-lg object-contain shrink-0 border border-white/10 bg-black/20 p-0.5" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                                    <Tv size={14} className="text-indigo-400" />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p className="text-white text-xs font-bold truncate">
+                                    {accessPoints.length > 1 ? `Tela ${ap.screenNumber}: ` : ''}{ap.appName || 'Aplicativo'}
+                                  </p>
+                                  <p className="text-slate-500 text-[10px] mt-0.5">
+                                    {ap.macAddress ? `MAC: ${ap.macAddress}` : ap.username ? `Login: ${ap.username}` : ap.deviceKey ? `Key: ${ap.deviceKey}` : 'Ponto de acesso'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border block ${
+                                  isIndet
+                                    ? 'bg-violet-500/15 text-violet-300 border-violet-500/30'
+                                    : 'bg-emerald-500/12 text-emerald-300 border-emerald-500/25'
+                                }`}>
+                                  {isHybrid ? '♾️ Indeterminado' : isIndet ? '♾️ Indeterminado' : appLabel}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* Sem accessPoints: usar activeApp como fallback */
+                      <div className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/4 border border-white/6">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
+                            <Tv size={14} className="text-indigo-400" />
+                          </div>
+                          <div>
+                            <p className="text-white text-xs font-bold">{fallbackApp}</p>
+                            <p className="text-slate-500 text-[10px] mt-0.5">Ponto de acesso</p>
+                          </div>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border ${
+                          fallbackIsHybrid
+                            ? 'bg-violet-500/15 text-violet-300 border-violet-500/30'
+                            : 'bg-emerald-500/12 text-emerald-300 border-emerald-500/25'
+                        }`}>
+                          {fallbackIsHybrid ? '♾️ Indeterminado' : '—'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Sobre esta conta */}
             <div className="bg-[#15181e] border border-slate-800 p-6 rounded-2xl space-y-4">

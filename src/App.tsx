@@ -359,13 +359,11 @@ export default function App() {
     // 1. Carregamento instantâneo e prioritário de Avisos Importantes (leve e filtrado)
     const fetchAnnouncementsFast = async () => {
       try {
-        // Busca imediata apenas dos avisos recentes/válidos (retorno em < 100ms)
+        // Busca todos os informes cadastrados para o histórico completo do administrador
         const { data: annData, error: annErr } = await supabase
           .from('announcements')
           .select('*')
-          .gte('expiry_date', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-          .order('created_at', { ascending: false })
-          .limit(10);
+          .order('created_at', { ascending: false });
 
         setIsAnnouncementsLoading(false);
 

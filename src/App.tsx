@@ -605,6 +605,7 @@ export default function App() {
   const [adminInformesTab, setAdminInformesTab] = useState<'novo' | 'historico'>('novo');
   const [annSearchTerm, setAnnSearchTerm] = useState('');
   const [annFilterStatus, setAnnFilterStatus] = useState<string>('todos');
+  const adminInformesTouchStartRef = useRef<{ x: number; y: number } | null>(null);
 
 
 
@@ -3450,7 +3451,38 @@ export default function App() {
               {/* PÁGINA: INFORMES                      */}
               {/* ───────────────────────────────────── */}
               {adminTab === 'informes' && (
-                <div className="space-y-6">
+                <div 
+                  className="space-y-6 touch-pan-y"
+                  onTouchStart={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (target.closest('input, textarea, select, [data-no-swipe="true"]')) return;
+                    const touch = e.touches[0];
+                    adminInformesTouchStartRef.current = { x: touch.clientX, y: touch.clientY };
+                  }}
+                  onTouchEnd={(e) => {
+                    if (!adminInformesTouchStartRef.current) return;
+                    const target = e.target as HTMLElement;
+                    if (target.closest('input, textarea, select, [data-no-swipe="true"]')) {
+                      adminInformesTouchStartRef.current = null;
+                      return;
+                    }
+                    const touch = e.changedTouches[0];
+                    const diffX = adminInformesTouchStartRef.current.x - touch.clientX;
+                    const diffY = adminInformesTouchStartRef.current.y - touch.clientY;
+                    adminInformesTouchStartRef.current = null;
+
+                    // Gesto horizontal com mínimo de 40px
+                    if (Math.abs(diffX) > 40 && Math.abs(diffX) > Math.abs(diffY) * 1.1) {
+                      if (diffX > 0 && adminInformesTab === 'novo') {
+                        // Deslizar da direita para esquerda (Swipe Left) -> Histórico
+                        setAdminInformesTab('historico');
+                      } else if (diffX < 0 && adminInformesTab === 'historico') {
+                        // Deslizar da esquerda para direita (Swipe Right) -> Novo Informe
+                        setAdminInformesTab('novo');
+                      }
+                    }
+                  }}
+                >
                   {/* Seletor Superior de Abas (Novo Informe vs Histórico de Publicações) */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-[#0c1017] rounded-2xl border border-slate-800 shadow-xl">
                     <div className="flex items-center gap-2">
@@ -3512,9 +3544,33 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Indicador de gesto mobile (deslizar) */}
+                  <div className="sm:hidden flex items-center justify-between px-3.5 py-1.5 bg-[#0e121b] rounded-xl border border-slate-800/80 text-[11px] text-slate-400 font-medium">
+                    {adminInformesTab === 'novo' ? (
+                      <span className="flex items-center gap-1.5 text-indigo-300 font-semibold">
+                        <span>Deslize para a esquerda para abrir o Histórico</span>
+                        <span>👈</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-indigo-300 font-semibold">
+                        <span>👉</span>
+                        <span>Deslize para a direita para Criar Novo Informe</span>
+                      </span>
+                    )}
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      {adminInformesTab === 'novo' ? '1/2' : '2/2'}
+                    </span>
+                  </div>
+
                   {/* ABA 1: FORMULÁRIO NOVO INFORME */}
                   {adminInformesTab === 'novo' && (
-                    <div className="space-y-6">
+                    <motion.div
+                      key="tab-novo"
+                      initial={{ opacity: 0, x: -16 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="space-y-6"
+                    >
                       {/* Formulário Novo Informe */}
                       <form onSubmit={handleAddAnnouncement} className="bg-[#0f131c] p-6 md:p-8 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
                         <h3 className="text-white font-bold text-lg flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -3755,7 +3811,7 @@ export default function App() {
                       <ChevronRight size={14} />
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {/* ABA 2: PÁGINA DO HISTÓRICO DE INFORMES PUBLICADOS */}
@@ -3775,7 +3831,13 @@ export default function App() {
                 });
 
                 return (
-                  <div className="space-y-6">
+                  <motion.div
+                    key="tab-historico"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="space-y-6"
+                  >
                     {/* Cabeçalho da Página de Histórico */}
                     <div className="bg-gradient-to-r from-indigo-950/40 via-[#0f131c] to-[#0f131c] p-6 rounded-3xl border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
@@ -4005,7 +4067,7 @@ export default function App() {
                         ))}
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 );
               })()}
                 </div>

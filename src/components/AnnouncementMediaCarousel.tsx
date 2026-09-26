@@ -114,6 +114,7 @@ export const AnnouncementMediaCarousel: React.FC<AnnouncementMediaCarouselProps>
 
   return (
     <div 
+      data-no-swipe="true"
       className="mt-3 rounded-2xl overflow-hidden border border-white/10 shadow-2xl relative group bg-[#0d1017] select-none"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}

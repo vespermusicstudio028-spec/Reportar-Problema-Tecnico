@@ -604,6 +604,9 @@ export default function App() {
 
   // Clients & Code Modal State
   const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | 'server-status' | null>(null);
+  const [adminInformesTab, setAdminInformesTab] = useState<'novo' | 'historico'>('novo');
+  const [annSearchTerm, setAnnSearchTerm] = useState('');
+  const [annFilterStatus, setAnnFilterStatus] = useState<string>('todos');
 
 
 
@@ -2716,6 +2719,7 @@ export default function App() {
       setAnnExpiry('');
       setAnnMediaFiles([]);
       setPollOptionsInput(['', '']);
+      setAdminInformesTab('historico');
     } catch (err: any) {
       alert('Erro inesperado ao publicar: ' + err.message);
     }
@@ -2728,6 +2732,7 @@ export default function App() {
     else setAnnName('');
     setAnnMessage(ann.message);
     setAnnExpiry(ann.expiryDate.slice(0, 16));
+    setAdminInformesTab('novo');
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
@@ -3447,13 +3452,77 @@ export default function App() {
               {/* PÁGINA: INFORMES                      */}
               {/* ───────────────────────────────────── */}
               {adminTab === 'informes' && (
-                <div className="space-y-8">
-                  {/* Formulário Novo Informe */}
-                  <form onSubmit={handleAddAnnouncement} className="bg-[#0f131c] p-6 md:p-8 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
-                    <h3 className="text-white font-bold text-lg flex items-center gap-2 border-b border-slate-800 pb-3">
-                      <Bell size={20} className="text-indigo-400"/>
-                      Criar Novo Informe ou Enquete
-                    </h3>
+                <div className="space-y-6">
+                  {/* Seletor Superior de Abas (Novo Informe vs Histórico de Publicações) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-[#0c1017] rounded-2xl border border-slate-800 shadow-xl">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setAdminInformesTab('novo')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${
+                          adminInformesTab === 'novo'
+                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-600/30'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <PlusCircle size={16} />
+                        <span>Novo Informe</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setAdminInformesTab('historico')}
+                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all ${
+                          adminInformesTab === 'historico'
+                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-lg shadow-indigo-600/30'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                        }`}
+                      >
+                        <History size={16} />
+                        <span>Histórico de Publicações</span>
+                        <span className={`text-[11px] px-2 py-0.5 rounded-full font-extrabold ${
+                          adminInformesTab === 'historico'
+                            ? 'bg-white/25 text-white'
+                            : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        }`}>
+                          {announcements.length}
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="px-2 self-end sm:self-auto">
+                      {adminInformesTab === 'novo' ? (
+                        <button
+                          type="button"
+                          onClick={() => setAdminInformesTab('historico')}
+                          className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 transition-colors"
+                        >
+                          <History size={14} />
+                          <span>Ver histórico de publicados ({announcements.length})</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setAdminInformesTab('novo')}
+                          className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-colors"
+                        >
+                          <PlusCircle size={14} />
+                          <span>+ Publicar novo informe</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ABA 1: FORMULÁRIO NOVO INFORME */}
+                  {adminInformesTab === 'novo' && (
+                    <div className="space-y-6">
+                      {/* Formulário Novo Informe */}
+                      <form onSubmit={handleAddAnnouncement} className="bg-[#0f131c] p-6 md:p-8 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
+                        <h3 className="text-white font-bold text-lg flex items-center gap-2 border-b border-slate-800 pb-3">
+                          <Bell size={20} className="text-indigo-400"/>
+                          Criar Novo Informe ou Enquete
+                        </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5">
                         <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Categoria</label>
@@ -3668,43 +3737,193 @@ export default function App() {
                     </button>
                   </form>
 
-                  {/* Histórico de Informes */}
-                  <div className="space-y-4">
-                    <h3 className="text-white font-bold text-lg flex items-center justify-between">
-                      <span>Informes Cadastrados ({announcements.length})</span>
-                    </h3>
-                    {announcements.length === 0 ? (
-                      <div className="text-center py-12 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800">
-                        <Bell size={36} className="text-slate-600 mx-auto mb-3" />
-                        <p className="text-slate-400 font-medium">Nenhum informe publicado até o momento.</p>
+                  {/* Card de Acesso Rápido ao Histórico */}
+                  <div className="bg-[#0f131c]/70 p-5 rounded-2xl border border-slate-800 flex items-center justify-between gap-4 shadow-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                        <History size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-white text-sm font-bold">Histórico de Publicações</h4>
+                        <p className="text-xs text-slate-400">Você possui {announcements.length} informe(s) já publicado(s) no sistema.</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAdminInformesTab('historico')}
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-bold rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 shrink-0"
+                    >
+                      <span>Abrir Histórico</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ABA 2: PÁGINA DO HISTÓRICO DE INFORMES PUBLICADOS */}
+              {adminInformesTab === 'historico' && (() => {
+                const q = annSearchTerm.toLowerCase().trim();
+                const filtered = announcements.filter(ann => {
+                  const matchesSearch = !q ||
+                    ann.name.toLowerCase().includes(q) ||
+                    ann.message.toLowerCase().includes(q) ||
+                    ann.status.toLowerCase().includes(q) ||
+                    ann.category.toLowerCase().includes(q);
+
+                  if (!matchesSearch) return false;
+                  if (annFilterStatus === 'todos') return true;
+                  if (annFilterStatus === 'Enquete') return ann.status === 'Enquete' || ann.status === 'Evento' || ann.category === 'Enquete / Evento';
+                  return ann.status === annFilterStatus;
+                });
+
+                return (
+                  <div className="space-y-6">
+                    {/* Cabeçalho da Página de Histórico */}
+                    <div className="bg-gradient-to-r from-indigo-950/40 via-[#0f131c] to-[#0f131c] p-6 rounded-3xl border border-indigo-500/20 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider mb-1">
+                          <History size={16} />
+                          <span>Página de Histórico</span>
+                        </div>
+                        <h3 className="text-xl md:text-2xl font-extrabold text-white">Informes Publicados</h3>
+                        <p className="text-xs md:text-sm text-slate-400 mt-1">
+                          Todos os comunicados, avisos técnicos e enquetes que você já publicou.
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="bg-[#151922] px-4 py-2.5 rounded-2xl border border-slate-800 text-center">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block">Total</span>
+                          <span className="text-lg font-black text-indigo-400">{announcements.length}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAdminInformesTab('novo')}
+                          className="flex items-center gap-2 px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs md:text-sm font-bold rounded-2xl transition-all shadow-lg shadow-indigo-600/30 active:scale-95"
+                        >
+                          <PlusCircle size={16} />
+                          <span>Novo Informe</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Barra de Pesquisa e Filtros */}
+                    <div className="bg-[#0f131c] p-4 rounded-2xl border border-slate-800/80 space-y-3 shadow-lg">
+                      <div className="relative w-full">
+                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={annSearchTerm}
+                          onChange={(e) => setAnnSearchTerm(e.target.value)}
+                          placeholder="Pesquisar por título, mensagem ou status..."
+                          className="w-full pl-10 pr-9 py-2.5 bg-[#151922] border border-slate-700/80 rounded-xl text-xs md:text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-indigo-500 transition-colors"
+                        />
+                        {annSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setAnnSearchTerm('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filtros em formato Pill */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 no-scrollbar text-xs">
+                        {[
+                          { id: 'todos', label: 'Todos' },
+                          { id: 'Problemas Técnicos', label: 'Problemas Técnicos' },
+                          { id: 'Problema Resolvido', label: 'Resolvidos' },
+                          { id: 'Enquete', label: 'Enquetes / Eventos' },
+                          { id: 'Mudança', label: 'Mudança' },
+                          { id: 'Removido', label: 'Removido' },
+                        ].map((filtro) => (
+                          <button
+                            key={filtro.id}
+                            type="button"
+                            onClick={() => setAnnFilterStatus(filtro.id)}
+                            className={`px-3 py-1.5 rounded-lg font-bold shrink-0 transition-colors ${
+                              annFilterStatus === filtro.id
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'bg-slate-800/70 hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {filtro.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Listagem de Informes Publicados */}
+                    {filtered.length === 0 ? (
+                      <div className="text-center py-14 bg-[#0f131c] rounded-3xl border border-dashed border-slate-800 space-y-3">
+                        <Bell size={40} className="text-slate-600 mx-auto" />
+                        <p className="text-slate-300 font-bold text-base">
+                          {annSearchTerm || annFilterStatus !== 'todos' 
+                            ? 'Nenhum informe encontrado para essa busca.'
+                            : 'Nenhum informe publicado até o momento.'}
+                        </p>
+                        <p className="text-slate-500 text-xs max-w-sm mx-auto">
+                          {annSearchTerm || annFilterStatus !== 'todos'
+                            ? 'Tente buscar por outro termo ou limpar os filtros aplicados.'
+                            : 'Publique comunicados, avisos de manutenção ou enquetes para seus clientes.'}
+                        </p>
+                        <div className="pt-2 flex items-center justify-center gap-2">
+                          {(annSearchTerm || annFilterStatus !== 'todos') && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAnnSearchTerm('');
+                                setAnnFilterStatus('todos');
+                              }}
+                              className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition-colors"
+                            >
+                              Limpar Filtros
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setAdminInformesTab('novo')}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition-colors"
+                          >
+                            + Criar Novo Informe
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {announcements.map((ann) => (
-                          <div key={ann.id} className="p-5 rounded-2xl border bg-[#0f131c] border-slate-800 space-y-4 shadow-xl">
+                        <div className="flex items-center justify-between text-xs text-slate-400 font-medium px-1">
+                          <span>Exibindo {filtered.length} de {announcements.length} informe(s)</span>
+                        </div>
+
+                        {filtered.map((ann) => (
+                          <div key={ann.id} className="p-5 md:p-6 rounded-2xl border bg-[#0f131c] border-slate-800/90 space-y-4 shadow-xl hover:border-slate-700/80 transition-all">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                               <div>
                                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                  <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                                     {ann.category}
                                   </span>
-                                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${
-                                    ann.status === 'Removido' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                                    ann.status === 'Mudança' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                                    ann.status === 'Problema Resolvido' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                                    'bg-orange-500/10 text-orange-400 border border-orange-500/20'
+                                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
+                                    ann.status === 'Removido' ? 'bg-red-500/15 text-red-400 border border-red-500/30' :
+                                    ann.status === 'Mudança' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
+                                    ann.status === 'Problema Resolvido' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+                                    ann.status === 'Enquete' || ann.status === 'Evento' ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30' :
+                                    'bg-orange-500/15 text-orange-400 border border-orange-500/30'
                                   }`}>
                                     {ann.status}
                                   </span>
                                 </div>
-                                <h4 className="text-white font-bold text-base">{ann.name}</h4>
+                                <h4 className="text-white font-bold text-base md:text-lg">{ann.name}</h4>
                               </div>
-                              <div className="flex items-center gap-1.5 self-end sm:self-auto">
+
+                              <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap">
                                 {ann.status !== 'Problema Resolvido' && (
                                   <button 
                                     title="Marcar como Resolvido"
                                     onClick={() => handleResolveAnnouncement(ann.id)} 
-                                    className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
+                                    className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20 active:scale-95"
                                   >
                                     <CheckCircle2 size={18} />
                                   </button>
@@ -3715,35 +3934,39 @@ export default function App() {
                                     const text = `📢 *${ann.name}*\n\n*Status:* ${ann.status}\n*Informe:* ${ann.message}\n\n_Expira em: ${new Date(ann.expiryDate).toLocaleString()}_`;
                                     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
                                   }} 
-                                  className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20"
+                                  className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20 active:scale-95"
                                 >
                                   <MessageCircle size={18} />
                                 </button>
                                 <button 
-                                  title="Duplicar/Editar"
+                                  title="Duplicar / Editar (vai para o formulário)"
                                   onClick={() => handleDuplicateAnnouncement(ann)} 
-                                  className="p-2.5 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors border border-blue-500/20"
+                                  className="p-2.5 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors border border-blue-500/20 active:scale-95"
                                 >
                                   <Copy size={18} />
                                 </button>
                                 <button 
-                                  title="Excluir"
-                                  onClick={() => handleDeleteAnnouncement(ann.id)} 
-                                  className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20"
+                                  title="Excluir Informe"
+                                  onClick={() => {
+                                    if (window.confirm(`Deseja realmente excluir o informe "${ann.name}"?`)) {
+                                      handleDeleteAnnouncement(ann.id);
+                                    }
+                                  }} 
+                                  className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20 active:scale-95"
                                 >
                                   <Trash2 size={18} />
                                 </button>
                               </div>
                             </div>
                             
-                            <p className="text-slate-300 text-sm leading-relaxed">{ann.message}</p>
+                            <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{ann.message}</p>
                             
                             {((ann.mediaUrls && ann.mediaUrls.length > 0) || ann.mediaUrl) && (
                               <div className="max-w-md">
                                 <AnnouncementMediaCarousel 
                                   mediaUrls={ann.mediaUrls && ann.mediaUrls.length > 0 ? ann.mediaUrls : [ann.mediaUrl!]}
                                   mediaType={ann.mediaType}
-                                  maxHeightClass="max-h-48"
+                                  maxHeightClass="max-h-52"
                                   onImageClick={(_, allUrls, index) => {
                                     setGalleryModal({ urls: allUrls, index });
                                   }}
@@ -3774,14 +3997,19 @@ export default function App() {
                               );
                             })()}
 
-                            <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
                               <span>Expira em: {new Date(ann.expiryDate).toLocaleString()}</span>
+                              {ann.createdAt && (
+                                <span>Publicado em: {new Date(ann.createdAt).toLocaleString()}</span>
+                              )}
                             </div>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
+                );
+              })()}
                 </div>
               )}
 

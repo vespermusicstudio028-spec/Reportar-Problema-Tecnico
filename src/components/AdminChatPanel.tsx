@@ -25,7 +25,8 @@ import {
   Brain,
   ShoppingBag,
   Home,
-  ArrowDown
+  ArrowDown,
+  Smartphone
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -42,19 +43,37 @@ import { ClientMemoryModal } from './ClientMemoryModal';
 import { AdminStoreManagerModal } from './AdminStoreManagerModal';
 
 interface AdminChatPanelProps {
-  clientsList?: Array<{ id: string; name: string; code: string; phone?: string; canvasLink?: string }>;
+  clientsList?: Array<{
+    id: string;
+    name: string;
+    code: string;
+    phone?: string;
+    canvasLink?: string;
+    activeApp?: string;
+    accessPoints?: Array<{
+      screenNumber?: number;
+      appName?: string;
+      authType?: 'mac' | 'login';
+      macAddress?: string;
+      deviceKey?: string;
+      username?: string;
+      password?: string;
+      expiresAt?: string;
+      isLifetime?: boolean;
+    }>;
+  }>;
   onRegisterStepBack?: (handler: (() => boolean) | null) => void;
   onCloseToHome?: () => void;
   initialClientCode?: string | null;
 }
 
 const QUICK_REPLIES = [
-  { label: 'OlÃ¡! Tudo bem? Como posso te ajudar hoje? ðŸ˜Š', message: 'OlÃ¡! Tudo bem? Como posso te ajudar hoje? ðŸ˜Š' },
-  { label: 'Recebi sua mensagem...', message: 'Recebi sua mensagem. JÃ¡ estou verificando para vocÃª!' },
-  { label: 'Sinal atualizado âœ…', message: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?' },
-  { label: 'Qual aparelho?', message: 'Poderia me informar qual aparelho vocÃª estÃ¡ utilizando (TV, TV Box, Celular)?' },
-  { label: 'ðŸ§ª Teste iniciado', message: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.' },
-  { label: 'Tudo funcionando ðŸš€', message: 'Tudo pronto e funcionando 100%! Qualquer dÃºvida estou Ã  disposiÃ§Ã£o. ðŸš€' },
+  { label: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊', message: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊' },
+  { label: 'Recebi sua mensagem...', message: 'Recebi sua mensagem. Já estou verificando para você!' },
+  { label: 'Sinal atualizado ✅', message: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?' },
+  { label: 'Qual aparelho?', message: 'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?' },
+  { label: '🧪 Teste iniciado', message: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.' },
+  { label: 'Tudo funcionando 🚀', message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀' },
 ];
 
 export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack, onCloseToHome, initialClientCode }) => {
@@ -322,7 +341,55 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const activeClientName =
     selectedClientInfo?.name || selectedConversation?.client_name || `Cliente (${selectedClientCode})`;
 
-  // Enviar resposta do administrador sem delay (feedback instantÃ¢neo)
+  // Abrir site de renovação/ativação de aplicativo no AtiveApp
+  const handleOpenRenovarAppSite = () => {
+    // 1. Abrir imediatamente em nova aba
+    window.open('https://www.ativeapp.com/index/hplus', '_blank', 'noopener,noreferrer');
+
+    // 2. Extrair dados do cliente selecionado se houver (MAC e App)
+    let macAddress = '';
+    let appName = '';
+
+    if (selectedClientInfo) {
+      if (selectedClientInfo.accessPoints && selectedClientInfo.accessPoints.length > 0) {
+        const first = selectedClientInfo.accessPoints[0];
+        macAddress = first.macAddress || '';
+        appName = first.appName || '';
+      } else if (selectedClientInfo.activeApp) {
+        appName = selectedClientInfo.activeApp;
+      }
+    }
+
+    // Se o MAC não estiver no perfil, busca nas mensagens recentes deste cliente
+    if (!macAddress && activeMessages.length > 0) {
+      for (let i = activeMessages.length - 1; i >= 0; i--) {
+        const msgText = activeMessages[i].message;
+        const macMatch = msgText.match(/MAC:\s*`?([0-9a-fA-F:.-]{12,17})`?/i) || 
+                         msgText.match(/([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})/i);
+        if (macMatch) {
+          macAddress = macMatch[1] || macMatch[0];
+          break;
+        }
+      }
+    }
+
+    // Copia o MAC para a área de transferência se existir
+    if (macAddress) {
+      try {
+        navigator.clipboard.writeText(macAddress);
+        alert(
+          `🌐 Site AtiveApp aberto!\n\n📋 MAC do cliente copiado: ${macAddress}\n📱 Aplicativo: ${appName || 'Aplicativo'}\n\n🔑 Credenciais de Acesso:\n• Login: veraspatrick@gmail.com\n• Senha: #Ppem032212\n\nCole o MAC no campo do site e selecione a Licença Anual!`
+        );
+        return;
+      } catch {}
+    }
+
+    alert(
+      `🌐 Site AtiveApp aberto!\n\n🔑 Credenciais de Acesso:\n• Login: veraspatrick@gmail.com\n• Senha: #Ppem032212\n\n📌 Link: https://www.ativeapp.com/index/hplus`
+    );
+  };
+
+  // Enviar resposta do administrador sem delay (feedback instantâneo)
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || replyText).trim();
     if (!text || !selectedClientCode || isSending) return;
@@ -537,6 +604,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
             </div>
 
             <button
+              onClick={handleOpenRenovarAppSite}
+              className="p-2 rounded-xl bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 hover:text-white border border-emerald-500/40 transition-all shrink-0 flex items-center gap-1 cursor-pointer"
+              title="Renovar Aplicativo no AtiveApp"
+            >
+              <Smartphone size={15} />
+            </button>
+
+            <button
               onClick={() => setShowStoreManager(true)}
               className="p-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/35 text-amber-300 border border-amber-500/30 transition-all shrink-0"
               title="Loja & Produtos"
@@ -712,6 +787,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenRenovarAppSite}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-950/40 active:scale-95 border border-emerald-400/40 cursor-pointer"
+                    title="Abrir site AtiveApp para renovar aplicativo deste cliente"
+                  >
+                    <Smartphone size={14} className="text-emerald-100" />
+                    <span>Renovar App ↗</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setShowMemoryModal(true)}
@@ -962,16 +1047,38 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 )}
               </div>
 
-              {/* Respostas RÃ¡pidas */}
+              {/* Respostas Rápidas */}
               <div className="p-2.5 sm:p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-amber-400" />
-                    Respostas RÃ¡pidas:
+                <div className="flex items-center justify-between mb-2.5 px-1 flex-wrap gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-amber-400" />
+                    Respostas Rápidas:
                   </span>
-                  <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">Clique para enviar resposta pronta</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenRenovarAppSite}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-950/40 transition-all active:scale-95 border border-emerald-400/50 cursor-pointer"
+                      title="Abrir site AtiveApp para renovar aplicativo"
+                    >
+                      <Smartphone size={13} className="text-emerald-100" />
+                      <span>Renovar App (AtiveApp) ↗</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleOpenRenovarAppSite}
+                    className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-md bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-400/60 font-black truncate flex items-center justify-between gap-1 group shadow-emerald-950/40 cursor-pointer"
+                    title="Abrir site AtiveApp para renovar aplicativo do cliente"
+                  >
+                    <span className="truncate flex items-center gap-1.5">
+                      <Smartphone size={14} className="text-white shrink-0" />
+                      Renovar App
+                    </span>
+                    <ExternalLink size={12} className="text-emerald-200 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
                   {QUICK_REPLIES.map((reply, i) => (
                     <button
                       key={i}
@@ -1018,9 +1125,17 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 <MessageSquare size={28} className="text-slate-600" />
               </div>
               <h3 className="text-base font-bold text-slate-300">Nenhuma conversa selecionada</h3>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm">
-                Selecione um cliente na lista ao lado para visualizar o histÃ³rico de mensagens e responder.
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mb-4">
+                Selecione um cliente na lista ao lado para visualizar o histórico de mensagens e responder.
               </p>
+              <button
+                type="button"
+                onClick={handleOpenRenovarAppSite}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all flex items-center gap-2 active:scale-95 border border-emerald-400/40 cursor-pointer"
+              >
+                <Smartphone size={16} />
+                <span>Abrir AtiveApp — Renovar Aplicativo ↗</span>
+              </button>
             </div>
           )}
         </div>

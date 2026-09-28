@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { 
   Copy, 
   Check, 
@@ -369,6 +369,14 @@ export function TrialDataActionsCard({ data, isClientSender, clientCode, clientN
     window.open("https://controle.vip/users", "_blank", "noopener,noreferrer");
   };
 
+  const handleOpenAtiveApp = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (data.macCode) {
+      navigator.clipboard.writeText(data.macCode.trim());
+    }
+    window.open("https://www.ativeapp.com/index/hplus", "_blank", "noopener,noreferrer");
+  };
+
   const items = [
     {
       key: "name",
@@ -543,8 +551,19 @@ export function TrialDataActionsCard({ data, isClientSender, clientCode, clientN
 
             <button
               type="button"
+              onClick={handleOpenAtiveApp}
+              className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs border border-emerald-400/40 transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-emerald-950/40"
+              title="Abre o site AtiveApp e copia o MAC automaticamente"
+            >
+              <Smartphone size={13} className="text-emerald-200" />
+              📱 Renovar App
+              <ExternalLink size={11} className="text-emerald-200 ml-0.5" />
+            </button>
+
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); setShowConfirmModal(true); }}
-              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600/80 to-teal-600/80 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs border border-emerald-500/40 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-emerald-900/30"
+              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-purple-600/80 to-indigo-600/80 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs border border-purple-500/40 transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-purple-900/30"
               title="Confirma os dados do teste e envia automaticamente para o cliente no chat"
             >
               <CheckCircle2 size={13} className="text-emerald-200" />

@@ -697,25 +697,25 @@ Se continuar aparecendo erro, envie uma captura de tela da mensagem apresentada 
   // INTENT: SINAL E TRAVAMENTO — Procedimento Padrão de Diagnóstico
   // ─────────────────────────────────────────────────────────────────────────
   if (intent === 'SINAL_TRAVAMENTO') {
-    const deviceLabel = device && device !== 'Outro' ? device : 'TV / TVBOX / PC e etc';
+    const deviceLabel = device && device !== 'Outro' ? device : 'TV / TV Box / PC, etc.';
 
     const reply = `📝 *PROBLEMAS COM O SINAL.*
 
-*ANOTA AÍ O QUE PODE SER FEITO:*
+*ANOTE AÍ O QUE PODE SER FEITO:*
 
 *Os canais estão travando ou instáveis?*
 
-✅ Bom, se o problema for esse, antes de tudo, precisamos analisar sua conexão, pode fazer alguns testes?
+✅ Se o problema for esse, antes de tudo, precisamos analisar sua conexão. Pode fazer alguns testes rápidos?
 
-É chato, eu sei, mas geralmente, 90% dos casos de travamentos são causados por instabilidade na internet, então pra tentar estabilizar, siga os passos abaixo.
+Sabemos que é chato, mas em 90% dos casos as oscilações são causadas por instabilidade temporária na rota de internet. Para estabilizar, siga os passos abaixo:
 
-1 - *Desligue o aparelho (${deviceLabel}) e o roteador (NA TOMADA)* e espere cerca de 1 min;
+1 - *Desligue o aparelho (${deviceLabel}) e o roteador da tomada* e aguarde cerca de 1 minuto;
 
-Ligue tudo novamente e faça o teste dos canais, veja se estão funcionando melhor, use as fontes alternativas ou outras opções de imagem (FHD, HD ou SD).
+Ligue tudo novamente e teste os canais para ver se o funcionamento melhorou. Se houver, experimente também as opções alternativas de imagem (FHD, HD ou SD).
 
-2 - Caso ainda esteja "travando", abra o navegador de internet da TV ou do BOX TV e acesse o site www.fast.com (clique em mostrar mais informações);
+2 - Caso ainda continue travando, abra o navegador de internet da sua TV ou TV Box e acesse o site www.fast.com (clique em "Mostrar mais informações");
 
-■ OBS: *ENVIE FOTOS DE TODOS OS RESULTADOS*`;
+■ OBS.: *Envie fotos dos resultados para que possamos analisar.*`;
 
     const summary = `Cliente relatou problema com sinal/travamento (${deviceLabel}). Enviado procedimento padrão de diagnóstico de sinal.`;
 
@@ -778,10 +778,10 @@ Ligue tudo novamente e faça o teste dos canais, veja se estão funcionando melh
       `• Valor: *R$ ${realPrice}*\n` +
       `${contextBlock}\n\n` +
       `🔄 **Escolha uma opção:**\n` +
-      `1️⃣ **Renovar Canais / Sinal** — Use o botão **🔄 Renovar** no chat\n` +
-      `2️⃣ **Renovar Aplicativo / Streaming** — Use o botão **🔄 Renovar** e selecione *Sinal do Streaming*\n` +
+      `1️⃣ **Renovar Canais / Sinal** — Use o botão **🔄 Renovar** e selecione *Sinal do Streaming*\n` +
+      `2️⃣ **Renovar Aplicativo** — Use o botão **🔄 Renovar** e selecione *Aplicativo*\n` +
       `3️⃣ **Ver planos e promoções** — Clique em **🛍️ Loja** no chat\n` +
-      `4️⃣ **Enviar comprovante** — Após pagar, clique em **📎 Enviar Comprovante** para liberação imediata\n\n` +
+      `4️⃣ **Enviar comprovante** — Após o pagamento, envie o comprovante pelo botão de câmera (📷) para liberação imediata\n\n` +
       `Posso te ajudar com mais alguma coisa? 😊`;
 
     const summary = `Consulta de pagamento/renovação. Cliente perguntou sobre ${querRenovarCanal ? 'renovação de canal' : querRenovarApp ? 'renovação de aplicativo' : 'pagamento'}. Plano: ${planName} - R$ ${realPrice}.`;

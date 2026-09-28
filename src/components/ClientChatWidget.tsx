@@ -634,8 +634,8 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
 
       // 4. Resposta do bot com informações completas e link de pagamento sem delay
       const botConfirm = isSinal
-        ? `✅ Certo! Sua solicitação de renovação do *Sinal do Streaming* (${screensCount > 1 ? `*${screensCount} Telas/Pontos*` : '*1 Tela/Ponto*'}) foi registrada. O administrador já foi notificado!\n\n${screensInfoText}\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para realizar o pagamento de forma rápida e segura:\n\n${paymentMarker}\n\n📎 Após o pagamento, anexe o comprovante usando o botão de clipe.`
-        : `✅ Certo! Sua solicitação de renovação do *Aplicativo* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para pagar a renovação do aplicativo:\n\n${paymentMarker}\n\n📎 Após o pagamento, envie uma foto ou o código/MAC do seu aplicativo.`;
+        ? `✅ Certo! Sua solicitação de renovação do *Sinal do Streaming* (${screensCount > 1 ? `*${screensCount} Telas/Pontos*` : '*1 Tela/Ponto*'}) foi registrada. O administrador já foi notificado!\n\n${screensInfoText}\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para realizar o pagamento de forma rápida e segura:\n\n${paymentMarker}\n\n📷 Após o pagamento, envie o comprovante clicando no botão de comprovante acima ou pelo botão de câmera (📷) ao lado do campo de mensagem.`
+        : `✅ Certo! Sua solicitação de renovação do *Aplicativo* foi registrada. O administrador já foi notificado!\n\n💳 *Forma de Pagamento — Mercado Pago:*\nClique no botão abaixo para pagar a renovação do aplicativo:\n\n${paymentMarker}\n\n📷 Após o pagamento, envie uma foto ou o código/MAC do seu aplicativo usando o botão de câmera (📷).`;
 
       const optChoice1: ChatMessage = {
         id: 'sel-c-' + Date.now(),

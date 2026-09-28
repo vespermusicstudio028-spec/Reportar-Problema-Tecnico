@@ -132,7 +132,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           setMobileShowChat(false);
           return true; // consumiu o voltar
         }
-        return false; // estÃ¡ na lista de conversas raiz
+        return false; // está na lista de conversas raiz
       });
     }
     return () => {
@@ -185,7 +185,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   useEffect(() => {
     fetchMessages();
 
-    // Escutar novas mensagens em tempo real com injeÃ§Ã£o instantÃ¢nea (0ms)
+    // Escutar novas mensagens em tempo real com injeção instantânea (0ms)
     const channel = supabase
       .channel('admin-chat-realtime')
       .on(
@@ -195,7 +195,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           if (payload.eventType === 'INSERT' && payload.new) {
             const newMsg = payload.new as ChatMessage;
             setMessages((prev) => {
-              // Evitar duplicar mensagem (otimista ou jÃ¡ recebida)
+              // Evitar duplicar mensagem (otimista ou já recebida)
               const existingIdx = prev.findIndex(
                 (m) => m.id === newMsg.id || 
                 (m.id.startsWith('opt-') && m.sender === newMsg.sender && m.message === newMsg.message && m.client_code === newMsg.client_code)
@@ -224,7 +224,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       )
       .subscribe();
 
-    // Polling de seguranÃ§a ultra rÃ¡pido a cada 2.5s para garantir atualizaÃ§Ã£o contÃ­nua
+    // Polling de segurança ultra rápido a cada 2.5s para garantir atualização contínua
     const pollInterval = setInterval(() => {
       fetchMessages();
     }, 2500);
@@ -486,7 +486,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const isServingSelected = selectedClientCode ? selectedClientCode === currentlyServingCode : false;
   const currentQueueItem = selectedClientCode ? supportQueue.queue.find((q) => q.client_code === selectedClientCode) : null;
 
-  // Verificar se o Ãºltimo status deste cliente foi atendimento finalizado
+  // Verificar se o último status deste cliente foi atendimento finalizado
   const isSelectedChatFinished = React.useMemo(() => {
     if (!selectedClientCode || activeMessages.length === 0) return false;
     const lastMsg = activeMessages[activeMessages.length - 1];
@@ -515,7 +515,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
-  // Finalizar atendimento do cliente atual e avanÃ§ar fila
+  // Finalizar atendimento do cliente atual e avançar fila
   const handleFinishAttendance = async () => {
     if (!selectedClientCode) return;
     try {
@@ -530,13 +530,13 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         read_by_client: false
       });
 
-      // 2. Chamar prÃ³ximo da fila se houver
+      // 2. Chamar próximo da fila se houver
       const nextInQueue = supportQueue.queue[0];
       if (nextInQueue) {
         setActiveServingClientCode(nextInQueue.client_code);
         setSelectedClientCode(nextInQueue.client_code);
 
-        // Notificar o prÃ³ximo que a vez dele chegou
+        // Notificar o próximo que a vez dele chegou
         const turnMsg = getAutomatedTurnReachedMessage(nextInQueue.client_name);
         await supabase.from('chat_messages').insert({
           client_code: nextInQueue.client_code,
@@ -554,7 +554,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
-  // Limpar histÃ³rico da conversa selecionada
+  // Limpar histórico da conversa selecionada
   const handleDeleteConversation = async () => {
     if (!selectedClientCode) return;
     if (confirm(`Tem certeza que deseja apagar todas as mensagens de ${activeClientName}?`)) {
@@ -568,7 +568,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         setMessages((prev) => prev.filter((m) => m.client_code !== selectedClientCode));
         setSelectedClientCode(null);
       } catch (err: any) {
-        alert('Erro ao apagar histÃ³rico: ' + (err.message || 'Erro desconhecido.'));
+        alert('Erro ao apagar histórico: ' + (err.message || 'Erro desconhecido.'));
       }
     }
   };
@@ -714,7 +714,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                           </h4>
                           {isConvFinished ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60 shrink-0">
-                              ðŸ”’ Finalizado
+                              🔒 Finalizado
                             </span>
                           ) : isServingThis ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0 flex items-center gap-1">
@@ -736,10 +736,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                         </span>
                         <p className="text-xs text-slate-400 truncate flex-1">
                           {conv.last_sender === 'admin' && (
-                            <span className="text-indigo-400 font-medium">VocÃª: </span>
+                            <span className="text-indigo-400 font-medium">Você: </span>
                           )}
                           {conv.last_message.includes('[PIX_COMPROVANTE:')
-                            ? 'ðŸ“„ [Comprovante Pix Enviado]'
+                            ? '📄 [Comprovante Pix Enviado]'
                             : conv.last_message}
                         </p>
                       </div>
@@ -760,7 +760,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
               {/* Header do Chat Ativo */}
               <div className="p-3.5 md:px-6 bg-[#121620] border-b border-slate-800/80 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {/* BotÃ£o Voltar â€” sÃ³ aparece no mobile */}
+                  {/* Botão Voltar — só aparece no mobile */}
                   <button
                     type="button"
                     onClick={() => {
@@ -779,7 +779,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-white text-sm md:text-base">{activeClientName}</h3>
                       <span className="text-[10px] font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
-                        CÃ³digo: {selectedClientCode}
+                        Código: {selectedClientCode}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
@@ -832,10 +832,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     type="button"
                     onClick={() => setShowMemoryModal(true)}
                     className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-purple-900/20 active:scale-95"
-                    title="Ver e Gerenciar MemÃ³ria do Cliente"
+                    title="Ver e Gerenciar Memória do Cliente"
                   >
                     <Brain size={15} className="text-purple-300" />
-                    <span className="hidden sm:inline">MemÃ³ria</span>
+                    <span className="hidden sm:inline">Memória</span>
                   </button>
 
                   <button
@@ -854,7 +854,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 {isSelectedChatFinished ? (
                   <div className="flex items-center gap-2 text-slate-300 font-semibold">
                     <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
-                    <span>ðŸ”’ <strong>Chat Finalizado:</strong> Este atendimento foi concluÃ­do</span>
+                    <span>🔒 <strong>Chat Finalizado:</strong> Este atendimento foi concluído</span>
                   </div>
                 ) : isServingSelected ? (
                   <div className="flex items-center gap-2 text-emerald-400 font-semibold">
@@ -862,7 +862,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
-                    <span>ðŸŸ¢ <strong>Em Atendimento Ativo:</strong> VocÃª estÃ¡ conversando com este cliente</span>
+                    <span>🟢 <strong>Em Atendimento Ativo:</strong> Você está conversando com este cliente</span>
                   </div>
                 ) : currentQueueItem ? (
                   <div className="flex items-center gap-2 text-amber-300 font-semibold">
@@ -870,12 +870,12 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                     </span>
-                    <span>â³ <strong>Aguardando na Fila:</strong> {currentQueueItem.position}Âº lugar (~{currentQueueItem.estimatedMinutes} min de espera)</span>
+                    <span>⏳ <strong>Aguardando na Fila:</strong> {currentQueueItem.position}º lugar (~{currentQueueItem.estimatedMinutes} min de espera)</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-slate-400">
                     <Users size={14} className="text-slate-500" />
-                    <span>Atendimento DisponÃ­vel</span>
+                    <span>Atendimento Disponível</span>
                   </div>
                 )}
 
@@ -894,7 +894,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                       onClick={handleFinishAttendance}
                       className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/20 active:scale-95"
                     >
-                      <CheckCircle2 size={14} /> Finalizar Atendimento & Chamar PrÃ³ximo
+                      <CheckCircle2 size={14} /> Finalizar Atendimento & Chamar Próximo
                     </button>
                   ) : (
                     <button
@@ -927,7 +927,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     <MessageSquare size={36} className="text-slate-600 mb-2 stroke-[1.5]" />
                     <p className="text-sm font-medium">Inicie o atendimento com este cliente</p>
                     <p className="text-xs text-slate-600 mt-1">
-                      Envie uma mensagem abaixo ou use uma resposta rÃ¡pida.
+                      Envie uma mensagem abaixo ou use uma resposta rápida.
                     </p>
                   </div>
                 ) : (
@@ -1010,7 +1010,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                                     ) : null;
                                   })()}
 
-                                  {/* Card de AÃ§Ãµes RÃ¡pidas de CÃ³pia (Teste GrÃ¡tis / Dados do App / MAC / Key) */}
+                                  {/* Card de Ações Rápidas de Cópia (Teste Grátis / Dados do App / MAC / Key) */}
                                   {(() => {
                                     const trialData = extractTrialRequestData(
                                       msg.message, 
@@ -1025,7 +1025,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                                 </div>
                               )}
 
-                              {/* BotÃ£o de Copiar */}
+                              {/* Botão de Copiar */}
                               <button
                                 type="button"
                                 onClick={() => handleCopyMessage(msg.id, msg.message)}
@@ -1179,7 +1179,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         </div>
       </div>
 
-      {/* Modal de MemÃ³ria Individual do Cliente */}
+      {/* Modal de Memória Individual do Cliente */}
       {selectedClientCode && (
         <ClientMemoryModal
           isOpen={showMemoryModal}

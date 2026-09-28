@@ -56,6 +56,28 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   const [attachedImage, setAttachedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
+
+  // Wrapper fullscreen para computador (desktop): cobre toda a tela do monitor em tela cheia com overlay escuro e blur.
+  // No celular/mobile, mantém o layout normal sem sobreposição (somente para computador!)
+  const TrialScreenWrapper = ({ children }: { children: React.ReactNode }) => {
+    return (
+      <div className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:justify-center md:py-8 md:px-4">
+        <button
+          type="button"
+          onClick={onClose}
+          className="hidden md:flex fixed top-6 right-6 w-11 h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[90] group shadow-xl"
+          title="Fechar teste grátis"
+        >
+          <X size={22} className="group-hover:scale-110 transition-transform" />
+        </button>
+        <div className="w-full md:max-w-2xl md:mx-auto md:min-h-full md:flex md:flex-col md:justify-center relative">
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+
   const [currentSlide, setCurrentSlide] = useState(0);
   const [alertDismissed, setAlertDismissed] = useState(false);
 
@@ -1006,59 +1028,69 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
 
   // 3. Renderizando o conteúdo de uma sub-opção selecionada
   if (selectedDevice && selectedDevice.type === 'suboptions' && selectedSubOption) {
-    return renderContentBlock(selectedSubOption.content, () => setSelectedSubOptionId(null));
+    return (
+      <TrialScreenWrapper>
+        {renderContentBlock(selectedSubOption.content, () => setSelectedSubOptionId(null))}
+      </TrialScreenWrapper>
+    );
   }
 
   // 2. Renderizando as Sub-opções de um Dispositivo
   if (selectedDevice && selectedDevice.type === 'suboptions' && !selectedSubOptionId) {
     return (
-      <motion.div 
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
-      >
-        <div className="w-full max-w-lg mx-auto">
-          <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
-            <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-md uppercase mb-2">{selectedDevice.name}</h2>
-            <h3 className="text-lg md:text-xl font-bold tracking-tight text-indigo-300 drop-shadow-md uppercase">SELECIONE UMA OPÇÃO</h3>
-          </div>
-          
-          <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
-            {(selectedDevice.subOptions || []).filter(s => s.visible !== false).map(sub => (
-              <button
-                key={sub.id}
-                type="button"
-                onClick={() => setSelectedSubOptionId(sub.id)}
-                className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
-              >
-                <span className="font-bold text-white text-lg tracking-wide">{sub.name}</span>
-              </button>
-            ))}
+      <TrialScreenWrapper>
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+        >
+          <div className="w-full max-w-lg mx-auto">
+            <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
+              <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-md uppercase mb-2">{selectedDevice.name}</h2>
+              <h3 className="text-lg md:text-xl font-bold tracking-tight text-indigo-300 drop-shadow-md uppercase">SELECIONE UMA OPÇÃO</h3>
+            </div>
+            
+            <div className="flex flex-col gap-3 md:gap-4 w-full relative z-10">
+              {(selectedDevice.subOptions || []).filter(s => s.visible !== false).map(sub => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setSelectedSubOptionId(sub.id)}
+                  className="flex items-center justify-center w-full p-4 gap-4 bg-[#1a1d2e]/60 backdrop-blur-xl border border-white/5 hover:bg-indigo-500/20 hover:border-indigo-500/40 rounded-[1.5rem] transition-all group shadow-xl"
+                >
+                  <span className="font-bold text-white text-lg tracking-wide">{sub.name}</span>
+                </button>
+              ))}
 
-            <button
-              type="button"
-              onClick={() => setSelectedDeviceId(null)}
-              className="mt-4 flex items-center justify-center w-full p-4 gap-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:via-rose-500 hover:to-red-400 text-white font-extrabold text-base tracking-wider rounded-[1.5rem] transition-all shadow-xl shadow-red-600/30 border border-rose-400/50 hover:border-rose-300 hover:scale-[1.02] active:scale-[0.98] group"
-            >
-              <ChevronLeft size={22} className="stroke-[2.5] group-hover:-translate-x-1 transition-transform" />
-              <span className="drop-shadow-md">VOLTAR</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDeviceId(null)}
+                className="mt-4 flex items-center justify-center w-full p-4 gap-2.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 hover:from-red-500 hover:via-rose-500 hover:to-red-400 text-white font-extrabold text-base tracking-wider rounded-[1.5rem] transition-all shadow-xl shadow-red-600/30 border border-rose-400/50 hover:border-rose-300 hover:scale-[1.02] active:scale-[0.98] group"
+              >
+                <ChevronLeft size={22} className="stroke-[2.5] group-hover:-translate-x-1 transition-transform" />
+                <span className="drop-shadow-md">VOLTAR</span>
+              </button>
+            </div>
           </div>
-        </div>
-        {renderModals()}
-      </motion.div>
+          {renderModals()}
+        </motion.div>
+      </TrialScreenWrapper>
     );
   }
 
   // 2. Renderizando o conteúdo de um Dispositivo direto (ex: Celular)
   if (selectedDevice && selectedDevice.type === 'content' && selectedDevice.content) {
-    return renderContentBlock(selectedDevice.content, () => setSelectedDeviceId(null), showAppDescription, () => setShowAppDescription(!showAppDescription));
+    return (
+      <TrialScreenWrapper>
+        {renderContentBlock(selectedDevice.content, () => setSelectedDeviceId(null), showAppDescription, () => setShowAppDescription(!showAppDescription))}
+      </TrialScreenWrapper>
+    );
   }
 
   // 1. Renderizando a Lista de Dispositivos Principal
   return (
-    <>
+    <TrialScreenWrapper>
       {/* Alerta Global */}
       {config.globalAlert?.enabled && !alertDismissed && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -1274,7 +1306,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         </div>
         {renderModals()}
       </motion.div>
-    </>
+    </TrialScreenWrapper>
   );
 }
 

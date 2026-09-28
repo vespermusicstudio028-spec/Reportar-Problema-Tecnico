@@ -61,21 +61,22 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   // No celular/mobile, mantém o layout normal sem sobreposição (somente para computador!)
   const TrialScreenWrapper = ({ children }: { children: React.ReactNode }) => {
     return (
-      <div className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:justify-center md:py-8 md:px-4">
+      <div className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:py-10 md:px-6">
         <button
           type="button"
           onClick={onClose}
-          className="hidden md:flex fixed top-6 right-6 w-11 h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[90] group shadow-xl"
+          className="hidden md:flex fixed top-6 right-6 w-11 h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[100] group shadow-xl"
           title="Fechar teste grátis"
         >
           <X size={22} className="group-hover:scale-110 transition-transform" />
         </button>
-        <div className="w-full md:max-w-2xl md:mx-auto md:min-h-full md:flex md:flex-col md:justify-center relative">
+        <div className="w-full md:max-w-3xl md:mx-auto md:my-auto relative">
           {children}
         </div>
       </div>
     );
   };
+
 
 
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -763,19 +764,19 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+        className="w-full flex flex-col items-center py-4 md:py-2 md:my-auto"
       >
-        <div className="w-full max-w-lg mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
+        <div className="w-full max-w-lg md:max-w-3xl mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
           {content.title && (
-            <h2 className="text-2xl font-bold text-white text-center mb-6 uppercase tracking-wider">{content.title}</h2>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-white text-center mb-4 uppercase tracking-wider drop-shadow-md">{content.title}</h2>
           )}
           
           <div className="space-y-4 text-slate-300 text-sm md:text-base leading-relaxed">
             {content.subtitle && (
-              <p className="font-bold text-lg text-white text-center mb-4">{content.subtitle}</p>
+              <p className="font-bold text-base md:text-lg text-indigo-300 text-center mb-4">{content.subtitle}</p>
             )}
 
-            {/* Carrossel de Mídias */}
+            {/* Carrossel de Mídias em Proporção 16:9 Widescreen Padrão */}
             {(() => {
               const items = content.mediaItems || [];
               if (items.length === 0 && content.mediaUrl && content.mediaType && content.mediaType !== 'none') {
@@ -784,30 +785,39 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
 
               if (items.length === 0) return null;
 
-              const activeItem = items[currentSlide];
+              const activeItem = items[currentSlide] || items[0];
 
               return (
                 <div className="w-full mb-6">
-                  <div className="w-full rounded-2xl overflow-hidden shadow-lg shadow-black/50 border border-white/10 relative">
+                  <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl shadow-black/70 border border-white/15 relative bg-black flex items-center justify-center">
                     {activeItem.type === 'image' ? (
-                      <img src={activeItem.url} alt="Mídia" className="w-full h-auto object-cover" />
+                      <img 
+                        src={activeItem.url} 
+                        alt="Mídia" 
+                        className="w-full h-full object-contain" 
+                      />
                     ) : (
                       (() => {
                         const embed = getEmbedUrl(activeItem.url);
                         if (!embed) return null;
                         if (embed.type === 'iframe') {
                           return (
-                            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-                              <iframe 
-                                src={embed.url} 
-                                className="absolute top-0 left-0 w-full h-full rounded-xl"
-                                allow="autoplay; encrypted-media; fullscreen"
-                                allowFullScreen
-                              />
-                            </div>
+                            <iframe 
+                              src={embed.url} 
+                              className="w-full h-full rounded-xl"
+                              allow="autoplay; encrypted-media; fullscreen"
+                              allowFullScreen
+                            />
                           );
                         }
-                        return <video src={embed.url} controls playsInline className="w-full h-auto object-cover rounded-xl" />;
+                        return (
+                          <video 
+                            src={embed.url} 
+                            controls 
+                            playsInline 
+                            className="w-full h-full object-contain rounded-xl bg-black" 
+                          />
+                        );
                       })()
                     )}
 
@@ -815,22 +825,26 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                     {items.length > 1 && (
                       <>
                         <button
+                          type="button"
                           onClick={() => setCurrentSlide((prev) => (prev > 0 ? prev - 1 : items.length - 1))}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm transition-all border border-white/20 z-10"
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-md transition-all border border-white/20 z-10 shadow-lg"
                         >
-                          <ChevronLeft size={18} />
+                          <ChevronLeft size={20} />
                         </button>
                         <button
+                          type="button"
                           onClick={() => setCurrentSlide((prev) => (prev < items.length - 1 ? prev + 1 : 0))}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm transition-all border border-white/20 z-10"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 backdrop-blur-md transition-all border border-white/20 z-10 shadow-lg"
                         >
-                          <ChevronRight size={18} />
+                          <ChevronRight size={20} />
                         </button>
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 bg-black/40 px-2 py-1 rounded-full backdrop-blur-md">
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 bg-black/60 px-2.5 py-1 rounded-full backdrop-blur-md border border-white/10">
                           {items.map((_, idx) => (
-                            <div 
-                              key={idx} 
-                              className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentSlide ? 'bg-white scale-125' : 'bg-white/40'}`} 
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setCurrentSlide(idx)}
+                              className={`w-2 h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-cyan-400 scale-125' : 'bg-white/40 hover:bg-white/70'}`}
                             />
                           ))}
                         </div>
@@ -1043,9 +1057,9 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+          className="w-full flex flex-col items-center py-4 md:py-2 md:my-auto"
         >
-          <div className="w-full max-w-lg mx-auto">
+          <div className="w-full max-w-lg md:max-w-xl mx-auto">
             <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
               <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-md uppercase mb-2">{selectedDevice.name}</h2>
               <h3 className="text-lg md:text-xl font-bold tracking-tight text-indigo-300 drop-shadow-md uppercase">SELECIONE UMA OPÇÃO</h3>
@@ -1124,9 +1138,9 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+        className="w-full flex flex-col items-center py-4 md:py-2 md:my-auto"
       >
-        <div className="w-full max-w-lg mx-auto px-1">
+        <div className="w-full max-w-lg md:max-w-xl mx-auto px-1">
 
           {/* ── Título ── */}
           <div className="text-center mb-6 mt-2 relative z-10">

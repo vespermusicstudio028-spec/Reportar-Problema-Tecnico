@@ -170,6 +170,14 @@ interface Announcement {
   createdAt?: string;
 }
 
+const getDefaultAnnouncementExpiry = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T23:59`;
+};
+
 export default function App() {
   const [contentType, setContentType] = useState<ContentType>(null);
   const [trialState, setTrialState] = useState<string | null>(null);
@@ -594,7 +602,7 @@ export default function App() {
   const [annName, setAnnName] = useState('');
   const [annStatus, setAnnStatus] = useState('Problemas Técnicos');
   const [annMessage, setAnnMessage] = useState('');
-  const [annExpiry, setAnnExpiry] = useState('');
+  const [annExpiry, setAnnExpiry] = useState<string>(getDefaultAnnouncementExpiry);
   const [annMediaFiles, setAnnMediaFiles] = useState<File[]>([]);
   const [galleryModal, setGalleryModal] = useState<{ urls: string[]; index: number } | null>(null);
 
@@ -603,6 +611,13 @@ export default function App() {
   // Clients & Code Modal State
   const [adminTab, setAdminTab] = useState<'informes' | 'clientes' | 'atualizacoes' | 'pedidos' | 'suporte' | 'cms-trial' | 'chat' | 'crm-tbi' | 'server-status' | null>(null);
   const [adminInformesTab, setAdminInformesTab] = useState<'novo' | 'historico'>('novo');
+
+  // Garante que, ao abrir a aba 'novo' de informes, a data e hora já venham pré-definidas para hoje às 23:59
+  useEffect(() => {
+    if (adminInformesTab === 'novo' && !annExpiry) {
+      setAnnExpiry(getDefaultAnnouncementExpiry());
+    }
+  }, [adminInformesTab, annExpiry]);
   const [annSearchTerm, setAnnSearchTerm] = useState('');
   const [annFilterStatus, setAnnFilterStatus] = useState<string>('todos');
   const adminInformesTouchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -2715,7 +2730,7 @@ export default function App() {
 
       setAnnName('');
       setAnnMessage('');
-      setAnnExpiry('');
+      setAnnExpiry(getDefaultAnnouncementExpiry());
       setAnnMediaFiles([]);
       setPollOptionsInput(['', '']);
       setAdminInformesTab('historico');
@@ -3629,17 +3644,26 @@ export default function App() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Data de Expiração</label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+                            Data e Hora de Expiração
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setAnnExpiry(getDefaultAnnouncementExpiry())}
+                            className="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1"
+                            title="Redefinir para hoje às 23:59"
+                          >
+                            <span>Hoje às 23:59</span>
+                          </button>
+                        </div>
                         <input 
                           type="datetime-local"
                           required
-                          value={annExpiry}
+                          value={annExpiry || getDefaultAnnouncementExpiry()}
                           onFocus={() => {
                             if (!annExpiry) {
-                              const now = new Date();
-                              const offset = now.getTimezoneOffset() * 60000;
-                              const localISOTime = new Date(now.getTime() - offset).toISOString().slice(0, 16);
-                              setAnnExpiry(localISOTime);
+                              setAnnExpiry(getDefaultAnnouncementExpiry());
                             }
                           }}
                           onChange={(e) => setAnnExpiry(e.target.value)}

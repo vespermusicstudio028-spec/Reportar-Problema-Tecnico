@@ -26,7 +26,8 @@ import {
   ShoppingBag,
   Home,
   ArrowDown,
-  Smartphone
+  Smartphone,
+  Tv
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -389,6 +390,18 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     );
   };
 
+  // Abrir painel para renovação de Streaming no painel.fun
+  const handleOpenRenovarStreamingSite = () => {
+    window.open('https://painel.fun/lock?redirect=%2Fusers', '_blank', 'noopener,noreferrer');
+
+    // Se houver código do cliente, copia para a área de transferência
+    if (selectedClientCode) {
+      try {
+        navigator.clipboard.writeText(selectedClientCode);
+      } catch {}
+    }
+  };
+
   // Enviar resposta do administrador sem delay (feedback instantâneo)
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || replyText).trim();
@@ -612,6 +625,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
             </button>
 
             <button
+              onClick={handleOpenRenovarStreamingSite}
+              className="p-2 rounded-xl bg-blue-600/25 hover:bg-blue-600/40 text-blue-300 hover:text-white border border-blue-500/40 transition-all shrink-0 flex items-center gap-1 cursor-pointer"
+              title="Renovar Streaming no Painel.fun"
+            >
+              <Tv size={15} />
+            </button>
+
+            <button
               onClick={() => setShowStoreManager(true)}
               className="p-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/35 text-amber-300 border border-amber-500/30 transition-all shrink-0"
               title="Loja & Produtos"
@@ -795,6 +816,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   >
                     <Smartphone size={14} className="text-emerald-100" />
                     <span>Renovar App ↗</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenRenovarStreamingSite}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-blue-950/40 active:scale-95 border border-blue-400/40 cursor-pointer"
+                    title="Abrir Painel.fun para renovar streaming deste cliente"
+                  >
+                    <Tv size={14} className="text-blue-100" />
+                    <span>Renovar Streaming ↗</span>
                   </button>
 
                   <button
@@ -1064,9 +1095,18 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                       <Smartphone size={13} className="text-emerald-100" />
                       <span>Renovar App (AtiveApp) ↗</span>
                     </button>
+                    <button
+                      type="button"
+                      onClick={handleOpenRenovarStreamingSite}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-blue-950/40 transition-all active:scale-95 border border-blue-400/50 cursor-pointer"
+                      title="Abrir painel para renovar streaming do cliente"
+                    >
+                      <Tv size={13} className="text-blue-100" />
+                      <span>Renovar Streaming ↗</span>
+                    </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
                   <button
                     type="button"
                     onClick={handleOpenRenovarAppSite}
@@ -1078,6 +1118,19 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                       Renovar App
                     </span>
                     <ExternalLink size={12} className="text-emerald-200 shrink-0 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenRenovarStreamingSite}
+                    className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border border-blue-400/60 font-black truncate flex items-center justify-between gap-1 group shadow-blue-950/40 cursor-pointer"
+                    title="Abrir Painel.fun para renovar streaming"
+                  >
+                    <span className="truncate flex items-center gap-1.5">
+                      <Tv size={14} className="text-white shrink-0" />
+                      Renovar Streaming
+                    </span>
+                    <ExternalLink size={12} className="text-blue-200 shrink-0 group-hover:translate-x-0.5 transition-transform" />
                   </button>
                   {QUICK_REPLIES.map((reply, i) => (
                     <button
@@ -1128,14 +1181,24 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
               <p className="text-xs text-slate-500 mt-1 max-w-sm mb-4">
                 Selecione um cliente na lista ao lado para visualizar o histórico de mensagens e responder.
               </p>
-              <button
-                type="button"
-                onClick={handleOpenRenovarAppSite}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all flex items-center gap-2 active:scale-95 border border-emerald-400/40 cursor-pointer"
-              >
-                <Smartphone size={16} />
-                <span>Abrir AtiveApp — Renovar Aplicativo ↗</span>
-              </button>
+              <div className="flex items-center gap-2.5 flex-wrap justify-center">
+                <button
+                  type="button"
+                  onClick={handleOpenRenovarAppSite}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-950/40 transition-all flex items-center gap-2 active:scale-95 border border-emerald-400/40 cursor-pointer"
+                >
+                  <Smartphone size={16} />
+                  <span>Renovar Aplicativo (AtiveApp) ↗</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenRenovarStreamingSite}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-blue-950/40 transition-all flex items-center gap-2 active:scale-95 border border-blue-400/40 cursor-pointer"
+                >
+                  <Tv size={16} />
+                  <span>Renovar Streaming (Painel.fun) ↗</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

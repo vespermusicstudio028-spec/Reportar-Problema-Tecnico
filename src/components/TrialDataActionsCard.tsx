@@ -377,6 +377,14 @@ export function TrialDataActionsCard({ data, isClientSender, clientCode, clientN
     window.open("https://www.ativeapp.com/index/hplus", "_blank", "noopener,noreferrer");
   };
 
+  const handleOpenRenovarStreaming = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (clientCode) {
+      navigator.clipboard.writeText(clientCode.trim());
+    }
+    window.open("https://painel.fun/lock?redirect=%2Fusers", "_blank", "noopener,noreferrer");
+  };
+
   const items = [
     {
       key: "name",
@@ -558,6 +566,17 @@ export function TrialDataActionsCard({ data, isClientSender, clientCode, clientN
               <Smartphone size={13} className="text-emerald-200" />
               📱 Renovar App
               <ExternalLink size={11} className="text-emerald-200 ml-0.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenRenovarStreaming}
+              className="py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs border border-blue-400/40 transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-lg shadow-blue-950/40"
+              title="Abre o painel.fun para renovar streaming deste cliente"
+            >
+              <Tv size={13} className="text-blue-200" />
+              📺 Renovar Streaming
+              <ExternalLink size={11} className="text-blue-200 ml-0.5" />
             </button>
 
             <button

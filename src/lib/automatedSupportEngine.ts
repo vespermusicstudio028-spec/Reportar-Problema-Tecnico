@@ -244,6 +244,22 @@ export function detectSupportIntent(text: string): SupportIntent {
     lower.includes('nao reproduz') ||
     lower.includes('erro de reproducao') ||
     lower.includes('lista nao carrega') ||
+    lower.includes('sinal ruim') ||
+    lower.includes('sinal instavel') ||
+    lower.includes('sinal fraco') ||
+    lower.includes('sinal fraquinho') ||
+    lower.includes('sinal esta ruim') ||
+    lower.includes('sinal ta ruim') ||
+    lower.includes('meu sinal') ||
+    lower.includes('o sinal') ||
+    lower.includes('minha tv') ||
+    lower.includes('meu aparelho') ||
+    lower.includes('o aparelho') ||
+    lower.includes('no aparelho') ||
+    lower.includes('canais ruins') ||
+    lower.includes('canal ruim') ||
+    lower.includes('imagem ruim') ||
+    lower.includes('qualidade ruim') ||
     (lower.includes('sinal') && !lower.includes('renovar o sinal') && !lower.includes('renovar meu sinal'))
   ) {
     return 'SINAL_TRAVAMENTO';
@@ -678,74 +694,35 @@ Se continuar aparecendo erro, envie uma captura de tela da mensagem apresentada 
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // INTENT: SINAL E TRAVAMENTO (com diagnóstico específico por aparelho)
+  // INTENT: SINAL E TRAVAMENTO — Procedimento Padrão de Diagnóstico
   // ─────────────────────────────────────────────────────────────────────────
   if (intent === 'SINAL_TRAVAMENTO') {
-    const lowerMsg = clientMessage.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const isTv = lowerMsg.includes('tv') || lowerMsg.includes('samsung') || lowerMsg.includes('lg') || lowerMsg.includes('smart') || device === 'Smart TV';
-    const isBox = lowerMsg.includes('box') || lowerMsg.includes('mxq') || lowerMsg.includes('aquario') || lowerMsg.includes('tx3') || device === 'TV Box';
-    const isCelular = lowerMsg.includes('celular') || lowerMsg.includes('cel') || lowerMsg.includes('smartphone') || lowerMsg.includes('iphone') || lowerMsg.includes('android') || device === 'Celular';
+    const deviceLabel = device && device !== 'Outro' ? device : 'TV / TVBOX / PC e etc';
 
-    let reply = '';
+    const reply = `📝 *PROBLEMAS COM O SINAL.*
 
-    if (isTv && !isBox) {
-      reply = `“📺 Vamos tentar resolver o problema na sua Smart TV.
-O funcionamento do serviço depende da conexão com a internet.
+*ANOTA AÍ O QUE PODE SER FEITO:*
 
-🔧 Faça estes testes:
-1️⃣ Feche completamente o aplicativo.
-2️⃣ Reinicie o modem/roteador.
-3️⃣ Retire a TV da tomada por aproximadamente 30 segundos.
-4️⃣ Ligue novamente.
-5️⃣ Abra o aplicativo e faça um novo teste.
-6️⃣ Tente acessar novamente um canal.
+*Os canais estão travando ou instáveis?*
 
-Se continuar apresentando problema, informe a marca e o modelo da sua TV.”`;
-    } else if (isBox) {
-      reply = `“📦 Vamos reiniciar sua TV Box.
-O funcionamento do serviço depende da conexão com a internet.
+✅ Bom, se o problema for esse, antes de tudo, precisamos analisar sua conexão, pode fazer alguns testes?
 
-🔧 Faça estes testes:
-1️⃣ Feche o aplicativo.
-2️⃣ Retire a TV Box da tomada por aproximadamente 30 segundos.
-3️⃣ Reinicie o modem/roteador.
-4️⃣ Ligue novamente a TV Box.
-5️⃣ Abra o aplicativo e faça um novo teste.
+É chato, eu sei, mas geralmente, 90% dos casos de travamentos são causados por instabilidade na internet, então pra tentar estabilizar, siga os passos abaixo.
 
-Se o problema persistir, informe o modelo da sua TV Box e envie uma foto do erro pelo botão de foto.”`;
-    } else if (isCelular) {
-      reply = `“📱 Vamos testar seu acesso pelo celular.
-O funcionamento do serviço depende da conexão com a internet.
+1 - *Desligue o aparelho (${deviceLabel}) e o roteador (NA TOMADA)* e espere cerca de 1 min;
 
-Faça este teste:
-1️⃣ Feche completamente o aplicativo.
-2️⃣ Reinicie o celular.
-3️⃣ Verifique se está conectado ao Wi-Fi ou dados móveis.
-4️⃣ Abra novamente o aplicativo.
-5️⃣ Faça um novo teste.
+Ligue tudo novamente e faça o teste dos canais, veja se estão funcionando melhor, use as fontes alternativas ou outras opções de imagem (FHD, HD ou SD).
 
-Se o problema continuar, informe o modelo do seu celular e envie uma captura de tela do erro.”`;
-    } else {
-      reply = `“Entendi! 📺 Vamos tentar resolver.
-O funcionamento do serviço depende da conexão com a internet.
+2 - Caso ainda esteja "travando", abra o navegador de internet da TV ou do BOX TV e acesse o site www.fast.com (clique em mostrar mais informações);
 
-Faça este teste:
-1️⃣ Feche completamente o aplicativo.
-2️⃣ Reinicie seu aparelho.
-3️⃣ Verifique sua conexão com a internet.
-4️⃣ Abra novamente o aplicativo.
-5️⃣ Faça um novo teste. Se possível, teste outro canal.
+■ OBS: *ENVIE FOTOS DE TODOS OS RESULTADOS*`;
 
-📌 Se apenas alguns canais apresentarem problema, informe quais são.
-Se todos os canais estiverem travando, informe também qual aparelho está utilizando.”`;
-    }
-
-    const summary = `Cliente relatou travamento ou canais que não abrem (${isTv ? 'Smart TV' : isBox ? 'TV Box' : isCelular ? 'Celular' : 'Geral'}). Enviado passo a passo de solução.`;
+    const summary = `Cliente relatou problema com sinal/travamento (${deviceLabel}). Enviado procedimento padrão de diagnóstico de sinal.`;
 
     await recordIssueAndSolutionInMemory(
       memory.client_code,
-      'Sinal com travamento/instabilidade',
-      'Passo a passo numerado de reinício de aparelho e modem',
+      'Sinal ruim / canais travando / instabilidade',
+      'Procedimento padrão: desligar aparelho + roteador 1 min, testar canais (FHD/HD/SD), teste no fast.com e enviar fotos',
       device,
       app
     );
@@ -753,20 +730,20 @@ Se todos os canais estiverem travando, informe também qual aparelho está utili
     await saveSupportSession({
       client_code: memory.client_code,
       client_name: clientName,
-      topic: 'Sinal e Conexão',
+      topic: 'Problemas com o Sinal',
       status: 'resolvido',
       summary,
       detected_device: device,
-      detected_issue: 'Travamento ou canais parados',
-      applied_solution: 'Passo a passo de reinício de aparelho e rede'
+      detected_issue: 'Sinal ruim / travamento / instabilidade',
+      applied_solution: 'Procedimento padrão de sinal: desligar aparelho + roteador, testar canais, teste fast.com'
     });
 
     return {
       intent,
       replyText: reply,
       summary,
-      detectedIssue: 'Canais travando ou parados',
-      appliedSolution: 'Passo a passo detalhado de solução'
+      detectedIssue: 'Sinal ruim / canais travando',
+      appliedSolution: 'Procedimento padrão de diagnóstico de sinal'
     };
   }
 

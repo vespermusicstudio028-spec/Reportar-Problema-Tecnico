@@ -170,6 +170,245 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
     updateDevice(devIdx, { ...device, subOptions: newSubs });
   };
 
+  // ─── MEDIA CAROUSEL EDITOR (com upload de arquivo) ─────────────────────────
+  const MediaCarouselEditor = ({
+    c,
+    setField
+  }: {
+    c: TrialContentBlock;
+    setField: (patch: Partial<TrialContentBlock>) => void;
+  }) => {
+    const [uploadingIdx, setUploadingIdx] = React.useState<number | null>(null);
+    const [uploadProgress, setUploadProgress] = React.useState<number>(0);
+    const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+
+    // Monta lista de itens (retrocompatibilidade com mediaUrl legacy)
+    const getItems = (): TrialMedia[] => {
+      const items = c.mediaItems ? [...c.mediaItems] : [];
+      if (items.length === 0 && c.mediaUrl && c.mediaType && c.mediaType !== 'none') {
+        items.push({ id: 'legacy', url: c.mediaUrl, type: c.mediaType });
+      }
+      return items;
+    };
+
+    const updateItems = (newItems: TrialMedia[]) => {
+      setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' });
+    };
+
+    const handleFileUpload = async (file: File, idx: number) => {
+      const items = getItems();
+      setUploadingIdx(idx);
+      setUploadProgress(0);
+
+      try {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'bin';
+        const isVideo = file.type.startsWith('video/');
+        const filePath = `carousel/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+
+        // Simula progresso (Supabase JS não emite eventos de progresso)
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => Math.min(prev + 15, 85));
+        }, 200);
+
+        const { error } = await supabase.storage
+          .from('store-media')
+          .upload(filePath, file, { upsert: false, contentType: file.type });
+
+        clearInterval(progressInterval);
+
+        if (error) {
+          alert(`Erro ao fazer upload: ${error.message}`);
+          setUploadingIdx(null);
+          return;
+        }
+
+        setUploadProgress(100);
+
+        const { data: urlData } = supabase.storage
+          .from('store-media')
+          .getPublicUrl(filePath);
+
+        const newItems = [...items];
+        newItems[idx] = {
+          ...newItems[idx],
+          url: urlData.publicUrl,
+          type: isVideo ? 'video' : 'image'
+        };
+        updateItems(newItems);
+      } catch (err) {
+        alert('Erro inesperado no upload. Tente novamente.');
+      } finally {
+        setTimeout(() => {
+          setUploadingIdx(null);
+          setUploadProgress(0);
+        }, 800);
+      }
+    };
+
+    const items = getItems();
+
+    return (
+      <div>
+        <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
+          Mídias (Fotos/Vídeos do Carrossel)
+        </label>
+        <div className="space-y-3">
+          {items.map((media, idx) => {
+            const isUploading = uploadingIdx === idx;
+            const inputMode = (media as any)._inputMode || 'upload';
+
+            return (
+              <div key={media.id} className="bg-[#0c0e12] border border-slate-700 p-3 rounded-xl space-y-2">
+                {/* Linha 1: Tipo + Modo + Lixeira */}
+                <div className="flex items-center gap-2">
+                  <select
+                    value={media.type}
+                    onChange={(e) => {
+                      const newItems = [...items];
+                      newItems[idx] = { ...media, type: e.target.value as any };
+                      updateItems(newItems);
+                    }}
+                    className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1.5 text-white text-sm focus:outline-none focus:border-indigo-500 w-32 shrink-0"
+                  >
+                    <option value="image">🖼️ Imagem</option>
+                    <option value="video">🎬 Vídeo</option>
+                  </select>
+
+                  {/* Toggle Upload / URL */}
+                  <div className="flex bg-slate-900 rounded-lg overflow-hidden border border-slate-700 text-xs font-bold shrink-0">
+                    <button
+                      onClick={() => {
+                        const newItems = [...items];
+                        (newItems[idx] as any)._inputMode = 'upload';
+                        updateItems(newItems);
+                      }}
+                      className={`px-3 py-1.5 transition-colors ${inputMode === 'upload' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      ⬆ Upload
+                    </button>
+                    <button
+                      onClick={() => {
+                        const newItems = [...items];
+                        (newItems[idx] as any)._inputMode = 'url';
+                        updateItems(newItems);
+                      }}
+                      className={`px-3 py-1.5 transition-colors ${inputMode === 'url' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                    >
+                      🔗 URL
+                    </button>
+                  </div>
+
+                  <div className="flex-1" />
+
+                  <button
+                    onClick={() => {
+                      const newItems = [...items];
+                      newItems.splice(idx, 1);
+                      updateItems(newItems);
+                    }}
+                    className="w-9 h-9 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors shrink-0"
+                    title="Remover"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+
+                {/* Linha 2: Upload ou URL */}
+                {inputMode === 'url' ? (
+                  <input
+                    type="text"
+                    value={media.url}
+                    onChange={(e) => {
+                      const newItems = [...items];
+                      newItems[idx] = { ...media, url: e.target.value };
+                      updateItems(newItems);
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
+                    placeholder="Cole aqui a URL (Google Drive, YouTube, CDN...)"
+                  />
+                ) : (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      ref={el => { fileInputRefs.current[idx] = el; }}
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, idx);
+                        e.target.value = '';
+                      }}
+                    />
+                    <button
+                      onClick={() => fileInputRefs.current[idx]?.click()}
+                      disabled={isUploading}
+                      className="w-full border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-xl p-4 text-slate-400 hover:text-indigo-400 transition-colors flex flex-col items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isUploading ? (
+                        <>
+                          <Loader2 size={20} className="animate-spin text-indigo-400" />
+                          <span className="text-xs font-bold text-indigo-400">Enviando... {uploadProgress}%</span>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 mt-1">
+                            <div
+                              className="bg-indigo-500 h-1.5 rounded-full transition-all"
+                              style={{ width: `${uploadProgress}%` }}
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud size={20} />
+                          <span className="text-xs font-bold">
+                            {media.url ? 'Trocar arquivo' : 'Clique para selecionar foto ou vídeo'}
+                          </span>
+                          <span className="text-[10px] text-slate-600">JPG, PNG, WebP, MP4, MOV...</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* Preview */}
+                {media.url && !isUploading && (
+                  <div className="h-24 w-full rounded-lg overflow-hidden border border-slate-800 bg-slate-950/60 relative">
+                    {media.type === 'image' ? (
+                      <img src={media.url} className="w-full h-full object-cover" alt="preview" />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-slate-500">
+                        <Video size={20} />
+                        <span className="text-[10px]">Vídeo — clique para verificar</span>
+                        <a
+                          href={media.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-indigo-400 hover:underline"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          Abrir link ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Botão Adicionar */}
+          <button
+            onClick={() => {
+              const newItems = [...items, { id: `med_${Date.now()}`, url: '', type: 'image' as const, _inputMode: 'upload' } as any];
+              updateItems(newItems);
+            }}
+            className="w-full border-2 border-dashed border-slate-700 hover:border-indigo-500/50 text-slate-400 hover:text-indigo-400 p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-colors"
+          >
+            <Plus size={16} /> Adicionar Nova Mídia
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // ─── CONTENT EDITOR ─────────────────────────────────────────────────────────
   const ContentEditor = ({
     content,
@@ -226,86 +465,10 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
         </div>
 
         {/* Mídias (Carrossel) */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">Mídias (Fotos/Vídeos do Carrossel)</label>
-          <div className="space-y-3">
-            {/* Lista de Mídias Atuais (combinando antigas e novas) */}
-            {(() => {
-              const items = c.mediaItems || [];
-              // Retrocompatibilidade se não houver mediaItems mas tiver mediaUrl
-              if (items.length === 0 && c.mediaUrl && c.mediaType && c.mediaType !== 'none') {
-                items.push({ id: 'legacy', url: c.mediaUrl, type: c.mediaType });
-              }
-
-              return items.map((media, idx) => (
-                <div key={media.id} className="bg-[#0c0e12] border border-slate-700 p-3 rounded-xl flex flex-col md:flex-row md:items-center gap-3">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={media.type}
-                        onChange={(e) => {
-                          const newItems = [...items];
-                          newItems[idx] = { ...media, type: e.target.value as any };
-                          setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' }); // Limpa o legacy
-                        }}
-                        className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-indigo-500 w-32"
-                      >
-                        <option value="image">🖼️ Imagem</option>
-                        <option value="video">🎬 Vídeo</option>
-                      </select>
-                      <input
-                        type="text"
-                        value={media.url}
-                        onChange={(e) => {
-                          const newItems = [...items];
-                          newItems[idx] = { ...media, url: e.target.value };
-                          setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' }); // Limpa o legacy
-                        }}
-                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-indigo-500"
-                        placeholder="URL (Google Drive, YouTube, Imagem...)"
-                      />
-                    </div>
-                    {/* Preview Rápido */}
-                    <div className="h-20 w-full rounded-lg overflow-hidden border border-slate-800 bg-slate-950/50 relative">
-                       {media.type === 'image' ? (
-                         <img src={media.url} className="w-full h-full object-cover" alt="preview" />
-                       ) : (
-                         <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">Prévia de Vídeo não disponível aqui</div>
-                       )}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      const newItems = [...items];
-                      newItems.splice(idx, 1);
-                      setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' });
-                    }}
-                    className="w-10 h-10 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-colors shrink-0"
-                    title="Remover Mídia"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ));
-            })()}
-
-            {/* Adicionar Mídia */}
-            <button
-              onClick={() => {
-                const items = c.mediaItems || [];
-                // Se houver legacy
-                if (items.length === 0 && c.mediaUrl && c.mediaType && c.mediaType !== 'none') {
-                  items.push({ id: 'legacy', url: c.mediaUrl, type: c.mediaType });
-                }
-                const newItems = [...items, { id: `med_${Date.now()}`, url: '', type: 'image' as const }];
-                setField({ mediaItems: newItems, mediaUrl: undefined, mediaType: 'none' });
-              }}
-              className="w-full border-2 border-dashed border-slate-700 hover:border-indigo-500/50 text-slate-400 hover:text-indigo-400 p-3 rounded-xl flex items-center justify-center gap-2 text-sm font-bold transition-colors"
-            >
-              <Plus size={16} /> Adicionar Nova Mídia
-            </button>
-          </div>
-        </div>
+        <MediaCarouselEditor
+          c={c}
+          setField={setField}
+        />
 
         {/* Alertas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

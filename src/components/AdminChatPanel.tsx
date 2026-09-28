@@ -1106,32 +1106,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
-                  <button
-                    type="button"
-                    onClick={handleOpenRenovarAppSite}
-                    className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-md bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-400/60 font-black truncate flex items-center justify-between gap-1 group shadow-emerald-950/40 cursor-pointer"
-                    title="Abrir site AtiveApp para renovar aplicativo do cliente"
-                  >
-                    <span className="truncate flex items-center gap-1.5">
-                      <Smartphone size={14} className="text-white shrink-0" />
-                      Renovar App
-                    </span>
-                    <ExternalLink size={12} className="text-emerald-200 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenRenovarStreamingSite}
-                    className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white border border-blue-400/60 font-black truncate flex items-center justify-between gap-1 group shadow-blue-950/40 cursor-pointer"
-                    title="Abrir Painel.fun para renovar streaming"
-                  >
-                    <span className="truncate flex items-center gap-1.5">
-                      <Tv size={14} className="text-white shrink-0" />
-                      Renovar Streaming
-                    </span>
-                    <ExternalLink size={12} className="text-blue-200 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                   {QUICK_REPLIES.map((reply, i) => (
                     <button
                       key={i}

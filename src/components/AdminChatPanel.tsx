@@ -44,12 +44,6 @@ import { ExpiryNoticeCard, isExpiryNotice3DMessage, parseExpiryNotice3DMessage, 
 import { ClientMemoryModal } from './ClientMemoryModal';
 import { AdminStoreManagerModal } from './AdminStoreManagerModal';
 
-interface QuickReplyItem {
-  label: string;
-  message?: string;
-  isSpecialExpiryNotice?: boolean;
-}
-
 interface SlashCommandItem {
   id: string;
   command: string;
@@ -63,16 +57,6 @@ interface SlashCommandItem {
   isSpecialExpiryNotice?: boolean;
   action?: () => void;
 }
-
-const QUICK_REPLIES: QuickReplyItem[] = [
-  { label: '⏰ Vence em 3 Dias', isSpecialExpiryNotice: true },
-  { label: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊', message: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊' },
-  { label: 'Recebi sua mensagem...', message: 'Recebi sua mensagem. Já estou verificando para você!' },
-  { label: 'Sinal atualizado ✅', message: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?' },
-  { label: 'Qual aparelho?', message: 'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?' },
-  { label: '🧪 Teste iniciado', message: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.' },
-  { label: 'Tudo funcionando 🚀', message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀' },
-];
 
 interface AdminChatPanelProps {
   clientsList?: Array<{
@@ -1283,71 +1267,6 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     <ArrowDown size={14} /> Mensagens recentes
                   </button>
                 )}
-              </div>
-
-              {/* Respostas Rápidas */}
-              <div className="p-2.5 sm:p-3 bg-[#0d1017] border-t border-slate-800/80 shrink-0">
-                <div className="flex items-center justify-between mb-2.5 px-1 flex-wrap gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                    <Sparkles size={14} className="text-amber-400" />
-                    Respostas Rápidas:
-                  </span>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={handleSendExpiryNotice3Days}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs shadow-md shadow-amber-950/40 transition-all active:scale-95 border border-amber-400/50 cursor-pointer"
-                      title="Enviar aviso com imagem e texto: Vence em 3 Dias"
-                    >
-                      <Clock size={13} className="text-amber-100" />
-                      <span>⏰ Vence em 3 Dias (com Imagem)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenRenovarAppSite}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-950/40 transition-all active:scale-95 border border-emerald-400/50 cursor-pointer"
-                      title="Abrir site AtiveApp para renovar aplicativo"
-                    >
-                      <Smartphone size={13} className="text-emerald-100" />
-                      <span>Renovar App (AtiveApp) ↗</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenRenovarStreamingSite}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs shadow-md shadow-blue-950/40 transition-all active:scale-95 border border-blue-400/50 cursor-pointer"
-                      title="Abrir painel para renovar streaming do cliente"
-                    >
-                      <Tv size={13} className="text-blue-100" />
-                      <span>Renovar Streaming ↗</span>
-                    </button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2">
-                  {QUICK_REPLIES.map((reply, i) => {
-                    const isExpiryNotice = Boolean(reply.isSpecialExpiryNotice);
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => {
-                          if (isExpiryNotice) {
-                            handleSendExpiryNotice3Days();
-                          } else if (reply.message) {
-                            handleSendMessage(reply.message);
-                          }
-                        }}
-                        className={`text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm font-medium truncate flex items-center justify-between gap-1 ${
-                          isExpiryNotice
-                            ? 'bg-gradient-to-r from-amber-600/30 to-orange-600/20 hover:from-amber-600/50 hover:to-orange-600/40 text-amber-200 border border-amber-500/50 font-bold'
-                            : 'bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800'
-                        }`}
-                        title={reply.message || reply.label}
-                      >
-                        <span className="truncate">{reply.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
 
               {/* Campo de Envio de Mensagem */}

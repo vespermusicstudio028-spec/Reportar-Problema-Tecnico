@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronLeft, 
@@ -47,6 +47,43 @@ interface Props {
   onPointAdded?: (client: any) => void;
 }
 
+// ─── Componente EXTERNO ao TrialFlowRenderer ──────────────────────────────────
+// IMPORTANTE: deve ficar fora da função TrialFlowRenderer para ter identidade
+// estável entre re-renders. Se fosse definido dentro, o React o trataria como
+// um componente DIFERENTE a cada render (causando desmontagem/remontagem e
+// consequentemente perda de foco do input + scroll para o topo).
+interface TrialScreenWrapperProps {
+  containerRef: React.RefObject<HTMLDivElement>;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+const TrialScreenWrapper = React.memo(function TrialScreenWrapper({
+  containerRef,
+  onClose,
+  children,
+}: TrialScreenWrapperProps) {
+  return (
+    <div
+      ref={containerRef}
+      className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:py-10 md:px-6"
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="hidden md:flex fixed top-6 right-6 w-11 h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[100] group shadow-xl"
+        title="Fechar teste grátis"
+      >
+        <X size={22} className="group-hover:scale-110 transition-transform" />
+      </button>
+      <div className="w-full md:max-w-3xl md:mx-auto md:my-auto relative">
+        {children}
+      </div>
+    </div>
+  );
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat, onRegisterStepBack, clientCode, clientName, onClientRegistered, onPointAdded }: Props) {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedSubOptionId, setSelectedSubOptionId] = useState<string | null>(null);
@@ -59,46 +96,6 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
 
   // Ref para o container scrollável do Teste Grátis (desktop fullscreen)
   const trialScrollRef = useRef<HTMLDivElement>(null);
-
-  // Handler de foco para inputs dentro do container fixo:
-  // impede o scroll nativo do browser (que sobe para o topo) e
-  // rola suavemente para o elemento que recebeu foco.
-  const handleInputFocus = useCallback((e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const el = e.currentTarget;
-    const container = trialScrollRef.current;
-    if (!container) return;
-    // Aguarda o teclado virtual abrir (mobile) antes de calcular posição
-    setTimeout(() => {
-      const containerRect = container.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      // Só rola se o campo estiver abaixo do centro visível do container
-      const targetScrollTop = container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 2 + elRect.height / 2;
-      container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
-    }, 100);
-  }, []);
-
-  // Wrapper fullscreen para computador (desktop): cobre toda a tela do monitor em tela cheia com overlay escuro e blur.
-  // No celular/mobile, mantém o layout normal sem sobreposição (somente para computador!)
-  const TrialScreenWrapper = ({ children }: { children: React.ReactNode }) => {
-    return (
-      <div
-        ref={trialScrollRef}
-        className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:py-10 md:px-6"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="hidden md:flex fixed top-6 right-6 w-11 h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[100] group shadow-xl"
-          title="Fechar teste grátis"
-        >
-          <X size={22} className="group-hover:scale-110 transition-transform" />
-        </button>
-        <div className="w-full md:max-w-3xl md:mx-auto md:my-auto relative">
-          {children}
-        </div>
-      </div>
-    );
-  };
 
 
 
@@ -976,7 +973,6 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                     type="text"
                     value={macCode}
                     onChange={(e) => setMacCode(e.target.value)}
-                    onFocus={handleInputFocus}
                     placeholder="Ex: A1:B2:C3:D4:E5:F6"
                     className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
                   />
@@ -988,7 +984,6 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                     type="text"
                     value={deviceKey}
                     onChange={(e) => setDeviceKey(e.target.value)}
-                    onFocus={handleInputFocus}
                     placeholder="Ex: 123456"
                     className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
                   />
@@ -1088,7 +1083,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   // 3. Renderizando o conteúdo de uma sub-opção selecionada
   if (selectedDevice && selectedDevice.type === 'suboptions' && selectedSubOption) {
     return (
-      <TrialScreenWrapper>
+      <TrialScreenWrapper containerRef={trialScrollRef} onClose={onClose}>
         {renderContentBlock(selectedSubOption.content, () => setSelectedSubOptionId(null))}
       </TrialScreenWrapper>
     );
@@ -1097,7 +1092,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   // 2. Renderizando as Sub-opções de um Dispositivo
   if (selectedDevice && selectedDevice.type === 'suboptions' && !selectedSubOptionId) {
     return (
-      <TrialScreenWrapper>
+      <TrialScreenWrapper containerRef={trialScrollRef} onClose={onClose}>
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -1141,7 +1136,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   // 2. Renderizando o conteúdo de um Dispositivo direto (ex: Celular)
   if (selectedDevice && selectedDevice.type === 'content' && selectedDevice.content) {
     return (
-      <TrialScreenWrapper>
+      <TrialScreenWrapper containerRef={trialScrollRef} onClose={onClose}>
         {renderContentBlock(selectedDevice.content, () => setSelectedDeviceId(null), showAppDescription, () => setShowAppDescription(!showAppDescription))}
       </TrialScreenWrapper>
     );
@@ -1149,7 +1144,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
 
   // 1. Renderizando a Lista de Dispositivos Principal
   return (
-    <TrialScreenWrapper>
+    <TrialScreenWrapper containerRef={trialScrollRef} onClose={onClose}>
       {/* Alerta Global */}
       {config.globalAlert?.enabled && !alertDismissed && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">

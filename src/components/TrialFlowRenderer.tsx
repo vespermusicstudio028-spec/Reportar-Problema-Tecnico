@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronLeft, 
@@ -57,11 +57,34 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
 
+  // Ref para o container scrollável do Teste Grátis (desktop fullscreen)
+  const trialScrollRef = useRef<HTMLDivElement>(null);
+
+  // Handler de foco para inputs dentro do container fixo:
+  // impede o scroll nativo do browser (que sobe para o topo) e
+  // rola suavemente para o elemento que recebeu foco.
+  const handleInputFocus = useCallback((e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const el = e.currentTarget;
+    const container = trialScrollRef.current;
+    if (!container) return;
+    // Aguarda o teclado virtual abrir (mobile) antes de calcular posição
+    setTimeout(() => {
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      // Só rola se o campo estiver abaixo do centro visível do container
+      const targetScrollTop = container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 2 + elRect.height / 2;
+      container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+    }, 100);
+  }, []);
+
   // Wrapper fullscreen para computador (desktop): cobre toda a tela do monitor em tela cheia com overlay escuro e blur.
   // No celular/mobile, mantém o layout normal sem sobreposição (somente para computador!)
   const TrialScreenWrapper = ({ children }: { children: React.ReactNode }) => {
     return (
-      <div className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:py-10 md:px-6">
+      <div
+        ref={trialScrollRef}
+        className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:py-10 md:px-6"
+      >
         <button
           type="button"
           onClick={onClose}
@@ -102,6 +125,26 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   useEffect(() => { selectedSubOptionIdRef.current = selectedSubOptionId; }, [selectedSubOptionId]);
   useEffect(() => { showRegisterModalRef.current = showRegisterModal; }, [showRegisterModal]);
   useEffect(() => { showSuccessModalRef.current = showSuccessModal; }, [showSuccessModal]);
+
+  // Trava o scroll da window enquanto o modal fullscreen de Teste Grátis estiver aberto.
+  // Isso impede que o browser role a página para cima ao focar inputs dentro de
+  // containers com position:fixed (comportamento nativo do Chrome/Edge/Brave).
+  useEffect(() => {
+    const savedX = window.scrollX;
+    const savedY = window.scrollY;
+
+    const lockWindowScroll = () => {
+      if (window.scrollX !== savedX || window.scrollY !== savedY) {
+        window.scrollTo(savedX, savedY);
+      }
+    };
+
+    window.addEventListener('scroll', lockWindowScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', lockWindowScroll);
+    };
+  }, []);
 
   // Flag para evitar pushState duplo quando o usuário está VOLTANDO (não avançando)
   const isNavigatingBackRef = useRef(false);
@@ -933,6 +976,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                     type="text"
                     value={macCode}
                     onChange={(e) => setMacCode(e.target.value)}
+                    onFocus={handleInputFocus}
                     placeholder="Ex: A1:B2:C3:D4:E5:F6"
                     className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
                   />
@@ -944,6 +988,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                     type="text"
                     value={deviceKey}
                     onChange={(e) => setDeviceKey(e.target.value)}
+                    onFocus={handleInputFocus}
                     placeholder="Ex: 123456"
                     className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
                   />

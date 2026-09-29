@@ -41,6 +41,11 @@ import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } f
 import { getOrCreateClientMemory } from '../lib/clientMemoryService';
 import { processClientSupportMessage, getTimeBasedGreeting } from '../lib/automatedSupportEngine';
 import { fetchStoreSettings } from '../lib/storeService';
+import {
+  isCustomShortcutMessage,
+  parseCustomShortcutMessage,
+  COLOR_THEMES,
+} from './CustomShortcutsManagerModal';
 
 export interface AccessPointScreen {
   screenNumber: number;
@@ -1059,7 +1064,46 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                                 isAdmin={false}
                                 onInitiateRenewal={handleInitiateRenewal}
                               />
-                            ) : (
+                            ) : isCustomShortcutMessage(msg.message) ? (() => {
+                              const payload = parseCustomShortcutMessage(msg.message);
+                              if (!payload) return null;
+                              const theme = COLOR_THEMES[payload.colorTheme] || COLOR_THEMES.purple;
+                              const isYouTube = payload.mediaUrl.includes('youtube.com') || payload.mediaUrl.includes('youtu.be');
+                              const getYouTubeId = (url: string) => {
+                                const m = url.match(/(?:v=|youtu\.be\/)([^&?/]+)/);
+                                return m ? m[1] : null;
+                              };
+                              return (
+                                <div className="w-full rounded-2xl overflow-hidden border border-slate-600/40 bg-gradient-to-b from-[#181d2c] to-[#0c0f17] shadow-lg text-white">
+                                  <div className="px-3 py-2 bg-slate-800/70 border-b border-slate-700/50 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-base">{payload.icon}</span>
+                                      <span className="text-xs font-bold text-slate-200 truncate max-w-[160px]">{payload.label}</span>
+                                    </div>
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${theme.badge}`}>{payload.command}</span>
+                                  </div>
+                                  {payload.mediaType === 'image' && payload.mediaUrl && (
+                                    <a href={payload.mediaUrl} target="_blank" rel="noopener noreferrer" className="bg-black/50 flex justify-center p-2 block hover:opacity-90 transition-opacity">
+                                      <img src={payload.mediaUrl} alt={payload.label} className="max-h-64 w-auto rounded-xl border border-white/10 object-contain" />
+                                    </a>
+                                  )}
+                                  {payload.mediaType === 'video' && payload.mediaUrl && (
+                                    <div className="bg-black/50 p-2">
+                                      {isYouTube ? (
+                                        <div className="aspect-video rounded-xl overflow-hidden border border-white/10">
+                                          <iframe src={`https://www.youtube.com/embed/${getYouTubeId(payload.mediaUrl)}`} className="w-full h-full" allowFullScreen />
+                                        </div>
+                                      ) : (
+                                        <video src={payload.mediaUrl} controls className="w-full rounded-xl border border-white/10 max-h-56" />
+                                      )}
+                                    </div>
+                                  )}
+                                  {payload.message && (
+                                    <div className="px-3 py-2.5 text-xs text-slate-300 leading-relaxed bg-[#111520]/70 border-t border-slate-800 whitespace-pre-wrap">{payload.message}</div>
+                                  )}
+                                </div>
+                              );
+                            })() : (
                               <>
                                 <div className="break-words">
                                   {renderFormattedChatMessageText(msg.message, isClient)}

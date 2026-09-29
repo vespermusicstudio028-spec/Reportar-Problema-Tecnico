@@ -44,6 +44,15 @@ import { PhotoUploadModal, isSupportPhotosMessage, parseSupportPhotosMessage } f
 import { ExpiryNoticeCard, isExpiryNotice3DMessage, parseExpiryNotice3DMessage, ExpiryNoticePayload } from './ExpiryNoticeCard';
 import { ClientMemoryModal } from './ClientMemoryModal';
 import { AdminStoreManagerModal } from './AdminStoreManagerModal';
+import {
+  CustomShortcutsManagerModal,
+  CustomShortcut,
+  COLOR_THEMES,
+  loadCustomShortcuts,
+  buildCustomShortcutMessage,
+  isCustomShortcutMessage,
+  parseCustomShortcutMessage,
+} from './CustomShortcutsManagerModal';
 
 interface SlashCommandItem {
   id: string;
@@ -105,6 +114,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [mobileShowChat, setMobileShowChat] = useState(Boolean(initialClientCode));
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [showStoreManager, setShowStoreManager] = useState(false);
+  const [showCustomShortcutsManager, setShowCustomShortcutsManager] = useState(false);
+  const [customShortcuts, setCustomShortcuts] = useState<CustomShortcut[]>(() => loadCustomShortcuts());
   const [clientToDelete, setClientToDelete] = useState<{ code: string; name: string } | null>(null);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [holdingClientCode, setHoldingClientCode] = useState<string | null>(null);
@@ -659,20 +670,39 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     },
   ], [handleOpenRenovarAppSite, handleOpenRenovarStreamingSite]);
 
+  // Atalhos personalizados convertidos para SlashCommandItem
+  const customSlashItems: SlashCommandItem[] = React.useMemo(() =>
+    customShortcuts.map((s) => ({
+      id: `custom-${s.id}`,
+      command: s.command,
+      label: `${s.icon} ${s.label}`,
+      description: s.description || (s.mediaType !== 'none' ? `Atalho com ${s.mediaType === 'image' ? 'imagem' : 'video'}` : 'Atalho personalizado'),
+      badge: s.mediaType === 'image' ? 'Imagem' : s.mediaType === 'video' ? 'Video' : 'Texto',
+      badgeColor: COLOR_THEMES[s.colorTheme].badge,
+      icon: s.icon,
+      action: () => handleSendMessage(buildCustomShortcutMessage(s)),
+    })),
+  [customShortcuts]);
+
   const isSlashTriggered = replyText.startsWith('/');
   const slashQuery = isSlashTriggered ? replyText.slice(1).trim().toLowerCase() : '';
 
+  const allSlashCommands = React.useMemo(
+    () => [...slashCommands, ...customSlashItems],
+    [slashCommands, customSlashItems]
+  );
+
   const filteredSlashCommands = React.useMemo(() => {
     if (!isSlashTriggered) return [];
-    if (!slashQuery) return slashCommands;
-    return slashCommands.filter((cmd) => {
+    if (!slashQuery) return allSlashCommands;
+    return allSlashCommands.filter((cmd) => {
       const matchCmd = cmd.command.toLowerCase().includes(slashQuery);
       const matchLabel = cmd.label.toLowerCase().includes(slashQuery);
       const matchDesc = cmd.description.toLowerCase().includes(slashQuery);
       const matchAlias = cmd.aliases?.some((a) => a.toLowerCase().includes(slashQuery));
       return matchCmd || matchLabel || matchDesc || matchAlias;
     });
-  }, [isSlashTriggered, slashQuery, slashCommands]);
+  }, [isSlashTriggered, slashQuery, allSlashCommands]);
 
   useEffect(() => {
     setSlashSelectedIndex(0);
@@ -1071,6 +1101,11 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                             ? '🚨 [Aviso: Vence Hoje]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_3D]')
                             ? '⏰ [Aviso: Vence em 3 Dias]'
+                            : conv.last_message.includes('[ATALHO_CUSTOM]')
+                            ? (() => {
+                                const p = parseCustomShortcutMessage(conv.last_message);
+                                return p ? `${p.icon} [${p.label}]` : '⚡ [Atalho Personalizado]';
+                              })()
                             : conv.last_message}
                         </p>
                       </div>
@@ -1331,7 +1366,46 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                                   isAdmin={true}
                                   onOpenStreamingSite={handleOpenRenovarStreamingSite}
                                 />
-                              ) : (
+                                ) : isCustomShortcutMessage(msg.message) ? (() => {
+                                  const payload = parseCustomShortcutMessage(msg.message);
+                                  if (!payload) return null;
+                                  const theme = COLOR_THEMES[payload.colorTheme] || COLOR_THEMES.purple;
+                                  const isYouTube = payload.mediaUrl.includes('youtube.com') || payload.mediaUrl.includes('youtu.be');
+                                  const getYouTubeId = (url: string) => {
+                                    const m = url.match(/(?:v=|youtu\.be\/)([^&?/]+)/);
+                                    return m ? m[1] : null;
+                                  };
+                                  return (
+                                    <div className="w-full rounded-2xl overflow-hidden border border-slate-600/40 bg-gradient-to-b from-[#181d2c] to-[#0c0f17] shadow-lg text-white">
+                                      <div className="px-3 py-2 bg-slate-800/70 border-b border-slate-700/50 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-base">{payload.icon}</span>
+                                          <span className="text-xs font-bold text-slate-200 truncate max-w-[160px]">{payload.label}</span>
+                                        </div>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${theme.badge}`}>{payload.command}</span>
+                                      </div>
+                                      {payload.mediaType === 'image' && payload.mediaUrl && (
+                                        <a href={payload.mediaUrl} target="_blank" rel="noopener noreferrer" className="bg-black/50 flex justify-center p-2 block hover:opacity-90 transition-opacity">
+                                          <img src={payload.mediaUrl} alt={payload.label} className="max-h-64 w-auto rounded-xl border border-white/10 object-contain" />
+                                        </a>
+                                      )}
+                                      {payload.mediaType === 'video' && payload.mediaUrl && (
+                                        <div className="bg-black/50 p-2">
+                                          {isYouTube ? (
+                                            <div className="aspect-video rounded-xl overflow-hidden border border-white/10">
+                                              <iframe src={`https://www.youtube.com/embed/${getYouTubeId(payload.mediaUrl)}`} className="w-full h-full" allowFullScreen />
+                                            </div>
+                                          ) : (
+                                            <video src={payload.mediaUrl} controls className="w-full rounded-xl border border-white/10 max-h-56" />
+                                          )}
+                                        </div>
+                                      )}
+                                      {payload.message && (
+                                        <div className="px-3 py-2.5 text-xs text-slate-300 leading-relaxed bg-[#111520]/70 border-t border-slate-800 whitespace-pre-wrap">{payload.message}</div>
+                                      )}
+                                    </div>
+                                  );
+                                })() : (
                                 <div className="break-words pr-6">
                                   {renderFormattedChatMessageText(msg.message, isAdmin)}
 
@@ -1446,6 +1520,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                         <span className="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono text-[10px] font-bold border border-slate-700/60">
                           {filteredSlashCommands.length} {filteredSlashCommands.length === 1 ? 'atalho' : 'atalhos'}
                         </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setReplyText(''); setShowCustomShortcutsManager(true); }}
+                          className="flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/35 text-indigo-300 hover:text-indigo-100 border border-indigo-500/40 text-[11px] font-bold transition-all"
+                          title="Criar e gerenciar atalhos personalizados"
+                        >
+                          + Gerenciar
+                        </button>
                       </div>
                     </div>
 
@@ -1686,6 +1768,13 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           </div>
         </div>
       )}
+
+      {/* Modal de Gerenciamento de Atalhos Personalizados */}
+      <CustomShortcutsManagerModal
+        isOpen={showCustomShortcutsManager}
+        onClose={() => setShowCustomShortcutsManager(false)}
+        onShortcutsChanged={(updated) => setCustomShortcuts(updated)}
+      />
     </div>
   );
 };

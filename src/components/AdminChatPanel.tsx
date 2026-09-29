@@ -39,9 +39,26 @@ import {
 } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
 import { TrialDataActionsCard, extractTrialRequestData } from './TrialDataActionsCard';
-import { isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
+import { PhotoUploadModal, isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
+import { ExpiryNoticeCard, isExpiryNotice3DMessage, parseExpiryNotice3DMessage, ExpiryNoticePayload } from './ExpiryNoticeCard';
 import { ClientMemoryModal } from './ClientMemoryModal';
 import { AdminStoreManagerModal } from './AdminStoreManagerModal';
+
+interface QuickReplyItem {
+  label: string;
+  message?: string;
+  isSpecialExpiryNotice?: boolean;
+}
+
+const QUICK_REPLIES: QuickReplyItem[] = [
+  { label: '⏰ Vence em 3 Dias', isSpecialExpiryNotice: true },
+  { label: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊', message: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊' },
+  { label: 'Recebi sua mensagem...', message: 'Recebi sua mensagem. Já estou verificando para você!' },
+  { label: 'Sinal atualizado ✅', message: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?' },
+  { label: 'Qual aparelho?', message: 'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?' },
+  { label: '🧪 Teste iniciado', message: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.' },
+  { label: 'Tudo funcionando 🚀', message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀' },
+];
 
 interface AdminChatPanelProps {
   clientsList?: Array<{
@@ -67,15 +84,6 @@ interface AdminChatPanelProps {
   onCloseToHome?: () => void;
   initialClientCode?: string | null;
 }
-
-const QUICK_REPLIES = [
-  { label: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊', message: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊' },
-  { label: 'Recebi sua mensagem...', message: 'Recebi sua mensagem. Já estou verificando para você!' },
-  { label: 'Sinal atualizado ✅', message: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?' },
-  { label: 'Qual aparelho?', message: 'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?' },
-  { label: '🧪 Teste iniciado', message: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.' },
-  { label: 'Tudo funcionando 🚀', message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀' },
-];
 
 export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = [], onRegisterStepBack, onCloseToHome, initialClientCode }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -458,6 +466,20 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
+  // Atalho: Enviar Aviso de Vencimento em 3 Dias com Imagem e Texto
+  const handleSendExpiryNotice3Days = async () => {
+    if (!selectedClientCode || isSending) return;
+    const payload: ExpiryNoticePayload = {
+      imageUrl: '/vence-em-3-dias.jpg',
+      text: 'Bom dia! ☀️ Seu plano vence em *3 dias*.\n\nPor favor, realize o seu pagamento para *não perder o sinal*!\nPara renovar seu acesso, basta clicar no botão *Renovar* abaixo:',
+      days: 3,
+      pixKey: 'thebestiptv10@gmail.com',
+      whatsapp: '5521959368651'
+    };
+    const messageString = `[AVISO_VENCIMENTO_3D]${JSON.stringify(payload)}[/AVISO_VENCIMENTO_3D]`;
+    await handleSendMessage(messageString);
+  };
+
   // Confirmar e Reconhecer Pagamento Pix com 1 clique sem delay
   const handleConfirmPixPayment = async (clientCode: string, clientName: string) => {
     try {
@@ -752,6 +774,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                           )}
                           {conv.last_message.includes('[PIX_COMPROVANTE:')
                             ? '📄 [Comprovante Pix Enviado]'
+                            : conv.last_message.includes('[FOTOS_SUPORTE]')
+                            ? '📷 [Fotos Enviadas]'
+                            : conv.last_message.includes('[AVISO_VENCIMENTO_3D]')
+                            ? '⏰ [Aviso: Vence em 3 Dias]'
                             : conv.last_message}
                         </p>
                       </div>
@@ -1006,6 +1032,12 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                                   onConfirmPixPayment={() => handleConfirmPixPayment(msg.client_code, activeClientName)}
                                   isClientSender={!isAdmin}
                                 />
+                              ) : isExpiryNotice3DMessage(msg.message) ? (
+                                <ExpiryNoticeCard
+                                  payload={parseExpiryNotice3DMessage(msg.message)!}
+                                  isAdmin={true}
+                                  onOpenStreamingSite={handleOpenRenovarStreamingSite}
+                                />
                               ) : (
                                 <div className="break-words pr-6">
                                   {renderFormattedChatMessageText(msg.message, isAdmin)}
@@ -1097,7 +1129,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     <Sparkles size={14} className="text-amber-400" />
                     Respostas Rápidas:
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleSendExpiryNotice3Days}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-rose-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs shadow-md shadow-amber-950/40 transition-all active:scale-95 border border-amber-400/50 cursor-pointer"
+                      title="Enviar aviso com imagem e texto: Vence em 3 Dias"
+                    >
+                      <Clock size={13} className="text-amber-100" />
+                      <span>⏰ Vence em 3 Dias (com Imagem)</span>
+                    </button>
                     <button
                       type="button"
                       onClick={handleOpenRenovarAppSite}
@@ -1118,18 +1159,31 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                  {QUICK_REPLIES.map((reply, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => handleSendMessage(reply.message)}
-                      className="text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800 font-medium truncate flex items-center justify-between gap-1"
-                      title={reply.message}
-                    >
-                      <span className="truncate">{reply.label}</span>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2">
+                  {QUICK_REPLIES.map((reply, i) => {
+                    const isExpiryNotice = Boolean(reply.isSpecialExpiryNotice);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          if (isExpiryNotice) {
+                            handleSendExpiryNotice3Days();
+                          } else if (reply.message) {
+                            handleSendMessage(reply.message);
+                          }
+                        }}
+                        className={`text-left text-xs p-2.5 rounded-xl transition-all leading-tight active:scale-[0.98] shadow-sm font-medium truncate flex items-center justify-between gap-1 ${
+                          isExpiryNotice
+                            ? 'bg-gradient-to-r from-amber-600/30 to-orange-600/20 hover:from-amber-600/50 hover:to-orange-600/40 text-amber-200 border border-amber-500/50 font-bold'
+                            : 'bg-[#161a24] hover:bg-indigo-600/20 hover:border-indigo-500/40 text-slate-300 hover:text-indigo-200 border border-slate-800'
+                        }`}
+                        title={reply.message || reply.label}
+                      >
+                        <span className="truncate">{reply.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

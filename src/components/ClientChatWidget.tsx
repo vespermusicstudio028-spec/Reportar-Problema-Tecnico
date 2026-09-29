@@ -34,6 +34,7 @@ import { PixPdfCard } from './PixPdfCard';
 import { PixUploadModal } from './PixUploadModal';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixReceivedMessage } from '../lib/pixUtils';
 import { PhotoUploadModal, isSupportPhotosMessage, parseSupportPhotosMessage } from './PhotoUploadModal';
+import { ExpiryNoticeCard, isExpiryNotice3DMessage, parseExpiryNotice3DMessage } from './ExpiryNoticeCard';
 import { StoreSalesModal } from './StoreSalesModal';
 import { getClientQueueInfo, getAutomatedQueueWaitMessage } from '../lib/supportQueue';
 import { renderFormattedChatMessageText, extractPaymentLink, PaymentLinkCard } from '../lib/chatFormat';
@@ -1051,6 +1052,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                               <PixPdfCard
                                 payload={parsePixPdfMessage(msg.message)!}
                                 isClientSender={isClient}
+                              />
+                            ) : isExpiryNotice3DMessage(msg.message) ? (
+                              <ExpiryNoticeCard
+                                payload={parseExpiryNotice3DMessage(msg.message)!}
+                                isAdmin={false}
+                                onInitiateRenewal={handleInitiateRenewal}
                               />
                             ) : (
                               <>

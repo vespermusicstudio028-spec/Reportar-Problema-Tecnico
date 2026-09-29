@@ -50,6 +50,20 @@ interface QuickReplyItem {
   isSpecialExpiryNotice?: boolean;
 }
 
+interface SlashCommandItem {
+  id: string;
+  command: string;
+  aliases?: string[];
+  label: string;
+  description: string;
+  badge?: string;
+  badgeColor?: string;
+  icon: string;
+  message?: string;
+  isSpecialExpiryNotice?: boolean;
+  action?: () => void;
+}
+
 const QUICK_REPLIES: QuickReplyItem[] = [
   { label: '⏰ Vence em 3 Dias', isSpecialExpiryNotice: true },
   { label: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊', message: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊' },
@@ -113,6 +127,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
   const selectedClientCodeRef = useRef<string | null>(null);
   const mobileShowChatRef = useRef(false);
+  const chatInputRef = useRef<HTMLInputElement>(null);
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
 
   // Aplicar cliente inicial (vindo de aviso de vencimento ou tela de Clientes) sempre que mudar
   useEffect(() => {
@@ -509,6 +525,153 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     } catch (err: any) {
       alert('Erro ao confirmar pagamento Pix: ' + (err.message || 'Erro desconhecido.'));
     }
+  };
+
+  // ─── Atalhos de Barra "/" no Chat (Slash Commands) ──────────────────────────
+  const slashCommands: SlashCommandItem[] = React.useMemo(() => [
+    {
+      id: 'vence-3-dias',
+      command: '/vence',
+      aliases: ['/3dias', '/vencimento', '/aviso', '/expirar', '/flyer'],
+      label: '⏰ Vence em 3 Dias (com Imagem Flyer)',
+      description: 'Envia o flyer visual completo de 3 dias, texto explicativo, chave Pix e botão de renovar',
+      badge: 'Flyer Oficial',
+      badgeColor: 'bg-amber-500/25 text-amber-300 border border-amber-500/50',
+      icon: '⏰',
+      isSpecialExpiryNotice: true,
+    },
+    {
+      id: 'ola',
+      command: '/ola',
+      aliases: ['/oi', '/bomdia', '/boatarde', '/boanoite', '/saudacao'],
+      label: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊',
+      description: 'Saudação cordial inicial de atendimento',
+      badge: 'Saudação',
+      badgeColor: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40',
+      icon: '👋',
+      message: 'Olá! Tudo bem? Como posso te ajudar hoje? 😊',
+    },
+    {
+      id: 'recebi',
+      command: '/recebi',
+      aliases: ['/aguarde', '/verificando', '/analise'],
+      label: 'Recebi sua mensagem...',
+      description: 'Recebi sua mensagem. Já estou verificando para você!',
+      badge: 'Aguarde',
+      badgeColor: 'bg-blue-500/20 text-blue-300 border border-blue-500/40',
+      icon: '⏳',
+      message: 'Recebi sua mensagem. Já estou verificando para você!',
+    },
+    {
+      id: 'sinal-atualizado',
+      command: '/sinal',
+      aliases: ['/atualizado', '/liberado', '/teste-novamente'],
+      label: 'Sinal atualizado ✅',
+      description: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?',
+      badge: 'Atualizado',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+      icon: '✅',
+      message: 'Seu sinal/acesso foi atualizado. Poderia testar novamente?',
+    },
+    {
+      id: 'qual-aparelho',
+      command: '/aparelho',
+      aliases: ['/dispositivo', '/tv', '/tvbox'],
+      label: 'Qual aparelho?',
+      description: 'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?',
+      badge: 'Aparelho',
+      badgeColor: 'bg-purple-500/20 text-purple-300 border border-purple-500/40',
+      icon: '📺',
+      message: 'Poderia me informar qual aparelho você está utilizando (TV, TV Box, Celular)?',
+    },
+    {
+      id: 'teste-iniciado',
+      command: '/teste',
+      aliases: ['/3h', '/testegratis', '/liberar-teste'],
+      label: '🧪 Teste iniciado',
+      description: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.',
+      badge: 'Teste 3h',
+      badgeColor: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40',
+      icon: '🧪',
+      message: 'Teste gratuito de 3h iniciado! Feche e abra o aplicativo novamente para atualizar o acesso.',
+    },
+    {
+      id: 'tudo-funcionando',
+      command: '/pronto',
+      aliases: ['/sucesso', '/ok', '/100%', '/finalizar'],
+      label: 'Tudo funcionando 🚀',
+      description: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀',
+      badge: 'Concluído',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+      icon: '🚀',
+      message: 'Tudo pronto e funcionando 100%! Qualquer dúvida estou à disposição. 🚀',
+    },
+    {
+      id: 'pix-dados',
+      command: '/pix',
+      aliases: ['/pagamento', '/chave', '/chavepix'],
+      label: '🔑 Enviar Chave Pix (E-mail)',
+      description: 'thebestiptv10@gmail.com com orientações para envio do comprovante',
+      badge: 'Pagamento',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+      icon: '🔑',
+      message: '🔑 *Chave Pix (E-mail):* `thebestiptv10@gmail.com`\n\nPor favor, após realizar a transferência, nos envie o comprovante por aqui para agilizarmos a sua liberação! ✅',
+    },
+    {
+      id: 'renovar-app',
+      command: '/app',
+      aliases: ['/ativeapp', '/licenca'],
+      label: '📱 Renovar App no AtiveApp',
+      description: 'Abre o site AtiveApp com credenciais e MAC do cliente copiados',
+      badge: 'Atalho Web',
+      badgeColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+      icon: '📱',
+      action: handleOpenRenovarAppSite,
+    },
+    {
+      id: 'renovar-streaming',
+      command: '/streaming',
+      aliases: ['/painel', '/painelfun', '/sinal-painel'],
+      label: '📺 Renovar Streaming no Painel.fun',
+      description: 'Abre o painel oficial para renovar o sinal de streaming',
+      badge: 'Atalho Web',
+      badgeColor: 'bg-blue-500/20 text-blue-300 border border-blue-500/40',
+      icon: '📺',
+      action: handleOpenRenovarStreamingSite,
+    },
+  ], [handleOpenRenovarAppSite, handleOpenRenovarStreamingSite]);
+
+  const isSlashTriggered = replyText.startsWith('/');
+  const slashQuery = isSlashTriggered ? replyText.slice(1).trim().toLowerCase() : '';
+
+  const filteredSlashCommands = React.useMemo(() => {
+    if (!isSlashTriggered) return [];
+    if (!slashQuery) return slashCommands;
+    return slashCommands.filter((cmd) => {
+      const matchCmd = cmd.command.toLowerCase().includes(slashQuery);
+      const matchLabel = cmd.label.toLowerCase().includes(slashQuery);
+      const matchDesc = cmd.description.toLowerCase().includes(slashQuery);
+      const matchAlias = cmd.aliases?.some((a) => a.toLowerCase().includes(slashQuery));
+      return matchCmd || matchLabel || matchDesc || matchAlias;
+    });
+  }, [isSlashTriggered, slashQuery, slashCommands]);
+
+  useEffect(() => {
+    setSlashSelectedIndex(0);
+  }, [slashQuery]);
+
+  const handleExecuteSlashCommand = (cmd: SlashCommandItem) => {
+    setReplyText('');
+    if (cmd.isSpecialExpiryNotice) {
+      handleSendExpiryNotice3Days();
+    } else if (cmd.action) {
+      cmd.action();
+    } else if (cmd.message) {
+      handleSendMessage(cmd.message);
+    }
+    setTimeout(() => {
+      chatInputRef.current?.focus();
+    }, 50);
   };
 
   // Fila de atendimento e cliente ativo
@@ -1191,15 +1354,137 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
+                  if (isSlashTriggered && filteredSlashCommands.length > 0) {
+                    const selected = filteredSlashCommands[slashSelectedIndex];
+                    if (selected) {
+                      handleExecuteSlashCommand(selected);
+                      return;
+                    }
+                  }
                   handleSendMessage();
                 }}
-                className="p-3 md:p-4 bg-[#121620] border-t border-slate-800/80 flex items-center gap-2"
+                className="p-3 md:p-4 bg-[#121620] border-t border-slate-800/80 flex items-center gap-2 relative"
               >
+                {/* Menu Popover de Atalhos "/" (Slash Commands) */}
+                {isSlashTriggered && (
+                  <div className="absolute bottom-full left-2 right-2 sm:left-4 sm:right-4 mb-2 bg-[#0c101a]/95 backdrop-blur-2xl border border-indigo-500/40 rounded-2xl shadow-2xl shadow-black/95 overflow-hidden z-50 flex flex-col max-h-72 sm:max-h-80 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    {/* Header do Menu */}
+                    <div className="px-3.5 sm:px-4 py-2.5 bg-gradient-to-r from-indigo-950/90 via-slate-900 to-indigo-950/90 border-b border-indigo-500/30 flex items-center justify-between text-xs shrink-0">
+                      <div className="flex items-center gap-2 text-indigo-300 font-bold">
+                        <span className="w-5 h-5 rounded-md bg-indigo-500/25 border border-indigo-400/40 flex items-center justify-center text-xs font-mono font-black text-indigo-200">
+                          /
+                        </span>
+                        <span>Atalhos Rápidos de Atendimento</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-slate-400">
+                        <span className="hidden sm:inline">↑↓ navegar • Enter enviar • Tab preencher • Esc fechar</span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-indigo-300 font-mono text-[10px] font-bold border border-slate-700/60">
+                          {filteredSlashCommands.length} {filteredSlashCommands.length === 1 ? 'atalho' : 'atalhos'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Lista Rolável de Comandos */}
+                    {filteredSlashCommands.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-slate-400">
+                        Nenhum atalho encontrado para <code className="text-amber-300 font-mono">/{slashQuery}</code>. Pressione <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-200">Esc</kbd> para fechar.
+                      </div>
+                    ) : (
+                      <div className="flex-1 overflow-y-auto custom-scrollbar p-1.5 space-y-1">
+                        {filteredSlashCommands.map((cmd, idx) => {
+                          const isSelected = idx === slashSelectedIndex;
+                          return (
+                            <div
+                              key={cmd.id}
+                              onClick={() => handleExecuteSlashCommand(cmd)}
+                              onMouseEnter={() => setSlashSelectedIndex(idx)}
+                              className={`w-full text-left p-2.5 rounded-xl transition-all flex items-center justify-between gap-3 text-xs cursor-pointer ${
+                                isSelected
+                                  ? 'bg-indigo-600/30 border border-indigo-500/60 text-white shadow-md shadow-indigo-600/10'
+                                  : 'hover:bg-slate-800/50 text-slate-300 border border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span className="text-base shrink-0">{cmd.icon}</span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-mono font-bold text-indigo-300 text-[11px] px-1.5 py-0.2 rounded bg-slate-800 border border-slate-700">
+                                      {cmd.command}
+                                    </span>
+                                    <span className="font-semibold text-white truncate">{cmd.label}</span>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 truncate mt-0.5">{cmd.description}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                {cmd.badge && (
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase shrink-0 ${
+                                      cmd.badgeColor || 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                                    }`}
+                                  >
+                                    {cmd.badge}
+                                  </span>
+                                )}
+                                {cmd.message && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setReplyText(cmd.message || '');
+                                      chatInputRef.current?.focus();
+                                    }}
+                                    className="p-1.5 rounded-lg hover:bg-slate-700/60 text-slate-400 hover:text-white transition-colors"
+                                    title="Inserir texto no campo para editar antes de enviar"
+                                  >
+                                    <span className="text-[10px]">✏️</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <input
+                  ref={chatInputRef}
                   type="text"
-                  placeholder={`Responder para ${activeClientName}... (Pressione Enter)`}
+                  placeholder={`Responder para ${activeClientName}... (digite / para atalhos)`}
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (isSlashTriggered && filteredSlashCommands.length > 0) {
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        setSlashSelectedIndex((prev) => (prev + 1) % filteredSlashCommands.length);
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        setSlashSelectedIndex((prev) => (prev - 1 + filteredSlashCommands.length) % filteredSlashCommands.length);
+                      } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const selected = filteredSlashCommands[slashSelectedIndex];
+                        if (selected) {
+                          handleExecuteSlashCommand(selected);
+                        }
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        setReplyText('');
+                      } else if (e.key === 'Tab') {
+                        e.preventDefault();
+                        const selected = filteredSlashCommands[slashSelectedIndex];
+                        if (selected) {
+                          if (selected.message) {
+                            setReplyText(selected.message);
+                          } else {
+                            handleExecuteSlashCommand(selected);
+                          }
+                        }
+                      }
+                    }
+                  }}
                   className="flex-1 bg-[#181d28] border border-slate-700/80 text-white placeholder-slate-500 px-4 py-3 rounded-2xl text-sm focus:border-indigo-500 outline-none transition-all shadow-inner"
                 />
 

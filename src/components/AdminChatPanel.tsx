@@ -489,6 +489,20 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     await handleSendMessage(messageString);
   };
 
+  // Atalho: Enviar Aviso de Vencimento HOJE com Imagem Flyer e Texto
+  const handleSendExpiryNoticeToday = async () => {
+    if (!selectedClientCode || isSending) return;
+    const payload: ExpiryNoticePayload = {
+      imageUrl: '/vence-hoje.jpg',
+      text: 'Bom dia! ☀️ Seu plano vence *HOJE*!\n\nPor favor, realize o seu pagamento antes do vencimento para *não ficar sem sinal*!\nPara renovar seu acesso, basta clicar no botão *Renovar* abaixo:',
+      days: 0,
+      pixKey: 'thebestiptv10@gmail.com',
+      whatsapp: '5521959368651'
+    };
+    const messageString = `[AVISO_VENCIMENTO_HOJE]${JSON.stringify(payload)}[/AVISO_VENCIMENTO_HOJE]`;
+    await handleSendMessage(messageString);
+  };
+
   // Confirmar e Reconhecer Pagamento Pix com 1 clique sem delay
   const handleConfirmPixPayment = async (clientCode: string, clientName: string) => {
     try {
@@ -523,12 +537,23 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   // ─── Atalhos de Barra "/" no Chat (Slash Commands) ──────────────────────────
   const slashCommands: SlashCommandItem[] = React.useMemo(() => [
     {
+      id: 'vence-hoje',
+      command: '/hoje',
+      aliases: ['/vencehoje', '/vencendo', '/vence-hoje', '/0dias', '/hojeaviso'],
+      label: '🚨 Vence Hoje (com Imagem Flyer)',
+      description: 'Envia o flyer visual oficial de VENCE HOJE, texto explicativo, chave Pix e botão de renovar',
+      badge: 'Vence Hoje',
+      badgeColor: 'bg-red-500/25 text-red-300 border border-red-500/50',
+      icon: '🚨',
+      action: () => handleSendExpiryNoticeToday(),
+    },
+    {
       id: 'vence-3-dias',
       command: '/vence',
       aliases: ['/3dias', '/vencimento', '/aviso', '/expirar', '/flyer'],
       label: '⏰ Vence em 3 Dias (com Imagem Flyer)',
       description: 'Envia o flyer visual completo de 3 dias, texto explicativo, chave Pix e botão de renovar',
-      badge: 'Flyer Oficial',
+      badge: 'Vence 3 Dias',
       badgeColor: 'bg-amber-500/25 text-amber-300 border border-amber-500/50',
       icon: '⏰',
       isSpecialExpiryNotice: true,
@@ -1042,6 +1067,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                             ? '📄 [Comprovante Pix Enviado]'
                             : conv.last_message.includes('[FOTOS_SUPORTE]')
                             ? '📷 [Fotos Enviadas]'
+                            : conv.last_message.includes('[AVISO_VENCIMENTO_HOJE]')
+                            ? '🚨 [Aviso: Vence Hoje]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_3D]')
                             ? '⏰ [Aviso: Vence em 3 Dias]'
                             : conv.last_message}

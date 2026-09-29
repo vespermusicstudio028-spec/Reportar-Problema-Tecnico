@@ -27,7 +27,8 @@ import {
   Home,
   ArrowDown,
   Smartphone,
-  Tv
+  Tv,
+  AlertTriangle
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -104,6 +105,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [mobileShowChat, setMobileShowChat] = useState(Boolean(initialClientCode));
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [showStoreManager, setShowStoreManager] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<{ code: string; name: string } | null>(null);
+  const [isDeletingConversation, setIsDeletingConversation] = useState(false);
+  const [holdingClientCode, setHoldingClientCode] = useState<string | null>(null);
+
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const ignoreNextClickRef = useRef<boolean>(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
@@ -735,22 +744,101 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
-  // Limpar histórico da conversa selecionada
-  const handleDeleteConversation = async () => {
+  // Limpar histórico da conversa selecionada (abre o modal de confirmação com lixeira)
+  const handleDeleteConversation = () => {
     if (!selectedClientCode) return;
-    if (confirm(`Tem certeza que deseja apagar todas as mensagens de ${activeClientName}?`)) {
-      try {
-        const { error } = await supabase
-          .from('chat_messages')
-          .delete()
-          .eq('client_code', selectedClientCode);
+    setClientToDelete({
+      code: selectedClientCode,
+      name: activeClientName
+    });
+  };
 
-        if (error) throw error;
-        setMessages((prev) => prev.filter((m) => m.client_code !== selectedClientCode));
+  // Excluir toda a conversa do cliente selecionado no banco e cache
+  const handleConfirmDeleteConversation = async (clientCode: string) => {
+    if (isDeletingConversation) return;
+    setIsDeletingConversation(true);
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .delete()
+        .eq('client_code', clientCode);
+
+      if (error) throw error;
+
+      setMessages((prev) => {
+        const updated = prev.filter((m) => m.client_code !== clientCode);
+        try {
+          localStorage.setItem('tbi_cached_chat_messages', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+
+      if (selectedClientCode === clientCode) {
         setSelectedClientCode(null);
-      } catch (err: any) {
-        alert('Erro ao apagar histórico: ' + (err.message || 'Erro desconhecido.'));
+        setMobileShowChat(false);
       }
+
+      setClientToDelete(null);
+    } catch (err: any) {
+      alert('Erro ao excluir histórico de mensagens: ' + (err.message || 'Erro desconhecido.'));
+    } finally {
+      setIsDeletingConversation(false);
+    }
+  };
+
+  // Funções de toque prolongado (long-press de 1 segundo) no celular/desktop para abrir lixeira
+  const startLongPress = (code: string, name: string, clientX: number, clientY: number) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    touchStartPosRef.current = { x: clientX, y: clientY };
+    ignoreNextClickRef.current = false;
+    setHoldingClientCode(code);
+
+    longPressTimerRef.current = setTimeout(() => {
+      // 1 segundo completo atingido!
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate([60, 40, 60]);
+        } catch {}
+      }
+      ignoreNextClickRef.current = true;
+      setHoldingClientCode(null);
+      longPressTimerRef.current = null;
+      setClientToDelete({ code, name });
+    }, 1000);
+  };
+
+  const endLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+      setHoldingClientCode(null);
+    } else {
+      setHoldingClientCode(null);
+      setTimeout(() => {
+        ignoreNextClickRef.current = false;
+      }, 400);
+    }
+    touchStartPosRef.current = null;
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setHoldingClientCode(null);
+    touchStartPosRef.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPosRef.current || !longPressTimerRef.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+    const dist = Math.hypot(touch.clientX - touchStartPosRef.current.x, touch.clientY - touchStartPosRef.current.y);
+    if (dist > 8) {
+      cancelLongPress();
     }
   };
 
@@ -864,16 +952,47 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 return (
                   <button
                     key={conv.client_code}
-                    onClick={() => {
+                    onClick={(e) => {
+                      if (ignoreNextClickRef.current) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        ignoreNextClickRef.current = false;
+                        return;
+                      }
                       setSelectedClientCode(conv.client_code);
                       setMobileShowChat(true);
                     }}
-                    className={`w-full text-left p-3 rounded-2xl transition-all flex items-start gap-3 relative ${
-                      isSelected
+                    onTouchStart={(e) => {
+                      const t = e.touches[0];
+                      if (t) {
+                        startLongPress(conv.client_code, conv.client_name, t.clientX, t.clientY);
+                      }
+                    }}
+                    onTouchEnd={endLongPress}
+                    onTouchMove={handleTouchMove}
+                    onTouchCancel={cancelLongPress}
+                    onMouseDown={(e) => {
+                      if (e.button === 0) {
+                        startLongPress(conv.client_code, conv.client_name, e.clientX, e.clientY);
+                      }
+                    }}
+                    onMouseUp={endLongPress}
+                    onMouseLeave={cancelLongPress}
+                    className={`w-full text-left p-3 rounded-2xl transition-all flex items-start gap-3 relative select-none touch-manipulation cursor-pointer ${
+                      holdingClientCode === conv.client_code
+                        ? 'scale-[0.98] ring-2 ring-red-500/80 bg-red-950/40 shadow-lg shadow-red-900/30'
+                        : isSelected
                         ? 'bg-indigo-600/20 border border-indigo-500/40 shadow-lg shadow-indigo-600/10'
                         : 'hover:bg-slate-800/40 border border-transparent'
                     }`}
                   >
+                    {/* Indicador de segurar para abrir lixeira */}
+                    {holdingClientCode === conv.client_code && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg shadow-red-900/50 animate-pulse z-10">
+                        <Trash2 size={11} className="animate-bounce" />
+                        <span>Segure 1s...</span>
+                      </div>
+                    )}
                     {/* Avatar */}
                     <div className="relative shrink-0">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
@@ -1464,6 +1583,82 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         isOpen={showStoreManager}
         onClose={() => setShowStoreManager(false)}
       />
+
+      {/* Modal de Confirmação de Exclusão da Conversa (Lixeira ao segurar 1s ou clicar no ícone) */}
+      {clientToDelete && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => {
+            if (!isDeletingConversation) setClientToDelete(null);
+          }}
+        >
+          <div 
+            className="bg-[#121620] border border-red-500/40 rounded-3xl p-6 max-w-sm sm:max-w-md w-full shadow-2xl shadow-red-950/60 flex flex-col items-center text-center relative overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Efeito luminoso de alerta no topo */}
+            <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Ícone da Lixeira em Destaque */}
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-600/30 to-red-900/30 border border-red-500/40 flex items-center justify-center text-red-400 mb-4 shadow-lg shadow-red-900/40">
+              <Trash2 size={32} className="animate-pulse" />
+            </div>
+
+            <h3 className="text-xl font-bold text-white mb-1">
+              Excluir Toda a Conversa?
+            </h3>
+
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm font-semibold text-slate-200">
+                {clientToDelete.name}
+              </span>
+              <span className="text-[11px] font-mono px-2 py-0.5 bg-slate-800 text-indigo-300 rounded border border-slate-700">
+                {clientToDelete.code}
+              </span>
+            </div>
+
+            {/* Caixa de aviso de ação irreversível */}
+            <div className="bg-red-500/10 border border-red-500/25 rounded-2xl p-3.5 mb-5 text-left flex items-start gap-3 w-full">
+              <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-200/90 leading-relaxed">
+                Tem certeza de que deseja apagar o histórico completo desta conversa? 
+                <strong className="block text-red-300 mt-1">Todas as mensagens, comprovantes e fotos trocadas com este cliente serão excluídos permanentemente.</strong>
+              </p>
+            </div>
+
+            {/* Botões de Ação */}
+            <div className="flex items-center gap-3 w-full">
+              <button
+                type="button"
+                disabled={isDeletingConversation}
+                onClick={() => setClientToDelete(null)}
+                className="flex-1 py-3 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-semibold text-sm transition-all border border-slate-700 active:scale-95 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeletingConversation}
+                onClick={() => handleConfirmDeleteConversation(clientToDelete.code)}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-sm transition-all shadow-lg shadow-red-950/50 flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 cursor-pointer"
+              >
+                {isDeletingConversation ? (
+                  <>
+                    <RefreshCw size={16} className="animate-spin" />
+                    <span>Excluindo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    <span>Sim, Excluir</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

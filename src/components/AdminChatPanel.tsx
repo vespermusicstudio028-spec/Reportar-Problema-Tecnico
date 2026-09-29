@@ -84,7 +84,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       return cached ? JSON.parse(cached) : [];
     } catch { return []; }
   });
-  const [selectedClientCode, setSelectedClientCode] = useState<string | null>(null);
+  const [selectedClientCode, setSelectedClientCode] = useState<string | null>(initialClientCode || null);
   const [activeServingClientCode, setActiveServingClientCode] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +95,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     } catch { return true; }
   });
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
-  const [mobileShowChat, setMobileShowChat] = useState(false);
+  const [mobileShowChat, setMobileShowChat] = useState(Boolean(initialClientCode));
   const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [showStoreManager, setShowStoreManager] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -105,12 +105,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
   const selectedClientCodeRef = useRef<string | null>(null);
   const mobileShowChatRef = useRef(false);
-  const initialClientCodeAppliedRef = useRef(false);
 
-  // Aplicar cliente inicial (vindo da tela de Clientes) assim que o painel abrir
+  // Aplicar cliente inicial (vindo de aviso de vencimento ou tela de Clientes) sempre que mudar
   useEffect(() => {
-    if (initialClientCode && !initialClientCodeAppliedRef.current) {
-      initialClientCodeAppliedRef.current = true;
+    if (initialClientCode) {
       setSelectedClientCode(initialClientCode);
       setMobileShowChat(true);
     }
@@ -286,11 +284,25 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       }
     });
 
+    // Se houver um cliente selecionado que ainda não tem mensagens no chat, inclui ele para aparecer na lista
+    if (selectedClientCode && !map.has(selectedClientCode)) {
+      const clientInfo = clientsList.find((c) => c.code === selectedClientCode);
+      const name = clientInfo?.name || `Cliente (${selectedClientCode})`;
+      map.set(selectedClientCode, {
+        client_code: selectedClientCode,
+        client_name: name,
+        last_message: 'Nenhuma mensagem ainda. Inicie o atendimento...',
+        last_message_time: new Date().toISOString(),
+        unread_count: 0,
+        last_sender: 'client'
+      });
+    }
+
     // Ordenar pelas conversas mais recentes
     return Array.from(map.values()).sort(
       (a, b) => new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime()
     );
-  }, [messages, clientsList]);
+  }, [messages, clientsList, selectedClientCode]);
 
   // Se nenhuma conversa selecionada e houver conversas, seleciona a primeira automaticamente
   useEffect(() => {

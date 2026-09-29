@@ -4437,8 +4437,11 @@ export default function App() {
                                       type="button" 
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setChatInitialClientCode(client.code);
-                                        setAdminTab('chat');
+                                        setChatInitialClientCode(null);
+                                        setTimeout(() => {
+                                          setChatInitialClientCode(client.code);
+                                          setAdminTab('chat');
+                                        }, 0);
                                       }}
                                       className="flex items-center gap-1.5 px-3 py-2 text-indigo-300 hover:text-white bg-indigo-600/20 hover:bg-indigo-600/40 rounded-xl transition-all border border-indigo-500/30 hover:border-indigo-400/50 text-xs font-bold shadow-sm active:scale-95"
                                       title="Abrir chat com este cliente"
@@ -6415,9 +6418,15 @@ export default function App() {
           isOpen={showExpiryAlert}
           onClose={() => setShowExpiryAlert(false)}
           onOpenClientChat={(code) => {
-            setChatInitialClientCode(code);
-            setAdminTab('chat');
-            setShowLoginModal(false);
+            // Reset para null primeiro garante que o useEffect do AdminChatPanel
+            // sempre detecta a mudança, mesmo que o código seja o mesmo
+            setChatInitialClientCode(null);
+            setTimeout(() => {
+              setChatInitialClientCode(code);
+              setAdminTab('chat');
+              setShowLoginModal(false);
+              setShowExpiryAlert(false);
+            }, 0);
           }}
           onRenewClient={handleQuickRenewClient}
         />

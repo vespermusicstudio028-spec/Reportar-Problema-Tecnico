@@ -77,6 +77,20 @@ export function getDaysUntilExpiration(expiryIso: string): number | null {
 }
 
 /**
+ * Determina se uma mensagem é um aviso de vencimento disparado pela automação ou por atalhos.
+ */
+export function isExpiryNoticeMessage(message?: string): boolean {
+  if (!message || typeof message !== 'string') return false;
+  return (
+    message.includes('[AVISO_VENCIMENTO_3D]') ||
+    message.includes('[AVISO_VENCIMENTO_2D]') ||
+    message.includes('[AVISO_VENCIMENTO_AMANHA]') ||
+    message.includes('[AVISO_VENCIMENTO_HOJE]') ||
+    message.includes('[AVISO_TESTE_3H_VENCEU]')
+  );
+}
+
+/**
  * Determina se a mensagem enviada pelo cliente é um comprovante de pagamento.
  */
 export function isPaymentReceiptMessage(message: string): boolean {

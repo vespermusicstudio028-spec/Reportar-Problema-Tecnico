@@ -56,7 +56,8 @@ import {
 } from './CustomShortcutsManagerModal';
 import {
   checkAndSendAutomaticExpiryNotices,
-  autoProcessPaymentReceiptAndRenew
+  autoProcessPaymentReceiptAndRenew,
+  isExpiryNoticeMessage
 } from '../lib/expiryAutomationService';
 
 interface SlashCommandItem {
@@ -859,10 +860,6 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     return calculateSupportQueue(messages, activeServingClientCode);
   }, [messages, activeServingClientCode]);
 
-  const currentlyServingCode = activeServingClientCode || (supportQueue.activeClient ? supportQueue.activeClient : selectedClientCode);
-  const isServingSelected = selectedClientCode ? selectedClientCode === currentlyServingCode : false;
-  const currentQueueItem = selectedClientCode ? supportQueue.queue.find((q) => q.client_code === selectedClientCode) : null;
-
   // Verificar se o último status deste cliente foi atendimento finalizado
   const isSelectedChatFinished = React.useMemo(() => {
     if (!selectedClientCode || activeMessages.length === 0) return false;
@@ -872,6 +869,24 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       lastMsg.message.includes('Atendimento Finalizado')
     );
   }, [selectedClientCode, activeMessages]);
+
+  // Verificar se a última mensagem deste cliente é um aviso automático de vencimento (não é atendimento ativo)
+  const isSelectedExpiryNotice = React.useMemo(() => {
+    if (!selectedClientCode || activeMessages.length === 0) return false;
+    const lastMsg = activeMessages[activeMessages.length - 1];
+    return lastMsg.sender === 'admin' && isExpiryNoticeMessage(lastMsg.message);
+  }, [selectedClientCode, activeMessages]);
+
+  // Cliente em atendimento: apenas se o admin clicou explicitamente para atender OU se há cliente ativo na fila de suporte
+  const currentlyServingCode = activeServingClientCode || supportQueue.activeClient || null;
+  const isServingSelected = Boolean(
+    selectedClientCode &&
+    currentlyServingCode &&
+    selectedClientCode === currentlyServingCode &&
+    !isSelectedExpiryNotice &&
+    !isSelectedChatFinished
+  );
+  const currentQueueItem = selectedClientCode ? supportQueue.queue.find((q) => q.client_code === selectedClientCode) : null;
 
   // Iniciar atendimento para o cliente selecionado
   const handleStartServingThisClient = async () => {
@@ -1149,7 +1164,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
               filteredConversations.map((conv) => {
                 const isSelected = conv.client_code === selectedClientCode;
                 const queueItem = supportQueue.queue.find((q) => q.client_code === conv.client_code);
-                const isServingThis = conv.client_code === currentlyServingCode;
+                const isConvExpiryNotice = conv.last_sender === 'admin' && isExpiryNoticeMessage(conv.last_message);
+                const isServingThis = conv.client_code === currentlyServingCode && !isConvExpiryNotice;
                 const isConvFinished = conv.last_sender === 'admin' && (
                   conv.last_message.includes('Chat Finalizado') || 
                   conv.last_message.includes('Atendimento Finalizado')
@@ -1221,6 +1237,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                           {isConvFinished ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700/60 shrink-0">
                               🔒 Finalizado
+                            </span>
+                          ) : isConvExpiryNotice ? (
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0 flex items-center gap-1">
+                              📢 Aviso Enviado
                             </span>
                           ) : isServingThis ? (
                             <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0 flex items-center gap-1">
@@ -1378,6 +1398,11 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   <div className="flex items-center gap-2 text-slate-300 font-semibold">
                     <span className="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
                     <span>🔒 <strong>Chat Finalizado:</strong> Este atendimento foi concluído</span>
+                  </div>
+                ) : isSelectedExpiryNotice ? (
+                  <div className="flex items-center gap-2 text-indigo-300 font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full bg-indigo-400"></span>
+                    <span>📢 <strong>Aviso de Vencimento:</strong> Mensagem automática enviada ao cliente</span>
                   </div>
                 ) : isServingSelected ? (
                   <div className="flex items-center gap-2 text-emerald-400 font-semibold">

@@ -447,65 +447,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     }
   };
 
-  // Iniciar fluxo de renovação pelo botão de atalho rápido sem delay
-  const handleInitiateRenewal = async () => {
-    if (!activeCode || isSending) return;
-    setIsSending(true);
-    try {
-      const currentClientDisplayName = clientName || customClientName || 'Cliente';
-      const screensCount = (accessPoints && accessPoints.length > 0) ? accessPoints.length : 1;
 
-      const clientMsg = screensCount > 1
-        ? `🔄 Gostaria de renovar os meus *${screensCount} pontos (telas)*.`
-        : '🔄 Gostaria de fazer uma renovação.';
-      const botMsg = '🤖 *Central de Renovações:*\nQual renovação você deseja realizar?\n\n👉 Selecione uma das opções abaixo:';
-
-      const opt1: ChatMessage = {
-        id: 'ren-c-' + Date.now(),
-        client_code: activeCode,
-        client_name: currentClientDisplayName,
-        sender: 'client',
-        message: clientMsg,
-        created_at: new Date().toISOString(),
-        read_by_admin: false,
-        read_by_client: true
-      };
-      const opt2: ChatMessage = {
-        id: 'ren-b-' + (Date.now() + 1),
-        client_code: activeCode,
-        client_name: 'Suporte The Best IPTV+',
-        sender: 'admin',
-        message: botMsg,
-        created_at: new Date().toISOString(),
-        read_by_admin: true,
-        read_by_client: false
-      };
-      setMessages(prev => [...prev, opt1, opt2]);
-
-      await supabase.from('chat_messages').insert([
-        {
-          client_code: activeCode,
-          client_name: currentClientDisplayName,
-          sender: 'client',
-          message: clientMsg,
-          read_by_admin: false,
-          read_by_client: true
-        },
-        {
-          client_code: activeCode,
-          client_name: 'Suporte The Best IPTV+',
-          sender: 'admin',
-          message: botMsg,
-          read_by_admin: true,
-          read_by_client: false
-        }
-      ]);
-    } catch (err) {
-      console.error('Erro ao iniciar renovação:', err);
-    } finally {
-      setIsSending(false);
-    }
-  };
 
   // Selecionar opção de renovação (Sinal ou Aplicativo)
   const handleSelectRenewalOption = async (option: 'sinal' | 'app') => {
@@ -682,6 +624,13 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     } finally {
       setIsSending(false);
     }
+  };
+
+  // Iniciar fluxo de renovação pelo botão "Renovar Meu Acesso Agora" dos cards de vencimento
+  // Abre DIRETO: Sinal do Streaming (Canais, Filmes e Séries)
+  const handleInitiateRenewal = async () => {
+    if (!activeCode || isSending) return;
+    await handleSelectRenewalOption('sinal');
   };
 
   const handleClose = () => {

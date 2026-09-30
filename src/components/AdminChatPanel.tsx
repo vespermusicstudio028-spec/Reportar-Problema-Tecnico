@@ -542,6 +542,20 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     await handleSendMessage(messageString);
   };
 
+  // Atalho: Enviar Aviso de Teste de 3 Horas Vencido com Imagem Flyer e Texto
+  const handleSendTestExpiredNotice = async () => {
+    if (!selectedClientCode || isSending) return;
+    const payload: ExpiryNoticePayload = {
+      imageUrl: '/teste-3h-venceu.jpg',
+      text: '☀️ Bom dia!\n\n⚠️ *AVISO IMPORTANTE*\nSeu teste de *3 HORAS JÁ VENCEU!*\n\nPara continuar aproveitando todos os nossos canais, filmes e séries, é necessário realizar a contratação do plano.\nQualquer dúvida, estamos à disposição!',
+      days: -1,
+      pixKey: 'thebestiptv10@gmail.com',
+      whatsapp: '5521959368651'
+    };
+    const messageString = `[AVISO_TESTE_3H_VENCEU]${JSON.stringify(payload)}[/AVISO_TESTE_3H_VENCEU]`;
+    await handleSendMessage(messageString);
+  };
+
   // Confirmar e Reconhecer Pagamento Pix com 1 clique sem delay
   const handleConfirmPixPayment = async (clientCode: string, clientName: string) => {
     try {
@@ -585,6 +599,17 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       badgeColor: 'bg-red-500/25 text-red-300 border border-red-500/50',
       icon: '🚨',
       action: () => handleSendExpiryNoticeToday(),
+    },
+    {
+      id: 'teste-3h-venceu',
+      command: '/teste3h',
+      aliases: ['/testevenceu', '/3h', '/teste-venceu', '/3hvenceu', '/fimteste'],
+      label: '⏱️ Teste de 3h Venceu (com Imagem Flyer)',
+      description: 'Envia o flyer visual de TESTE DE 3 HORAS JÁ VENCEU, contratação de plano e chave Pix',
+      badge: 'Teste 3h',
+      badgeColor: 'bg-rose-500/25 text-rose-300 border border-rose-500/50',
+      icon: '⏱️',
+      action: () => handleSendTestExpiredNotice(),
     },
     {
       id: 'vence-amanha',
@@ -1147,6 +1172,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                             ? '📄 [Comprovante Pix Enviado]'
                             : conv.last_message.includes('[FOTOS_SUPORTE]')
                             ? '📷 [Fotos Enviadas]'
+                            : conv.last_message.includes('[AVISO_TESTE_3H_VENCEU]')
+                            ? '⏱️ [Aviso: Teste 3h Venceu]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_HOJE]')
                             ? '🚨 [Aviso: Vence Hoje]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_AMANHA]')

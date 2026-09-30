@@ -11,12 +11,13 @@ export interface ExpiryNoticePayload {
 
 export const isExpiryNotice3DMessage = (msg: string): boolean =>
   (msg.includes('[AVISO_VENCIMENTO_3D]') && msg.includes('[/AVISO_VENCIMENTO_3D]')) ||
+  (msg.includes('[AVISO_VENCIMENTO_2D]') && msg.includes('[/AVISO_VENCIMENTO_2D]')) ||
   (msg.includes('[AVISO_VENCIMENTO_AMANHA]') && msg.includes('[/AVISO_VENCIMENTO_AMANHA]')) ||
   (msg.includes('[AVISO_VENCIMENTO_HOJE]') && msg.includes('[/AVISO_VENCIMENTO_HOJE]'));
 
 export const parseExpiryNotice3DMessage = (msg: string): ExpiryNoticePayload | null => {
   try {
-    const match = msg.match(/\[AVISO_VENCIMENTO_(?:3D|AMANHA|HOJE)\]([\s\S]*?)\[\/AVISO_VENCIMENTO_(?:3D|AMANHA|HOJE)\]/);
+    const match = msg.match(/\[AVISO_VENCIMENTO_(?:3D|2D|AMANHA|HOJE)\]([\s\S]*?)\[\/AVISO_VENCIMENTO_(?:3D|2D|AMANHA|HOJE)\]/);
     if (!match) return null;
     return JSON.parse(match[1]);
   } catch {
@@ -42,9 +43,15 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
 
   const isToday = payload.days === 0 || (payload.imageUrl && payload.imageUrl.includes('vence-hoje'));
   const isTomorrow = payload.days === 1 || (payload.imageUrl && payload.imageUrl.includes('vence-amanha'));
+  const is2Days = payload.days === 2 || (payload.imageUrl && payload.imageUrl.includes('vence-em-2-dias'));
   const pixKey = payload.pixKey || 'thebestiptv10@gmail.com';
   const whatsappNumber = payload.whatsapp || '5521959368651';
-  const imageUrl = payload.imageUrl || (isToday ? '/vence-hoje.jpg' : isTomorrow ? '/vence-amanha.png' : '/vence-em-3-dias.jpg');
+  const imageUrl = payload.imageUrl || (
+    isToday ? '/vence-hoje.jpg' :
+    isTomorrow ? '/vence-amanha.png' :
+    is2Days ? '/vence-em-2-dias.jpg' :
+    '/vence-em-3-dias.jpg'
+  );
 
   const handleCopyPix = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -74,6 +81,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
           ? 'border-red-500/50 shadow-red-950/40'
           : isTomorrow
           ? 'border-orange-500/50 shadow-orange-950/40'
+          : is2Days
+          ? 'border-amber-500/50 shadow-amber-950/30'
           : 'border-amber-500/40 shadow-amber-950/30'
       } bg-gradient-to-b from-[#181d2c] via-[#121622] to-[#0c0f17] shadow-2xl text-white select-none`}>
         {/* Cabeçalho do Card */}
@@ -82,6 +91,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
             ? 'bg-gradient-to-r from-red-600/40 via-rose-600/30 to-red-600/20 border-red-500/30'
             : isTomorrow
             ? 'bg-gradient-to-r from-orange-600/40 via-amber-600/30 to-orange-600/20 border-orange-500/30'
+            : is2Days
+            ? 'bg-gradient-to-r from-amber-600/40 via-orange-600/30 to-amber-600/20 border-amber-500/35'
             : 'bg-gradient-to-r from-amber-600/40 via-orange-600/30 to-amber-600/20 border-amber-500/30'
         }`}>
           <div className="flex items-center gap-2">
@@ -90,6 +101,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
                 ? 'bg-red-500/30 border-red-400/40 text-red-300'
                 : isTomorrow
                 ? 'bg-orange-500/30 border-orange-400/40 text-orange-300'
+                : is2Days
+                ? 'bg-amber-500/30 border-amber-400/40 text-amber-300'
                 : 'bg-amber-500/30 border-amber-400/40 text-amber-300'
             }`}>
               {isToday || isTomorrow ? <AlertTriangle size={14} className="animate-pulse" /> : <Clock size={14} className="animate-pulse" />}
@@ -105,9 +118,11 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
               ? 'bg-gradient-to-r from-red-600 to-rose-600 animate-pulse'
               : isTomorrow
               ? 'bg-gradient-to-r from-amber-500 to-orange-600 animate-pulse font-bold'
+              : is2Days
+              ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 font-bold'
               : 'bg-gradient-to-r from-rose-500 to-amber-500'
           }`}>
-            {isToday ? '🚨 Vence Hoje' : isTomorrow ? '⚠️ Vence Amanhã' : 'Vence em 3 Dias'}
+            {isToday ? '🚨 Vence Hoje' : isTomorrow ? '⚠️ Vence Amanhã' : is2Days ? '⏳ Vence em 2 Dias' : 'Vence em 3 Dias'}
           </span>
         </div>
 
@@ -115,9 +130,9 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
         <div className="p-3 bg-black/40 flex justify-center relative group">
           <img
             src={imageUrl}
-            alt={isToday ? "Seu plano vence hoje" : isTomorrow ? "Seu plano vence amanhã" : "Seu plano vence em 3 dias"}
+            alt={isToday ? "Seu plano vence hoje" : isTomorrow ? "Seu plano vence amanhã" : is2Days ? "Seu plano vence em 2 dias" : "Seu plano vence em 3 dias"}
             className={`w-full max-w-[280px] sm:max-w-[310px] rounded-xl border shadow-2xl object-contain cursor-pointer transition-transform duration-300 hover:scale-[1.01] ${
-              isToday ? 'border-red-500/40' : isTomorrow ? 'border-orange-500/40' : 'border-amber-500/30'
+              isToday ? 'border-red-500/40' : isTomorrow ? 'border-orange-500/40' : is2Days ? 'border-amber-500/40' : 'border-amber-500/30'
             }`}
             onClick={() => setShowImageModal(true)}
             loading="lazy"
@@ -142,6 +157,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
               ? 'bg-red-500/10 border-red-500/25'
               : isTomorrow
               ? 'bg-orange-500/10 border-orange-500/25'
+              : is2Days
+              ? 'bg-amber-500/10 border-amber-500/25'
               : 'bg-amber-500/10 border-amber-500/25'
           }`}>
             <p className={`font-extrabold text-sm flex items-center gap-1.5 ${
@@ -165,6 +182,15 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
                 </p>
                 <p className="text-orange-100/90 font-medium">
                   Por favor, realize o seu pagamento antes do vencimento para <strong className="text-amber-300 font-extrabold underline decoration-amber-500/50">não ficar sem sinal</strong> e continuar assistindo aos canais, filmes e séries sem interrupções!
+                </p>
+              </>
+            ) : is2Days ? (
+              <>
+                <p>
+                  Informamos que o seu plano de streaming <strong className="text-amber-300 font-black">vence em 2 DIAS</strong>.
+                </p>
+                <p className="text-amber-100/90 font-medium">
+                  Por favor, realize o seu pagamento antes do vencimento para <strong className="text-orange-300 font-extrabold underline decoration-orange-500/50">não ficar sem sinal</strong> e continuar assistindo aos canais, filmes e séries sem interrupções!
                 </p>
               </>
             ) : (
@@ -193,6 +219,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
                   ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white shadow-red-950/50'
                   : isTomorrow
                   ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-slate-950 shadow-orange-950/50'
+                  : is2Days
+                  ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 shadow-amber-950/50'
                   : 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 shadow-orange-950/40'
               }`}
             >
@@ -233,6 +261,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
                   ? 'Olá! Recebi o aviso de que meu plano vence hoje e gostaria de realizar a renovação.'
                   : isTomorrow
                   ? 'Olá! Recebi o aviso de que meu plano vence amanhã e gostaria de realizar a renovação.'
+                  : is2Days
+                  ? 'Olá! Recebi o aviso de que meu plano vence em 2 dias e gostaria de realizar a renovação.'
                   : 'Olá! Recebi o aviso de que meu plano vence em 3 dias e gostaria de realizar a renovação.'
               )}`}
               target="_blank"

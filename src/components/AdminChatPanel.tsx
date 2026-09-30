@@ -514,6 +514,20 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     await handleSendMessage(messageString);
   };
 
+  // Atalho: Enviar Aviso de Vencimento AMANHÃ com Imagem Flyer e Texto
+  const handleSendExpiryNoticeTomorrow = async () => {
+    if (!selectedClientCode || isSending) return;
+    const payload: ExpiryNoticePayload = {
+      imageUrl: '/vence-amanha.png',
+      text: 'Bom dia! ☀️ Seu plano vence *AMANHÃ*!\n\nPor favor, realize o seu pagamento antes do vencimento para *não ficar sem sinal*!\nPara renovar seu acesso, basta clicar no botão *Renovar* abaixo:',
+      days: 1,
+      pixKey: 'thebestiptv10@gmail.com',
+      whatsapp: '5521959368651'
+    };
+    const messageString = `[AVISO_VENCIMENTO_AMANHA]${JSON.stringify(payload)}[/AVISO_VENCIMENTO_AMANHA]`;
+    await handleSendMessage(messageString);
+  };
+
   // Confirmar e Reconhecer Pagamento Pix com 1 clique sem delay
   const handleConfirmPixPayment = async (clientCode: string, clientName: string) => {
     try {
@@ -557,6 +571,17 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       badgeColor: 'bg-red-500/25 text-red-300 border border-red-500/50',
       icon: '🚨',
       action: () => handleSendExpiryNoticeToday(),
+    },
+    {
+      id: 'vence-amanha',
+      command: '/amanha',
+      aliases: ['/venceamanha', '/amanhã', '/vence-amanha', '/1dia', '/amanhaaviso'],
+      label: '⚠️ Vence Amanhã (com Imagem Flyer)',
+      description: 'Envia o flyer visual de VENCE AMANHÃ, texto explicativo, chave Pix e botão de renovar',
+      badge: 'Vence Amanhã',
+      badgeColor: 'bg-orange-500/25 text-orange-300 border border-orange-500/50',
+      icon: '⚠️',
+      action: () => handleSendExpiryNoticeTomorrow(),
     },
     {
       id: 'vence-3-dias',
@@ -1099,6 +1124,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                             ? '📷 [Fotos Enviadas]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_HOJE]')
                             ? '🚨 [Aviso: Vence Hoje]'
+                            : conv.last_message.includes('[AVISO_VENCIMENTO_AMANHA]')
+                            ? '⚠️ [Aviso: Vence Amanhã]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_3D]')
                             ? '⏰ [Aviso: Vence em 3 Dias]'
                             : conv.last_message.includes('[ATALHO_CUSTOM]')

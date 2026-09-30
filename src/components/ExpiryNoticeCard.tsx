@@ -11,11 +11,12 @@ export interface ExpiryNoticePayload {
 
 export const isExpiryNotice3DMessage = (msg: string): boolean =>
   (msg.includes('[AVISO_VENCIMENTO_3D]') && msg.includes('[/AVISO_VENCIMENTO_3D]')) ||
+  (msg.includes('[AVISO_VENCIMENTO_AMANHA]') && msg.includes('[/AVISO_VENCIMENTO_AMANHA]')) ||
   (msg.includes('[AVISO_VENCIMENTO_HOJE]') && msg.includes('[/AVISO_VENCIMENTO_HOJE]'));
 
 export const parseExpiryNotice3DMessage = (msg: string): ExpiryNoticePayload | null => {
   try {
-    const match = msg.match(/\[AVISO_VENCIMENTO_(?:3D|HOJE)\]([\s\S]*?)\[\/AVISO_VENCIMENTO_(?:3D|HOJE)\]/);
+    const match = msg.match(/\[AVISO_VENCIMENTO_(?:3D|AMANHA|HOJE)\]([\s\S]*?)\[\/AVISO_VENCIMENTO_(?:3D|AMANHA|HOJE)\]/);
     if (!match) return null;
     return JSON.parse(match[1]);
   } catch {
@@ -40,9 +41,10 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
   const [showImageModal, setShowImageModal] = useState(false);
 
   const isToday = payload.days === 0 || (payload.imageUrl && payload.imageUrl.includes('vence-hoje'));
+  const isTomorrow = payload.days === 1 || (payload.imageUrl && payload.imageUrl.includes('vence-amanha'));
   const pixKey = payload.pixKey || 'thebestiptv10@gmail.com';
   const whatsappNumber = payload.whatsapp || '5521959368651';
-  const imageUrl = payload.imageUrl || (isToday ? '/vence-hoje.jpg' : '/vence-em-3-dias.jpg');
+  const imageUrl = payload.imageUrl || (isToday ? '/vence-hoje.jpg' : isTomorrow ? '/vence-amanha.png' : '/vence-em-3-dias.jpg');
 
   const handleCopyPix = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -68,24 +70,32 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
   return (
     <>
       <div className={`w-full max-w-sm sm:max-w-md my-2 rounded-2xl overflow-hidden border ${
-        isToday ? 'border-red-500/50 shadow-red-950/40' : 'border-amber-500/40 shadow-amber-950/30'
+        isToday
+          ? 'border-red-500/50 shadow-red-950/40'
+          : isTomorrow
+          ? 'border-orange-500/50 shadow-orange-950/40'
+          : 'border-amber-500/40 shadow-amber-950/30'
       } bg-gradient-to-b from-[#181d2c] via-[#121622] to-[#0c0f17] shadow-2xl text-white select-none`}>
         {/* Cabeçalho do Card */}
         <div className={`px-3.5 py-2.5 border-b flex items-center justify-between ${
           isToday
             ? 'bg-gradient-to-r from-red-600/40 via-rose-600/30 to-red-600/20 border-red-500/30'
+            : isTomorrow
+            ? 'bg-gradient-to-r from-orange-600/40 via-amber-600/30 to-orange-600/20 border-orange-500/30'
             : 'bg-gradient-to-r from-amber-600/40 via-orange-600/30 to-amber-600/20 border-amber-500/30'
         }`}>
           <div className="flex items-center gap-2">
             <div className={`w-6 h-6 rounded-lg border flex items-center justify-center ${
               isToday
                 ? 'bg-red-500/30 border-red-400/40 text-red-300'
+                : isTomorrow
+                ? 'bg-orange-500/30 border-orange-400/40 text-orange-300'
                 : 'bg-amber-500/30 border-amber-400/40 text-amber-300'
             }`}>
-              {isToday ? <AlertTriangle size={14} className="animate-pulse" /> : <Clock size={14} className="animate-pulse" />}
+              {isToday || isTomorrow ? <AlertTriangle size={14} className="animate-pulse" /> : <Clock size={14} className="animate-pulse" />}
             </div>
             <span className={`text-xs font-black tracking-wider uppercase ${
-              isToday ? 'text-red-200' : 'text-amber-200'
+              isToday ? 'text-red-200' : isTomorrow ? 'text-orange-200' : 'text-amber-200'
             }`}>
               Aviso de Vencimento
             </span>
@@ -93,9 +103,11 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
           <span className={`px-2.5 py-0.5 rounded-full text-white text-[10px] font-black uppercase tracking-wide shadow-sm ${
             isToday
               ? 'bg-gradient-to-r from-red-600 to-rose-600 animate-pulse'
+              : isTomorrow
+              ? 'bg-gradient-to-r from-amber-500 to-orange-600 animate-pulse font-bold'
               : 'bg-gradient-to-r from-rose-500 to-amber-500'
           }`}>
-            {isToday ? '🚨 Vence Hoje' : 'Vence em 3 Dias'}
+            {isToday ? '🚨 Vence Hoje' : isTomorrow ? '⚠️ Vence Amanhã' : 'Vence em 3 Dias'}
           </span>
         </div>
 
@@ -103,9 +115,9 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
         <div className="p-3 bg-black/40 flex justify-center relative group">
           <img
             src={imageUrl}
-            alt={isToday ? "Seu plano vence hoje" : "Seu plano vence em 3 dias"}
+            alt={isToday ? "Seu plano vence hoje" : isTomorrow ? "Seu plano vence amanhã" : "Seu plano vence em 3 dias"}
             className={`w-full max-w-[280px] sm:max-w-[310px] rounded-xl border shadow-2xl object-contain cursor-pointer transition-transform duration-300 hover:scale-[1.01] ${
-              isToday ? 'border-red-500/40' : 'border-amber-500/30'
+              isToday ? 'border-red-500/40' : isTomorrow ? 'border-orange-500/40' : 'border-amber-500/30'
             }`}
             onClick={() => setShowImageModal(true)}
             loading="lazy"
@@ -114,7 +126,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
             type="button"
             onClick={() => setShowImageModal(true)}
             className={`absolute bottom-5 right-6 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md text-[10px] font-bold border flex items-center gap-1 opacity-90 hover:opacity-100 transition-opacity ${
-              isToday ? 'text-red-200 border-red-500/40' : 'text-amber-200 border-amber-500/40'
+              isToday ? 'text-red-200 border-red-500/40' : isTomorrow ? 'text-orange-200 border-orange-500/40' : 'text-amber-200 border-amber-500/40'
             }`}
             title="Clique para ver imagem ampliada"
           >
@@ -128,10 +140,12 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
           <div className={`p-3 rounded-xl border space-y-1.5 text-xs text-slate-200 leading-relaxed ${
             isToday
               ? 'bg-red-500/10 border-red-500/25'
+              : isTomorrow
+              ? 'bg-orange-500/10 border-orange-500/25'
               : 'bg-amber-500/10 border-amber-500/25'
           }`}>
             <p className={`font-extrabold text-sm flex items-center gap-1.5 ${
-              isToday ? 'text-red-400' : 'text-amber-300'
+              isToday ? 'text-red-400' : isTomorrow ? 'text-orange-400' : 'text-amber-300'
             }`}>
               <span>☀️</span> Bom dia!
             </p>
@@ -142,6 +156,15 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
                 </p>
                 <p className="text-red-100/90 font-medium">
                   Por favor, realize o seu pagamento antes do vencimento para <strong className="text-rose-300 font-extrabold underline decoration-rose-500/50">não ficar sem sinal</strong> e continuar assistindo aos canais, filmes e séries sem interrupções!
+                </p>
+              </>
+            ) : isTomorrow ? (
+              <>
+                <p>
+                  Informamos que o seu plano de streaming <strong className="text-orange-300 font-black">vence AMANHÃ</strong>.
+                </p>
+                <p className="text-orange-100/90 font-medium">
+                  Por favor, realize o seu pagamento antes do vencimento para <strong className="text-amber-300 font-extrabold underline decoration-amber-500/50">não ficar sem sinal</strong> e continuar assistindo aos canais, filmes e séries sem interrupções!
                 </p>
               </>
             ) : (
@@ -155,7 +178,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
               </>
             )}
             <p className="text-slate-300 pt-0.5">
-              Para renovar seu acesso, basta clicar no botão <strong className={`font-bold ${isToday ? 'text-red-300' : 'text-amber-300'}`}>Renovar</strong> abaixo:
+              Para renovar seu acesso, basta clicar no botão <strong className={`font-bold ${isToday ? 'text-red-300' : isTomorrow ? 'text-orange-300' : 'text-amber-300'}`}>Renovar</strong> abaixo:
             </p>
           </div>
 
@@ -168,6 +191,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
               className={`w-full py-3 px-4 rounded-xl font-black text-xs sm:text-sm tracking-wide shadow-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98] cursor-pointer ${
                 isToday
                   ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 text-white shadow-red-950/50'
+                  : isTomorrow
+                  ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:to-amber-500 text-slate-950 shadow-orange-950/50'
                   : 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 shadow-orange-950/40'
               }`}
             >
@@ -206,6 +231,8 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
               href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
                 isToday
                   ? 'Olá! Recebi o aviso de que meu plano vence hoje e gostaria de realizar a renovação.'
+                  : isTomorrow
+                  ? 'Olá! Recebi o aviso de que meu plano vence amanhã e gostaria de realizar a renovação.'
                   : 'Olá! Recebi o aviso de que meu plano vence em 3 dias e gostaria de realizar a renovação.'
               )}`}
               target="_blank"

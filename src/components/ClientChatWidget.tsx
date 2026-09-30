@@ -46,6 +46,10 @@ import {
   parseCustomShortcutMessage,
   COLOR_THEMES,
 } from './CustomShortcutsManagerModal';
+import {
+  isPaymentReceiptMessage,
+  autoProcessPaymentReceiptAndRenew
+} from '../lib/expiryAutomationService';
 
 export interface AccessPointScreen {
   screenNumber: number;
@@ -387,6 +391,18 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
           }
         })();
       }
+
+      // Se a mensagem for ou indicar envio de comprovante de pagamento, processa baixa automática do ciclo
+      if (isPaymentReceiptMessage(text)) {
+        setTimeout(async () => {
+          try {
+            await autoProcessPaymentReceiptAndRenew(activeCode, currentClientDisplayName);
+            await fetchMessages();
+          } catch (renewErr) {
+            console.error('Erro ao processar baixa automática de comprovante:', renewErr);
+          }
+        }, 1200);
+      }
     } catch (err: any) {
       alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
     } finally {
@@ -442,6 +458,16 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         read_by_admin: true,
         read_by_client: false
       });
+
+      // Reconhecer e dar baixa automática no comprovante Pix, suspendendo cobranças e renovando +30 dias
+      setTimeout(async () => {
+        try {
+          await autoProcessPaymentReceiptAndRenew(activeCode, currentClientDisplayName);
+          await fetchMessages();
+        } catch (renewErr) {
+          console.error('Erro na renovação automática via Pix:', renewErr);
+        }
+      }, 1500);
     } catch (autoErr) {
       console.error('Erro ao enviar confirmação de Pix:', autoErr);
     }
@@ -1315,7 +1341,16 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         onClose={() => setShowPhotoModal(false)}
         clientCode={activeCode}
         clientName={clientName || customClientName || 'Cliente'}
-        onPhotosSent={() => fetchMessages()}
+        onPhotosSent={async () => {
+          await fetchMessages();
+          // Verifica se enviou comprovante e faz a baixa automática do vencimento
+          setTimeout(async () => {
+            try {
+              await autoProcessPaymentReceiptAndRenew(activeCode, clientName || customClientName || 'Cliente');
+              await fetchMessages();
+            } catch {}
+          }, 1500);
+        }}
       />
 
       {/* Modal de Loja & Página de Vendas */}

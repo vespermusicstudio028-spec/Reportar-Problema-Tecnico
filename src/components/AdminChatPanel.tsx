@@ -28,7 +28,8 @@ import {
   ArrowDown,
   Smartphone,
   Tv,
-  AlertTriangle
+  AlertTriangle,
+  Zap
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -53,6 +54,10 @@ import {
   isCustomShortcutMessage,
   parseCustomShortcutMessage,
 } from './CustomShortcutsManagerModal';
+import {
+  checkAndSendAutomaticExpiryNotices,
+  autoProcessPaymentReceiptAndRenew
+} from '../lib/expiryAutomationService';
 
 interface SlashCommandItem {
   id: string;
@@ -119,6 +124,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [clientToDelete, setClientToDelete] = useState<{ code: string; name: string } | null>(null);
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [holdingClientCode, setHoldingClientCode] = useState<string | null>(null);
+  const [isAutoCheckingExpiry, setIsAutoCheckingExpiry] = useState(false);
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -141,6 +147,32 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       setMobileShowChat(true);
     }
   }, [initialClientCode]);
+
+  // Automação: Verificação e envio automático periódico de mensagens de vencimento
+  useEffect(() => {
+    // 1. Verificação inicial após 4 segundos
+    const initialTimer = setTimeout(async () => {
+      try {
+        await checkAndSendAutomaticExpiryNotices();
+      } catch (err) {
+        console.error('Erro na verificação inicial de vencimentos:', err);
+      }
+    }, 4000);
+
+    // 2. Verificação a cada 30 minutos em segundo plano
+    const intervalTimer = setInterval(async () => {
+      try {
+        await checkAndSendAutomaticExpiryNotices();
+      } catch (err) {
+        console.error('Erro na verificação periódica de vencimentos:', err);
+      }
+    }, 30 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
+  }, []);
 
   useEffect(() => {
     selectedClientCodeRef.current = selectedClientCode;
@@ -582,8 +614,33 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       });
 
       if (error) throw error;
+
+      // Executa a baixa automática e renovação em +30 dias suspendendo cobranças deste ciclo
+      try {
+        await autoProcessPaymentReceiptAndRenew(clientCode, clientName);
+      } catch (renewErr) {
+        console.error('Erro na renovação automática via confirmação Pix:', renewErr);
+      }
     } catch (err: any) {
       alert('Erro ao confirmar pagamento Pix: ' + (err.message || 'Erro desconhecido.'));
+    }
+  };
+
+  // Disparo manual pelo botão do cabeçalho da automação de vencimento
+  const handleManualRunExpiryCheck = async () => {
+    setIsAutoCheckingExpiry(true);
+    try {
+      const stats = await checkAndSendAutomaticExpiryNotices();
+      const totalSent = stats.sentTodayCount + stats.sentTomorrowCount + stats.sent2DaysCount + stats.sent3DaysCount;
+      if (totalSent > 0) {
+        alert(`⚡ Automação de Vencimento:\n\n${totalSent} aviso(s) enviado(s) aos clientes com sucesso!\n• Vence Hoje: ${stats.sentTodayCount}\n• Vence Amanhã: ${stats.sentTomorrowCount}\n• Vence em 2 Dias: ${stats.sent2DaysCount}\n• Vence em 3 Dias: ${stats.sent3DaysCount}`);
+      } else {
+        alert('⚡ Automação de Vencimento:\n\nNenhum novo aviso precisou ser enviado no momento.\nTodos os clientes com vencimento próximo já receberam seus avisos ou estão em dia!');
+      }
+    } catch (e: any) {
+      alert('Erro ao executar automação de vencimentos: ' + (e.message || 'Erro desconhecido.'));
+    } finally {
+      setIsAutoCheckingExpiry(false);
     }
   };
 
@@ -1037,6 +1094,25 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
               title="Loja & Produtos"
             >
               <ShoppingBag size={15} />
+            </button>
+
+            {/* Botão de Automação de Cobranças e Vencimentos */}
+            <button
+              type="button"
+              onClick={handleManualRunExpiryCheck}
+              disabled={isAutoCheckingExpiry}
+              className={`p-2 rounded-xl transition-all shrink-0 flex items-center gap-1 cursor-pointer border ${
+                isAutoCheckingExpiry
+                  ? 'bg-rose-600/30 text-rose-300 border-rose-500/50'
+                  : 'bg-indigo-600/20 hover:bg-indigo-600/35 text-indigo-300 hover:text-white border-indigo-500/40'
+              }`}
+              title={
+                isAutoCheckingExpiry
+                  ? "Verificando e enviando avisos aos clientes..."
+                  : "⚡ Automação de Vencimentos: Ativa (Clique para verificar e enviar agora)"
+              }
+            >
+              <Zap size={15} className={isAutoCheckingExpiry ? "animate-spin text-rose-300" : "text-indigo-300"} />
             </button>
 
             <button

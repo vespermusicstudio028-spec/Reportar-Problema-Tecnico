@@ -150,20 +150,23 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   }, [initialClientCode]);
 
   // Automação: Verificação e envio automático periódico de mensagens de vencimento
+  // Os avisos são enviados somente a partir das 08:00h da manhã (forceManual=false respeita essa trava)
   useEffect(() => {
-    // 1. Verificação inicial após 4 segundos
+    // 1. Verificação inicial após 4 segundos ao abrir o painel
     const initialTimer = setTimeout(async () => {
       try {
-        await checkAndSendAutomaticExpiryNotices();
+        // forceManual=false → respeita horário 08:00h
+        await checkAndSendAutomaticExpiryNotices(false);
       } catch (err) {
         console.error('Erro na verificação inicial de vencimentos:', err);
       }
     }, 4000);
 
-    // 2. Verificação a cada 30 minutos em segundo plano
+    // 2. Verificação a cada 30 minutos em segundo plano (ainda respeitando o horário de 08:00h)
     const intervalTimer = setInterval(async () => {
       try {
-        await checkAndSendAutomaticExpiryNotices();
+        // forceManual=false → respeita horário 08:00h
+        await checkAndSendAutomaticExpiryNotices(false);
       } catch (err) {
         console.error('Erro na verificação periódica de vencimentos:', err);
       }
@@ -631,7 +634,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const handleManualRunExpiryCheck = async () => {
     setIsAutoCheckingExpiry(true);
     try {
-      const stats = await checkAndSendAutomaticExpiryNotices();
+      // forceManual=true: ignora a trava de 08:00h, admin pode disparar a qualquer hora
+      const stats = await checkAndSendAutomaticExpiryNotices(true);
       const totalSent = stats.sentTodayCount + stats.sentTomorrowCount + stats.sent2DaysCount + stats.sent3DaysCount;
       if (totalSent > 0) {
         alert(`⚡ Automação de Vencimento:\n\n${totalSent} aviso(s) enviado(s) aos clientes com sucesso!\n• Vence Hoje: ${stats.sentTodayCount}\n• Vence Amanhã: ${stats.sentTomorrowCount}\n• Vence em 2 Dias: ${stats.sent2DaysCount}\n• Vence em 3 Dias: ${stats.sent3DaysCount}`);

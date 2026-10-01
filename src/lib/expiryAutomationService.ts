@@ -232,11 +232,30 @@ Muito obrigado pela pontualidade e preferência! Nosso sistema voltará a enviar
 }
 
 /**
+ * Horário oficial programado para envio dos avisos de vencimento: 08:00 horas da manhã.
+ */
+export const SCHEDULED_EXPIRY_HOUR = 8;
+
+/**
+ * Verifica se o horário atual atingiu ou ultrapassou o horário programado de envio (08:00 da manhã).
+ * Permite o envio a partir das 08:00 até o final do dia.
+ */
+export function isScheduledNoticeTimeReached(targetHour: number = SCHEDULED_EXPIRY_HOUR): boolean {
+  const now = new Date();
+  return now.getHours() >= targetHour;
+}
+
+/**
  * Varre todos os clientes ativos e envia automaticamente o aviso de vencimento correto
  * de acordo com a quantidade de dias restantes (3 dias, 2 dias, amanhã ou hoje).
+ * Os envios ocorrem sempre a partir das 08:00 horas da manhã.
  * Evita repetições no mesmo ciclo de vencimento.
+ * 
+ * @param forceManual Se true, ignora a trava de 08:00h e executa o envio imediatamente (ex: disparo manual pelo admin).
  */
-export async function checkAndSendAutomaticExpiryNotices(): Promise<ExpiryAutomationStats> {
+export async function checkAndSendAutomaticExpiryNotices(
+  forceManual: boolean = false
+): Promise<ExpiryAutomationStats> {
   const stats: ExpiryAutomationStats = {
     checkedCount: 0,
     sentTodayCount: 0,
@@ -246,6 +265,15 @@ export async function checkAndSendAutomaticExpiryNotices(): Promise<ExpiryAutoma
     renewedCount: 0,
     lastRunAt: new Date().toISOString()
   };
+
+  // Trava de horário: Envio automático somente a partir das 08:00 da manhã
+  if (!forceManual && !isScheduledNoticeTimeReached(SCHEDULED_EXPIRY_HOUR)) {
+    const now = new Date();
+    const currentHourStr = String(now.getHours()).padStart(2, '0');
+    const currentMinStr = String(now.getMinutes()).padStart(2, '0');
+    console.log(`⏰ [Automação Vencimento] Aguardando o horário oficial das 08:00 horas da manhã. Horário atual: ${currentHourStr}:${currentMinStr}.`);
+    return stats;
+  }
 
   try {
     // 1. Buscar todos os clientes com código e data de vencimento

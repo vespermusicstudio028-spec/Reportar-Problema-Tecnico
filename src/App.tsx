@@ -2661,7 +2661,7 @@ export default function App() {
     if (annMediaFiles.length > 0) {
       mediaType = annMediaFiles.some(f => f.type.startsWith('image/')) ? 'image' : 'video';
       
-      // Processar e comprimir cada arquivo selecionado (até 10 fotos)
+      // Processar e comprimir cada arquivo selecionado (até 20 fotos ou vídeos)
       const processed = await Promise.all(
         annMediaFiles.map(async (file) => {
           if (file.type.startsWith('image/')) {
@@ -3735,15 +3735,15 @@ export default function App() {
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                          Anexo de Foto ou Vídeo (Opcional · Até 10 fotos)
+                          Anexo de Foto ou Vídeo (Opcional · Até 20 fotos ou vídeos)
                         </label>
                         <span className="text-[11px] font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                          {annMediaFiles.length} / 10 fotos
+                          {annMediaFiles.length} / 20 arquivos
                         </span>
                       </div>
 
                       <div className="flex flex-col gap-2.5">
-                        {annMediaFiles.length < 10 && (
+                        {annMediaFiles.length < 20 && (
                           <label className="w-full flex items-center justify-center h-14 border border-dashed border-slate-700 bg-[#151922] hover:bg-[#1a202d] rounded-xl cursor-pointer hover:border-indigo-500 transition-all group shadow-inner">
                             <input 
                               type="file" 
@@ -3756,9 +3756,9 @@ export default function App() {
                                   const newFiles = Array.from(e.target.files);
                                   setAnnMediaFiles(prev => {
                                     const combined = [...prev, ...newFiles];
-                                    if (combined.length > 10) {
-                                      alert('Você pode selecionar no máximo 10 arquivos.');
-                                      return combined.slice(0, 10);
+                                    if (combined.length > 20) {
+                                      alert('Você pode selecionar no máximo 20 arquivos.');
+                                      return combined.slice(0, 20);
                                     }
                                     return combined;
                                   });
@@ -3767,7 +3767,7 @@ export default function App() {
                             />
                             <div className="flex items-center gap-2 text-xs md:text-sm text-slate-300 font-medium group-hover:text-indigo-300 transition-colors">
                               <Upload size={16} className="text-indigo-400" />
-                              <span>Clique para selecionar até 10 fotos ou vídeos</span>
+                              <span>Clique para selecionar até 20 fotos ou vídeos</span>
                             </div>
                           </label>
                         )}
@@ -3785,7 +3785,7 @@ export default function App() {
                                 Limpar todas
                               </button>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-3 bg-[#0d1017] rounded-2xl border border-slate-800">
+                            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-3 bg-[#0d1017] rounded-2xl border border-slate-800 max-h-80 overflow-y-auto custom-scrollbar">
                               {annMediaFiles.map((file, idx) => {
                                 const isImg = file.type.startsWith('image/');
                                 const previewUrl = URL.createObjectURL(file);

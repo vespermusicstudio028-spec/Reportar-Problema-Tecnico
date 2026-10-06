@@ -179,7 +179,7 @@ export const AnnouncementMediaCarousel: React.FC<AnnouncementMediaCarouselProps>
       </div>
 
       {/* Barra Inferior com Indicadores (Dots) */}
-      <div className="p-2 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-center gap-1.5">
+      <div className="p-2 bg-gradient-to-t from-black/80 to-transparent flex items-center justify-center gap-1.5 flex-wrap max-h-14 overflow-y-auto custom-scrollbar">
         {mediaUrls.map((_, idx) => (
           <button
             key={idx}

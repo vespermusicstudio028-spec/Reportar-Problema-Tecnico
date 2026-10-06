@@ -1324,28 +1324,30 @@ export default function App() {
 
     if (trialState) {
       return (
-        <TrialFlowRenderer
-          config={trialConfig}
-          mode={trialState === 'add_point' ? 'add_point' : 'trial'}
-          onClose={() => setTrialState(null)}
-          onRegisterStepBack={(handler) => {
-            trialStepBackRef.current = handler;
-          }}
-          onOpenChat={() => {
-            setTrialState(null);
-            setIsClientChatOpen(true);
-          }}
-          clientCode={loggedClientCode || undefined}
-          clientName={loggedClientName || undefined}
-          onClientRegistered={(newCli) => {
-            setClients((prev) => [newCli, ...prev.filter((c) => c.code !== newCli.code)]);
-            setLoggedClientCode(newCli.code);
-            setLoggedClientName(newCli.name);
-          }}
-          onPointAdded={(updatedCli) => {
-            setClients((prev) => prev.map((c) => (c.id === updatedCli.id || c.code === updatedCli.code ? { ...c, ...updatedCli } : c)));
-          }}
-        />
+        <div className="w-full min-h-full flex-1 flex flex-col justify-center">
+          <TrialFlowRenderer
+            config={trialConfig}
+            mode={trialState === 'add_point' ? 'add_point' : 'trial'}
+            onClose={() => setTrialState(null)}
+            onRegisterStepBack={(handler) => {
+              trialStepBackRef.current = handler;
+            }}
+            onOpenChat={() => {
+              setTrialState(null);
+              setIsClientChatOpen(true);
+            }}
+            clientCode={loggedClientCode || undefined}
+            clientName={loggedClientName || undefined}
+            onClientRegistered={(newCli) => {
+              setClients((prev) => [newCli, ...prev.filter((c) => c.code !== newCli.code)]);
+              setLoggedClientCode(newCli.code);
+              setLoggedClientName(newCli.name);
+            }}
+            onPointAdded={(updatedCli) => {
+              setClients((prev) => prev.map((c) => (c.id === updatedCli.id || c.code === updatedCli.code ? { ...c, ...updatedCli } : c)));
+            }}
+          />
+        </div>
       );
     }
 
@@ -2582,7 +2584,7 @@ export default function App() {
       ) : isReportContentOpen && contentType ? (
         <div key="form" className="flex-1 overflow-hidden w-full">{renderFormFields()}</div>
       ) : (
-        <div key="selection" className="flex-1 overflow-y-auto w-full">{renderContentSelection()}</div>
+        <div key="selection" className="flex-1 overflow-y-auto w-full flex flex-col min-h-full">{renderContentSelection()}</div>
       )}
     </AnimatePresence>
   );

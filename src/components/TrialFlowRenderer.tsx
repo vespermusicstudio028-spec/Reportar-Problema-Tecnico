@@ -66,7 +66,7 @@ const TrialScreenWrapper = React.memo(function TrialScreenWrapper({
   return (
     <div
       ref={containerRef}
-      className="w-full md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:flex md:flex-col md:items-center md:py-10 md:px-6"
+      className="w-full min-h-full flex-1 flex flex-col justify-center items-center py-2 sm:py-4 px-2 sm:px-4 md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:py-10 md:px-6"
     >
       <button
         type="button"
@@ -76,7 +76,7 @@ const TrialScreenWrapper = React.memo(function TrialScreenWrapper({
       >
         <X size={22} className="group-hover:scale-110 transition-transform" />
       </button>
-      <div className="w-full md:max-w-3xl md:mx-auto md:my-auto relative">
+      <div className="w-full max-w-lg md:max-w-3xl mx-auto my-auto relative flex flex-col justify-center">
         {children}
       </div>
     </div>
@@ -804,7 +804,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="w-full flex flex-col items-center py-4 md:py-2 md:my-auto"
+        className="w-full flex-1 flex flex-col items-center justify-center my-auto py-2 md:py-2"
       >
         <div className="w-full max-w-lg md:max-w-3xl mx-auto bg-slate-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl">
           {content.title && (
@@ -1097,9 +1097,9 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className="w-full flex flex-col items-center py-4 md:py-2 md:my-auto"
+          className="w-full flex-1 flex flex-col items-center justify-center my-auto py-2 md:py-2"
         >
-          <div className="w-full max-w-lg md:max-w-xl mx-auto">
+          <div className="w-full max-w-lg md:max-w-xl mx-auto px-2 sm:px-4">
             <div className="text-center space-y-2 mb-8 mt-4 relative z-10 flex flex-col items-center">
               <h2 className="text-2xl font-bold tracking-tight text-white drop-shadow-md uppercase mb-2">{selectedDevice.name}</h2>
               <h3 className="text-lg md:text-xl font-bold tracking-tight text-indigo-300 drop-shadow-md uppercase">SELECIONE UMA OPÇÃO</h3>
@@ -1178,12 +1178,12 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -20 }}
-        className="w-full flex flex-col items-center py-4 md:py-2 md:my-auto"
+        className="w-full flex-1 flex flex-col items-center justify-center my-auto py-2 md:py-2"
       >
-        <div className="w-full max-w-lg md:max-w-xl mx-auto px-1">
+        <div className="w-full max-w-lg md:max-w-xl mx-auto px-2 sm:px-4">
 
           {/* ── Título ── */}
-          <div className="text-center mb-6 mt-2 relative z-10">
+          <div className="text-center mb-5 sm:mb-6 mt-1 sm:mt-2 relative z-10">
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight uppercase leading-snug drop-shadow-lg">
               <span className="text-white">QUAL É O SEU DISPOSITIVO </span>
               <br />

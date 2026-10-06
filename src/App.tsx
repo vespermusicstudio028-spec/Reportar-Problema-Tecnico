@@ -12,6 +12,7 @@ import { ServerStatusData, DEFAULT_SERVER_STATUS, SERVER_STATUS_OPTIONS } from '
 import { ServerStatusCard } from './components/ServerStatusCard';
 import { AdminServerStatusPanel } from './components/AdminServerStatusPanel';
 import { AdminExpiryAlertModal } from './components/AdminExpiryAlertModal';
+import { AdminExpiryCalendarModal } from './components/AdminExpiryCalendarModal';
 
 import { 
   RefreshCcw,
@@ -66,7 +67,8 @@ import {
   Clock,
   Activity,
   Users,
-  ShoppingBag
+  ShoppingBag,
+  Calendar
 } from 'lucide-react';
 
 const WEBHOOK_URL = 'https://sua-url-de-webhook-aqui.com/endpoint';
@@ -677,6 +679,7 @@ export default function App() {
   const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
   const [clientExpiry, setClientExpiry] = useState('');
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
+  const [showExpiryCalendarModal, setShowExpiryCalendarModal] = useState(false);
   
   const [loggedClientCode, setLoggedClientCode] = useState(() => {
     return localStorage.getItem('iptv_access_code_v1') || '';
@@ -3114,16 +3117,45 @@ export default function App() {
                      </div>
                    </div>
 
-                   {/* Toggle Teste Grátis */}
-                   <div className="flex items-center gap-2.5 bg-[#151922] px-3.5 py-2 rounded-2xl border border-slate-800/80 shrink-0">
-                     <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Teste Grátis</span>
+                   <div className="flex items-center gap-2.5 flex-wrap">
+                     {/* Botão Ícone de Calendário de Vencimentos */}
                      <button
                        type="button"
-                       onClick={() => setIsTrialEnabled(!isTrialEnabled)}
-                       className={`relative w-10 h-6 rounded-full transition-colors duration-300 focus:outline-none ${isTrialEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                       onClick={() => setShowExpiryCalendarModal(true)}
+                       className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/35 border border-indigo-500/40 text-indigo-300 hover:text-white transition-all shadow-md active:scale-95 text-xs font-bold shrink-0 relative"
+                       title="Abrir Calendário de Vencimentos dos Clientes"
                      >
-                       <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300 ${isTrialEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                       <Calendar size={18} className="text-indigo-400" />
+                       <span>Calendário</span>
+                       {(() => {
+                         const now = new Date();
+                         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+                         const day3End = new Date(todayStart.getTime() + 4 * 24 * 60 * 60 * 1000 - 1);
+                         const count = clients.filter(c => {
+                           if (!c.expirationDate) return false;
+                           const exp = new Date(c.expirationDate);
+                           return !isNaN(exp.getTime()) && exp >= todayStart && exp <= day3End;
+                         }).length;
+                         if (count === 0) return null;
+                         return (
+                           <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[10px] font-black animate-pulse">
+                             {count}
+                           </span>
+                         );
+                       })()}
                      </button>
+
+                     {/* Toggle Teste Grátis */}
+                     <div className="flex items-center gap-2.5 bg-[#151922] px-3.5 py-2 rounded-2xl border border-slate-800/80 shrink-0">
+                       <span className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">Teste Grátis</span>
+                       <button
+                         type="button"
+                         onClick={() => setIsTrialEnabled(!isTrialEnabled)}
+                         className={`relative w-10 h-6 rounded-full transition-colors duration-300 focus:outline-none ${isTrialEnabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                       >
+                         <div className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300 ${isTrialEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                       </button>
+                     </div>
                    </div>
                  </div>
 
@@ -3208,6 +3240,19 @@ export default function App() {
                         accent: 'from-amber-500/20 to-orange-500/10 border-amber-500/30 hover:border-amber-400/60 text-amber-400',
                         iconBg: 'bg-amber-500/20 text-amber-300',
                       },
+                      {
+                        id: 'calendario' as const,
+                        icon: <Calendar size={22} />,
+                        title: '📅 Calendário de Vencimentos',
+                        subtitle: 'Vencidos, hoje, amanhã, 2 e 3 dias, a vencer',
+                        accent: 'from-purple-500/20 to-indigo-500/10 border-purple-500/30 hover:border-purple-400/60 text-purple-400',
+                        iconBg: 'bg-purple-500/20 text-purple-300',
+                        badge: clients.filter(c => {
+                          if (!c.expirationDate) return false;
+                          const exp = new Date(c.expirationDate);
+                          return !isNaN(exp.getTime());
+                        }).length || null,
+                      },
                      {
                        id: 'suporte' as const,
                        icon: <AlertTriangle size={22} />,
@@ -3226,6 +3271,10 @@ export default function App() {
                          if ((tab.id as string) === 'loja') {
                            setShowAdminStoreModal(true);
                            setShowLoginModal(false);
+                           return;
+                         }
+                         if ((tab.id as string) === 'calendario') {
+                           setShowExpiryCalendarModal(true);
                            return;
                          }
                          if (tab.id === 'pedidos') {

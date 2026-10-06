@@ -180,7 +180,44 @@ const getDefaultAnnouncementExpiry = (): string => {
   return `${year}-${month}-${day}T23:59`;
 };
 
+const mapSingleAnnouncement = (a: any): Announcement => {
+  let mediaUrls: string[] = [];
+  let singleMediaUrl = a.media_url || undefined;
+  if (a.media_url) {
+    try {
+      if (typeof a.media_url === 'string' && a.media_url.trim().startsWith('[') && a.media_url.trim().endsWith(']')) {
+        const parsed = JSON.parse(a.media_url);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          mediaUrls = parsed;
+          singleMediaUrl = parsed[0];
+        } else {
+          mediaUrls = [a.media_url];
+        }
+      } else {
+        mediaUrls = [a.media_url];
+      }
+    } catch {
+      mediaUrls = [a.media_url];
+    }
+  }
+
+  return {
+    id: a.id,
+    category: a.category,
+    name: a.name,
+    status: a.status,
+    message: a.message,
+    expiryDate: a.expiry_date || a.expiryDate,
+    mediaUrl: singleMediaUrl,
+    mediaUrls: mediaUrls,
+    mediaType: a.media_type || a.mediaType,
+    pollOptions: a.poll_options || a.pollOptions,
+    createdAt: a.created_at || a.createdAt
+  };
+};
+
 export default function App() {
+  const annChannelRef = useRef<any>(null);
   const [contentType, setContentType] = useState<ContentType>(null);
   const [trialState, setTrialState] = useState<string | null>(null);
   const [showAppDescription, setShowAppDescription] = useState(false);
@@ -378,41 +415,7 @@ export default function App() {
         setIsAnnouncementsLoading(false);
 
         if (!annErr && annData) {
-          const mapped = annData.map((a: any) => {
-            let mediaUrls: string[] = [];
-            let singleMediaUrl = a.media_url || undefined;
-            if (a.media_url) {
-              try {
-                if (typeof a.media_url === 'string' && a.media_url.trim().startsWith('[') && a.media_url.trim().endsWith(']')) {
-                  const parsed = JSON.parse(a.media_url);
-                  if (Array.isArray(parsed) && parsed.length > 0) {
-                    mediaUrls = parsed;
-                    singleMediaUrl = parsed[0];
-                  } else {
-                    mediaUrls = [a.media_url];
-                  }
-                } else {
-                  mediaUrls = [a.media_url];
-                }
-              } catch {
-                mediaUrls = [a.media_url];
-              }
-            }
-
-            return {
-              id: a.id, 
-              category: a.category, 
-              name: a.name, 
-              status: a.status, 
-              message: a.message, 
-              expiryDate: a.expiry_date, 
-              mediaUrl: singleMediaUrl, 
-              mediaUrls: mediaUrls,
-              mediaType: a.media_type,
-              pollOptions: a.poll_options, 
-              createdAt: a.created_at
-            };
-          });
+          const mapped = annData.map((a: any) => mapSingleAnnouncement(a));
           setAnnouncements(mapped);
           try {
             localStorage.setItem('tbi_cached_announcements', JSON.stringify(mapped));
@@ -527,13 +530,73 @@ export default function App() {
 
     fetchData();
 
-    // Canal dedicado para Avisos com resposta instantânea
+    // Canal dedicado para Avisos com resposta instantânea (0ms via WebSocket broadcast + postgres_changes granular)
     const annChannel = supabase.channel('announcements-fast-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'announcements' }, fetchAnnouncementsFast)
+      .on('broadcast', { event: 'announcement_new' }, ({ payload }) => {
+        if (!payload || !payload.id) return;
+        setAnnouncements(prev => {
+          if (prev.some(a => a.id === payload.id)) return prev;
+          const updated = [payload, ...prev];
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        setIsAnnouncementsOpen(true);
+      })
+      .on('broadcast', { event: 'announcement_deleted' }, ({ payload }) => {
+        if (!payload?.id) return;
+        setAnnouncements(prev => {
+          const updated = prev.filter(a => a.id !== payload.id);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      })
+      .on('broadcast', { event: 'announcement_updated' }, ({ payload }) => {
+        if (!payload?.id) return;
+        setAnnouncements(prev => {
+          const updated = prev.map(a => a.id === payload.id ? { ...a, ...payload } : a);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements' }, (payload) => {
+        const a = payload.new;
+        if (!a) return;
+        const mapped = mapSingleAnnouncement(a);
+        setAnnouncements(prev => {
+          const exists = prev.some(item => item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message));
+          if (exists) {
+            return prev.map(item => (item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message) ? mapped : item));
+          }
+          const updated = [mapped, ...prev];
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        setIsAnnouncementsOpen(true);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'announcements' }, (payload) => {
+        const a = payload.new;
+        if (!a) return;
+        const mapped = mapSingleAnnouncement(a);
+        setAnnouncements(prev => {
+          const updated = prev.map(item => item.id === mapped.id ? mapped : item);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'announcements' }, (payload) => {
+        if (!payload.old?.id) return;
+        setAnnouncements(prev => {
+          const updated = prev.filter(item => item.id !== payload.old.id);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchAnnouncementsFast)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_reactions' }, fetchAnnouncementsFast)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'announcement_views' }, fetchAnnouncementsFast)
       .subscribe();
+
+    annChannelRef.current = annChannel;
 
     // Canal para demais dados
     const channel = supabase.channel('db-changes')
@@ -549,6 +612,7 @@ export default function App() {
     return () => {
       supabase.removeChannel(annChannel);
       supabase.removeChannel(channel);
+      annChannelRef.current = null;
     };
   }, []);
 
@@ -643,7 +707,25 @@ export default function App() {
   const [forgotCodePhone, setForgotCodePhone] = useState('');
   const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
-  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
+    try {
+      const cached = localStorage.getItem('tbi_cached_announcements');
+      if (!cached) return true;
+      const list = JSON.parse(cached);
+      const active = list.filter((a: any) => new Date() <= new Date(a.expiryDate || a.expiry_date));
+      return active.length > 0;
+    } catch {
+      return true;
+    }
+  });
+
+  // Garante exibição imediata (zero delay) de informes ativos ao abrir o aplicativo ou receber novos informes
+  useEffect(() => {
+    const active = announcements.filter(a => new Date() <= new Date(a.expiryDate));
+    if (active.length > 0) {
+      setIsAnnouncementsOpen(true);
+    }
+  }, [announcements.length]);
 
   interface CatalogUpdate {
     id: string;
@@ -2646,7 +2728,7 @@ export default function App() {
     });
   };
 
-  const handleAddAnnouncement = async (e: React.FormEvent) => {
+  const handleAddAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();
     const isServiceDown = annCategory === 'Serviço de Streaming' && annStatus === 'Problemas Técnicos';
     const isEnqueteEvento = annCategory === 'Enquete / Evento';
@@ -2655,28 +2737,9 @@ export default function App() {
     if (!isServiceDown && !isEnqueteEvento && !annName) return;
     if (!annMessage || !annExpiry) return;
 
-    let mediaUrls: string[] = [];
-    let mediaType: 'image' | 'video' | null = null;
-
-    if (annMediaFiles.length > 0) {
-      mediaType = annMediaFiles.some(f => f.type.startsWith('image/')) ? 'image' : 'video';
-      
-      // Processar e comprimir cada arquivo selecionado (até 20 fotos ou vídeos)
-      const processed = await Promise.all(
-        annMediaFiles.map(async (file) => {
-          if (file.type.startsWith('image/')) {
-            return await compressImage(file);
-          } else {
-            return await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.readAsDataURL(file);
-            });
-          }
-        })
-      );
-      mediaUrls = processed.filter(url => Boolean(url));
-    }
+    const finalName = isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName);
+    const finalExpiryIso = new Date(annExpiry).toISOString();
+    const tempId = 'ann-' + Date.now();
 
     let finalPollOptions = null;
     if (annStatus === 'Enquete') {
@@ -2689,59 +2752,119 @@ export default function App() {
       }
     }
 
+    const filesToProcess = [...annMediaFiles];
+    const initialPreviewUrls = filesToProcess.map(f => URL.createObjectURL(f));
+    const mediaType = filesToProcess.length > 0 ? (filesToProcess.some(f => f.type.startsWith('image/')) ? 'image' : 'video') : null;
+
+    // ─── 1. PUBLICAÇÃO OTIMISTA INSTANTÂNEA (ZERO DELAY - 0ms) ───────────
+    const optimisticAnn: Announcement = {
+      id: tempId,
+      category: annCategory,
+      name: finalName,
+      status: annStatus,
+      message: annMessage,
+      expiryDate: finalExpiryIso,
+      mediaUrl: initialPreviewUrls[0] || undefined,
+      mediaUrls: initialPreviewUrls,
+      mediaType: mediaType,
+      pollOptions: finalPollOptions,
+      createdAt: new Date().toISOString()
+    };
+
+    setAnnouncements(prev => [optimisticAnn, ...prev]);
+    setIsAnnouncementsOpen(true);
     try {
-      const payloadMediaUrl = mediaUrls.length === 0 
-        ? null 
-        : mediaUrls.length === 1 
-          ? mediaUrls[0] 
-          : JSON.stringify(mediaUrls);
+      const cached = localStorage.getItem('tbi_cached_announcements');
+      const list = cached ? [optimisticAnn, ...JSON.parse(cached)] : [optimisticAnn];
+      localStorage.setItem('tbi_cached_announcements', JSON.stringify(list));
+    } catch {}
 
-      const { error } = await supabase.from('announcements').insert([{
-        category: annCategory,
-        name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
-        status: annStatus,
-        message: annMessage,
-        expiry_date: new Date(annExpiry).toISOString(),
-        media_url: payloadMediaUrl,
-        media_type: mediaType,
-        poll_options: finalPollOptions
-      }]);
+    // Limpa os campos do formulário e redireciona instantaneamente sem travar a interface
+    setAnnName('');
+    setAnnMessage('');
+    setAnnExpiry(getDefaultAnnouncementExpiry());
+    setAnnMediaFiles([]);
+    setPollOptionsInput(['', '']);
+    setAdminInformesTab('historico');
 
-      if (error) {
-        alert('Erro ao publicar informe. O arquivo pode ser muito grande: ' + error.message);
-        return;
-      }
-
-      // Adiciona imediatamente ao estado local e ao cache para exibição em 0ms
-      const createdAnn: Announcement = {
-        id: 'ann-' + Date.now(),
-        category: annCategory,
-        name: isServiceDown ? 'Serviço de Streaming' : (isEnqueteEvento && !annName ? annStatus : annName),
-        status: annStatus,
-        message: annMessage,
-        expiryDate: new Date(annExpiry).toISOString(),
-        mediaUrl: mediaUrls[0] || undefined,
-        mediaUrls: mediaUrls,
-        mediaType: mediaType,
-        pollOptions: finalPollOptions,
-        createdAt: new Date().toISOString()
-      };
-      setAnnouncements(prev => [createdAnn, ...prev]);
+    // ─── 2. PROCESSAMENTO E PERSISTÊNCIA EM SEGUNDO PLANO ────────────────
+    (async () => {
       try {
-        const cached = localStorage.getItem('tbi_cached_announcements');
-        const list = cached ? [createdAnn, ...JSON.parse(cached)] : [createdAnn];
-        localStorage.setItem('tbi_cached_announcements', JSON.stringify(list));
-      } catch {}
+        let mediaUrls: string[] = [];
+        if (filesToProcess.length > 0) {
+          const processed = await Promise.all(
+            filesToProcess.map(async (file) => {
+              if (file.type.startsWith('image/')) {
+                return await compressImage(file);
+              } else {
+                return await new Promise<string>((resolve) => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.readAsDataURL(file);
+                });
+              }
+            })
+          );
+          mediaUrls = processed.filter(url => Boolean(url));
+        }
 
-      setAnnName('');
-      setAnnMessage('');
-      setAnnExpiry(getDefaultAnnouncementExpiry());
-      setAnnMediaFiles([]);
-      setPollOptionsInput(['', '']);
-      setAdminInformesTab('historico');
-    } catch (err: any) {
-      alert('Erro inesperado ao publicar: ' + err.message);
-    }
+        const payloadMediaUrl = mediaUrls.length === 0 
+          ? null 
+          : mediaUrls.length === 1 
+            ? mediaUrls[0] 
+            : JSON.stringify(mediaUrls);
+
+        const { data: insertedData, error } = await supabase.from('announcements').insert([{
+          category: annCategory,
+          name: finalName,
+          status: annStatus,
+          message: annMessage,
+          expiry_date: finalExpiryIso,
+          media_url: payloadMediaUrl,
+          media_type: mediaType,
+          poll_options: finalPollOptions
+        }]).select();
+
+        if (error) {
+          console.error('Erro ao sincronizar informe com o servidor:', error);
+          alert('Erro ao publicar informe: ' + error.message);
+          setAnnouncements(prev => prev.filter(a => a.id !== tempId));
+          return;
+        }
+
+        const realRow = insertedData?.[0];
+        const realAnn: Announcement = {
+          id: realRow ? realRow.id : tempId,
+          category: annCategory,
+          name: finalName,
+          status: annStatus,
+          message: annMessage,
+          expiryDate: finalExpiryIso,
+          mediaUrl: mediaUrls[0] || undefined,
+          mediaUrls: mediaUrls,
+          mediaType: mediaType,
+          pollOptions: finalPollOptions,
+          createdAt: realRow?.created_at || new Date().toISOString()
+        };
+
+        // Substitui o otimista pelo registro definitivo
+        setAnnouncements(prev => {
+          const updated = prev.map(a => a.id === tempId ? realAnn : a);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+
+        // ─── 3. BROADCAST VIA WEBSOCKET (ZERO DELAY PARA TODOS OS CLIENTES) ─
+        annChannelRef.current?.send({
+          type: 'broadcast',
+          event: 'announcement_new',
+          payload: realAnn
+        });
+
+      } catch (err: any) {
+        console.error('Erro inesperado no salvamento de informe:', err);
+      }
+    })();
   };
 
   const handleDuplicateAnnouncement = (ann: Announcement) => {
@@ -2755,10 +2878,38 @@ export default function App() {
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
+    // Atualização otimista imediata (0ms)
+    setAnnouncements(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    // Notifica instantaneamente todos os clientes via WebSocket
+    annChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'announcement_deleted',
+      payload: { id }
+    });
+
     await supabase.from('announcements').delete().eq('id', id);
   };
 
   const handleResolveAnnouncement = async (id: string) => {
+    // Atualização otimista imediata (0ms)
+    setAnnouncements(prev => {
+      const updated = prev.map(a => a.id === id ? { ...a, status: 'Problema Resolvido' } : a);
+      try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    // Notifica instantaneamente todos os clientes via WebSocket
+    annChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'announcement_updated',
+      payload: { id, status: 'Problema Resolvido' }
+    });
+
     await supabase.from('announcements').update({ status: 'Problema Resolvido' }).eq('id', id);
   };
 

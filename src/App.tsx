@@ -1439,7 +1439,7 @@ export default function App() {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.1 }}
-        className="min-h-full flex flex-col items-center justify-center py-4 md:p-4"
+        className="w-full flex flex-col items-center justify-start py-4 md:p-4"
       >
         {/* Status do Servidor no Celular (sempre visível) */}
         <div className="w-full max-w-xl mb-4 md:hidden">
@@ -1757,7 +1757,7 @@ export default function App() {
         initial={{ opacity: 0, scale: 0.98, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: -15 }}
-        className="min-h-full flex flex-col items-center justify-center py-6 md:p-6 w-full max-w-xl mx-auto"
+        className="w-full flex flex-col items-center justify-start py-6 md:p-6 max-w-xl mx-auto"
       >
         {/* Cabeçalho com Voltar */}
         <div className="w-full flex items-center justify-between mb-6 pb-3 border-b border-white/10">
@@ -1844,7 +1844,7 @@ export default function App() {
       initial={{ opacity: 0, scale: 0.98, y: 15 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98, y: -15 }}
-      className="min-h-full flex flex-col items-center justify-center py-6 md:p-6 w-full max-w-xl mx-auto"
+      className="w-full flex flex-col items-center justify-start py-6 md:p-6 max-w-xl mx-auto"
     >
       {/* Botão de Voltar ao Início */}
       <div className="w-full flex items-center justify-between mb-6 pb-3 border-b border-white/10">
@@ -2666,7 +2666,7 @@ export default function App() {
       ) : isReportContentOpen && contentType ? (
         <div key="form" className="flex-1 overflow-hidden w-full">{renderFormFields()}</div>
       ) : (
-        <div key="selection" className="flex-1 overflow-y-auto w-full flex flex-col min-h-full">{renderContentSelection()}</div>
+        <div key="selection" className="flex-1 overflow-y-auto w-full flex flex-col">{renderContentSelection()}</div>
       )}
     </AnimatePresence>
   );

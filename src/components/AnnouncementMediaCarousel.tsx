@@ -15,7 +15,7 @@ export const AnnouncementMediaCarousel: React.FC<AnnouncementMediaCarouselProps>
   mediaType = 'image',
   onImageClick,
   onRegisterView,
-  maxHeightClass = 'max-h-72'
+  maxHeightClass = 'max-h-60'
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState<number>(0);
@@ -121,7 +121,7 @@ export const AnnouncementMediaCarousel: React.FC<AnnouncementMediaCarouselProps>
     >
       {/* Área da Foto com Efeito de Transição */}
       <div 
-        className="relative overflow-hidden w-full flex items-center justify-center cursor-zoom-in min-h-[220px]"
+        className="relative overflow-hidden w-full flex items-center justify-center cursor-zoom-in min-h-[160px]"
         onClick={handleMediaClick}
       >
         <AnimatePresence initial={false} custom={direction} mode="popLayout">

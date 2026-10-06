@@ -6481,6 +6481,25 @@ export default function App() {
         />
       )}
 
+      {/* Modal do Calendário Completo de Vencimentos */}
+      {isAdminLogged && (
+        <AdminExpiryCalendarModal
+          clients={clients}
+          isOpen={showExpiryCalendarModal}
+          onClose={() => setShowExpiryCalendarModal(false)}
+          onOpenClientChat={(code) => {
+            setChatInitialClientCode(null);
+            setTimeout(() => {
+              setChatInitialClientCode(code);
+              setAdminTab('chat');
+              setShowLoginModal(false);
+              setShowExpiryCalendarModal(false);
+            }, 0);
+          }}
+          onRenewClient={handleQuickRenewClient}
+        />
+      )}
+
       {renderClientEditModal()}
       {renderQuotaModal()}
       {renderForgotCodeModal()}

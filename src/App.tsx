@@ -321,7 +321,8 @@ export default function App() {
       const cached = localStorage.getItem('tbi_cached_announcements');
       if (!cached) return true;
       const parsed = JSON.parse(cached);
-      return !Array.isArray(parsed) || parsed.length === 0;
+      // Se há cache válido, não mostrar spinner — exibe imediatamente
+      return !Array.isArray(parsed);
     } catch {
       return true;
     }
@@ -446,7 +447,9 @@ export default function App() {
     };
 
     // Dispara busca ultra rápida dos avisos imediatamente
-    fetchAnnouncementsFast();
+    // Timeout de segurança: máx 1s de loading, depois mostra o que tiver
+    const loadingTimeout = setTimeout(() => setIsAnnouncementsLoading(false), 1000);
+    fetchAnnouncementsFast().finally(() => clearTimeout(loadingTimeout));
 
     // 2. Carregamento dos demais dados gerais em paralelo
     const fetchData = async () => {
@@ -707,25 +710,10 @@ export default function App() {
   const [forgotCodePhone, setForgotCodePhone] = useState('');
   const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
-  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
-    try {
-      const cached = localStorage.getItem('tbi_cached_announcements');
-      if (!cached) return true;
-      const list = JSON.parse(cached);
-      const active = list.filter((a: any) => new Date() <= new Date(a.expiryDate || a.expiry_date));
-      return active.length > 0;
-    } catch {
-      return true;
-    }
-  });
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
 
-  // Garante exibição imediata (zero delay) de informes ativos ao abrir o aplicativo ou receber novos informes
-  useEffect(() => {
-    const active = announcements.filter(a => new Date() <= new Date(a.expiryDate));
-    if (active.length > 0) {
-      setIsAnnouncementsOpen(true);
-    }
-  }, [announcements.length]);
+
+
 
   interface CatalogUpdate {
     id: string;

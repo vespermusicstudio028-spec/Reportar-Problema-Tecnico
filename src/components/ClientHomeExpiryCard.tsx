@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertTriangle, Clock, Copy, Check, MessageCircle, MessageSquare, X, Sparkles } from 'lucide-react';
+import { AlertTriangle, Clock, Copy, Check, MessageSquare, X, Sparkles } from 'lucide-react';
 import { ClientExpiryNoticeData } from '../lib/clientExpiryNotice';
 
 interface ClientHomeExpiryCardProps {
@@ -22,6 +22,7 @@ export const ClientHomeExpiryCard: React.FC<ClientHomeExpiryCardProps> = ({
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(100);
   const [copiedPix, setCopiedPix] = useState(false);
+  const pixKey = notice.pixKey || 'thebestiptv10@gmail.com';
 
   const DURATION_MS = 5000;
   const INTERVAL_MS = 50;
@@ -68,21 +69,12 @@ export const ClientHomeExpiryCard: React.FC<ClientHomeExpiryCardProps> = ({
     };
   }, []);
 
-  const pixKey = notice.pixKey || 'thebestiptv10@gmail.com';
-  const whatsappNumber = '5521959368651';
-
   const handleCopyPix = (e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(pixKey).then(() => {
       setCopiedPix(true);
       setTimeout(() => setCopiedPix(false), 2500);
     });
-  };
-
-  const handleOpenWhatsApp = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const encoded = encodeURIComponent(notice.whatsappMessage);
-    window.open(`https://wa.me/${whatsappNumber}?text=${encoded}`, '_blank', 'noopener,noreferrer');
   };
 
   const isUrgent = notice.type === 'trial_expired' || notice.type === 'today';
@@ -210,24 +202,15 @@ export const ClientHomeExpiryCard: React.FC<ClientHomeExpiryCardProps> = ({
               </div>
             </div>
 
-            {/* Botões de Ação Imediata */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+            {/* Botão de Ação Imediata */}
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={onOpenChat}
-                className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer active:scale-95 bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/25 border border-indigo-400/40"
+                className="w-full py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer active:scale-95 bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/25 border border-indigo-400/40"
               >
                 <MessageSquare size={16} />
                 <span>Enviar Comprovante no Chat</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenWhatsApp}
-                className="w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-lg cursor-pointer active:scale-95 bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/25 border border-emerald-400/40"
-              >
-                <MessageCircle size={16} />
-                <span>Falar no WhatsApp Oficial</span>
               </button>
             </div>
           </div>

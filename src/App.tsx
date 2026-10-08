@@ -309,21 +309,21 @@ export default function App() {
     } catch { return []; }
   });
 
-  // Announcements (com cache instantâneo de 0ms e pré-carregamento imediato na GPU)
+  // Announcements (com cache instantâneo de 0ms)
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_announcements');
-      if (!cached) return [];
-      const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed)) {
-        preloadAnnouncementMediaList(parsed);
-        return parsed;
-      }
-      return [];
+      return cached ? JSON.parse(cached) : [];
     } catch {
       return [];
     }
   });
+
+  useEffect(() => {
+    if (announcements.length > 0) {
+      preloadAnnouncementMediaList(announcements);
+    }
+  }, []);
   const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_announcements');

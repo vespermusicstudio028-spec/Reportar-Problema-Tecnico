@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChatMessage, ChatConversation } from '../types/chat';
 import { 
@@ -136,6 +136,41 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const userScrolledUpRef = useRef(false);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
 
+  // Helper: rola o container de mensagens até o fim de forma confiável (container + elemento âncora)
+  const scrollToBottom = useCallback((smooth = false) => {
+    const el = messagesContainerRef.current;
+    if (el) {
+      if (smooth) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      } else {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+    if (messagesEndRef.current) {
+      try {
+        messagesEndRef.current.scrollIntoView({
+          behavior: smooth ? 'smooth' : 'auto',
+          block: 'end',
+          inline: 'nearest'
+        });
+      } catch {}
+    }
+  }, []);
+
+  // Escalonador com múltiplos disparos progressivos:
+  // Garante o scroll perfeito no celular mesmo com a transição de display (hidden -> flex),
+  // reflow dinâmico e carregamento de imagens/flyers
+  const scheduleScrollToBottom = useCallback((smooth = false) => {
+    userScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+    scrollToBottom(smooth);
+    requestAnimationFrame(() => scrollToBottom(smooth));
+    setTimeout(() => scrollToBottom(smooth), 60);
+    setTimeout(() => scrollToBottom(smooth), 180);
+    setTimeout(() => scrollToBottom(smooth), 350);
+    setTimeout(() => scrollToBottom(smooth), 700);
+  }, [scrollToBottom]);
+
   const selectedClientCodeRef = useRef<string | null>(null);
   const mobileShowChatRef = useRef(false);
   const chatInputRef = useRef<HTMLInputElement>(null);
@@ -146,8 +181,9 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     if (initialClientCode) {
       setSelectedClientCode(initialClientCode);
       setMobileShowChat(true);
+      scheduleScrollToBottom(false);
     }
-  }, [initialClientCode]);
+  }, [initialClientCode, scheduleScrollToBottom]);
 
   // Automação: Verificação e envio automático periódico de mensagens de vencimento
   // Os avisos são enviados somente a partir das 08:00h da manhã (forceManual=false respeita essa trava)
@@ -388,41 +424,30 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     ? messages.filter((m) => m.client_code === selectedClientCode)
     : [];
 
-  // Helper: rola o container de mensagens até o fim de forma confiável
-  const scrollToBottom = (smooth = false) => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    if (smooth) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    } else {
-      el.scrollTop = el.scrollHeight;
-    }
-  };
-
   // Rolar para o final de forma inteligente:
-  // 1. Ao trocar de conversa: rola direto ao fim (duplo timeout: cache + async do servidor)
+  // 1. Ao abrir conversa no celular (mobileShowChat vira true) ou trocar de cliente: rola direto ao fim progressivamente
   // 2. Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima para ler mensagens antigas
   const prevSelectedClientCodeRef = useRef<string | null>(null);
+  const prevMobileShowChatRef = useRef<boolean>(mobileShowChat);
   const prevActiveMessagesCountRef = useRef<number>(0);
 
   useEffect(() => {
     const conversationChanged = prevSelectedClientCodeRef.current !== selectedClientCode;
+    const openedOnMobile = mobileShowChat && !prevMobileShowChatRef.current;
     const countIncreased = activeMessages.length > prevActiveMessagesCountRef.current;
 
     prevSelectedClientCodeRef.current = selectedClientCode;
+    prevMobileShowChatRef.current = mobileShowChat;
     prevActiveMessagesCountRef.current = activeMessages.length;
 
-    if (conversationChanged) {
-      // Ao trocar conversa: scroll em dois tempos — 50ms (cache) e 300ms (mensagens async do servidor)
-      userScrolledUpRef.current = false;
-      setShowScrollBottomBtn(false);
-      setTimeout(() => scrollToBottom(), 50);
-      setTimeout(() => scrollToBottom(), 300);
+    if (conversationChanged || openedOnMobile) {
+      // Ao abrir conversa (no celular ou desktop), rolar imediatamente e progressivamente para a última mensagem
+      scheduleScrollToBottom(false);
     } else if (countIncreased && !userScrolledUpRef.current) {
       // Nova mensagem chegou enquanto o usuário estava na parte inferior
       scrollToBottom(true);
     }
-  }, [activeMessages.length, selectedClientCode]);
+  }, [activeMessages.length, selectedClientCode, mobileShowChat, scheduleScrollToBottom, scrollToBottom]);
 
   const selectedClientInfo = clientsList.find((c) => c.code === selectedClientCode);
   const selectedConversation = conversations.find((c) => c.client_code === selectedClientCode);
@@ -941,6 +966,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       if (nextInQueue) {
         setActiveServingClientCode(nextInQueue.client_code);
         setSelectedClientCode(nextInQueue.client_code);
+        setMobileShowChat(true);
+        scheduleScrollToBottom(false);
 
         // Notificar o próximo que a vez dele chegou
         const turnMsg = getAutomatedTurnReachedMessage(nextInQueue.client_name);
@@ -1197,6 +1224,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                       }
                       setSelectedClientCode(conv.client_code);
                       setMobileShowChat(true);
+                      scheduleScrollToBottom(false);
                     }}
                     onTouchStart={(e) => {
                       const t = e.touches[0];

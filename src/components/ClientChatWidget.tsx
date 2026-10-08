@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { ChatMessage } from '../types/chat';
@@ -271,19 +271,42 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     };
   }, [activeCode]);
 
-  // Helper: rola o container de mensagens até o fim de forma confiável
-  const scrollToBottom = (smooth = false) => {
+  // Helper: rola o container de mensagens até o fim de forma confiável (container + elemento âncora)
+  const scrollToBottom = useCallback((smooth = false) => {
     const el = messagesContainerRef.current;
-    if (!el) return;
-    if (smooth) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-    } else {
-      el.scrollTop = el.scrollHeight;
+    if (el) {
+      if (smooth) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      } else {
+        el.scrollTop = el.scrollHeight;
+      }
     }
-  };
+    if (messagesEndRef.current) {
+      try {
+        messagesEndRef.current.scrollIntoView({
+          behavior: smooth ? 'smooth' : 'auto',
+          block: 'end',
+          inline: 'nearest'
+        });
+      } catch {}
+    }
+  }, []);
+
+  // Escalonador com múltiplos disparos progressivos:
+  // Garante o scroll perfeito no celular mesmo com abertura de modal, animação de entrada e imagens
+  const scheduleScrollToBottom = useCallback((smooth = false) => {
+    userScrolledUpRef.current = false;
+    setShowScrollBottomBtn(false);
+    scrollToBottom(smooth);
+    requestAnimationFrame(() => scrollToBottom(smooth));
+    setTimeout(() => scrollToBottom(smooth), 60);
+    setTimeout(() => scrollToBottom(smooth), 180);
+    setTimeout(() => scrollToBottom(smooth), 350);
+    setTimeout(() => scrollToBottom(smooth), 700);
+  }, [scrollToBottom]);
 
   // Rolar para a última mensagem de forma inteligente:
-  // - Ao abrir o chat: vai direto ao fim (duplo timeout: cache local + async do servidor)
+  // - Ao abrir o chat: vai direto ao fim (escalonado para cobrir render mobile e async do servidor)
   // - Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima
   const prevIsOpenRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
@@ -296,16 +319,12 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     prevMessagesCountRef.current = messages.length;
 
     if (justOpened) {
-      // Ao abrir: scroll em dois tempos — 50ms (cache) e 300ms (mensagens async do servidor)
-      userScrolledUpRef.current = false;
-      setShowScrollBottomBtn(false);
-      setTimeout(() => scrollToBottom(), 50);
-      setTimeout(() => scrollToBottom(), 300);
+      scheduleScrollToBottom(false);
     } else if (isOpen && countIncreased && !userScrolledUpRef.current) {
       // Nova mensagem chegou enquanto o usuário estava na parte inferior
       scrollToBottom(true);
     }
-  }, [messages.length, isOpen]);
+  }, [messages.length, isOpen, scheduleScrollToBottom, scrollToBottom]);
 
   // Marcar mensagens do admin como lidas pelo cliente quando o chat está aberto
   useEffect(() => {

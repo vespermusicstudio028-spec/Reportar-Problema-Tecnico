@@ -388,8 +388,19 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     ? messages.filter((m) => m.client_code === selectedClientCode)
     : [];
 
+  // Helper: rola o container de mensagens até o fim de forma confiável
+  const scrollToBottom = (smooth = false) => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  };
+
   // Rolar para o final de forma inteligente:
-  // 1. Ao trocar de conversa: rola instantaneamente para o fim (duplo timeout: cache + async do servidor)
+  // 1. Ao trocar de conversa: rola direto ao fim (duplo timeout: cache + async do servidor)
   // 2. Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima para ler mensagens antigas
   const prevSelectedClientCodeRef = useRef<string | null>(null);
   const prevActiveMessagesCountRef = useRef<number>(0);
@@ -402,18 +413,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     prevActiveMessagesCountRef.current = activeMessages.length;
 
     if (conversationChanged) {
-      // Ao trocar conversa: scroll em dois tempos para garantir DOM e mensagens async carregadas
+      // Ao trocar conversa: scroll em dois tempos — 50ms (cache) e 300ms (mensagens async do servidor)
       userScrolledUpRef.current = false;
       setShowScrollBottomBtn(false);
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 50);
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 250);
+      setTimeout(() => scrollToBottom(), 50);
+      setTimeout(() => scrollToBottom(), 300);
     } else if (countIncreased && !userScrolledUpRef.current) {
       // Nova mensagem chegou enquanto o usuário estava na parte inferior
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToBottom(true);
     }
   }, [activeMessages.length, selectedClientCode]);
 
@@ -502,12 +509,10 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       read_by_client: false
     };
     setMessages((prev) => [...prev, optimisticAdminMsg]);
-    // Reset scroll on admin message
+    // Reset scroll ao enviar mensagem
     userScrolledUpRef.current = false;
     setShowScrollBottomBtn(false);
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 50);
+    setTimeout(() => scrollToBottom(true), 50);
 
     try {
       const { error } = await supabase.from('chat_messages').insert({
@@ -1671,7 +1676,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                     onClick={() => {
                       userScrolledUpRef.current = false;
                       setShowScrollBottomBtn(false);
-                      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      scrollToBottom(true);
                     }}
                     className="absolute bottom-4 right-6 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 px-3 rounded-full shadow-lg backdrop-blur border border-indigo-400/30 flex items-center gap-1.5 transition-all z-20 cursor-pointer shadow-indigo-600/20 active:scale-95"
                   >

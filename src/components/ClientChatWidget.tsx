@@ -271,8 +271,19 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     };
   }, [activeCode]);
 
+  // Helper: rola o container de mensagens até o fim de forma confiável
+  const scrollToBottom = (smooth = false) => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    if (smooth) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    } else {
+      el.scrollTop = el.scrollHeight;
+    }
+  };
+
   // Rolar para a última mensagem de forma inteligente:
-  // - Ao abrir o chat: vai para o fim (com duplo timeout para garantir DOM montado + mensagens async carregadas)
+  // - Ao abrir o chat: vai direto ao fim (duplo timeout: cache local + async do servidor)
   // - Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima
   const prevIsOpenRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
@@ -285,18 +296,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     prevMessagesCountRef.current = messages.length;
 
     if (justOpened) {
-      // Ao abrir: scroll em dois tempos — 50ms para o cache e 250ms para aguardar mensagens async do servidor
+      // Ao abrir: scroll em dois tempos — 50ms (cache) e 300ms (mensagens async do servidor)
       userScrolledUpRef.current = false;
       setShowScrollBottomBtn(false);
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 50);
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 250);
+      setTimeout(() => scrollToBottom(), 50);
+      setTimeout(() => scrollToBottom(), 300);
     } else if (isOpen && countIncreased && !userScrolledUpRef.current) {
       // Nova mensagem chegou enquanto o usuário estava na parte inferior
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      scrollToBottom(true);
     }
   }, [messages.length, isOpen]);
 
@@ -342,9 +349,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     setMessages(prev => [...prev, optimisticClientMsg]);
     userScrolledUpRef.current = false;
     setShowScrollBottomBtn(false);
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 50);
+    setTimeout(() => scrollToBottom(true), 50);
 
     try {
       const { error } = await supabase.from('chat_messages').insert({
@@ -1177,7 +1182,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
                     onClick={() => {
                       userScrolledUpRef.current = false;
                       setShowScrollBottomBtn(false);
-                      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      scrollToBottom(true);
                     }}
                     className="absolute bottom-3 right-5 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold py-1.5 px-3 rounded-full shadow-lg backdrop-blur border border-indigo-400/30 flex items-center gap-1.5 transition-all z-20 cursor-pointer shadow-indigo-600/20 active:scale-95"
                   >

@@ -52,6 +52,12 @@ export function AdminExpiryAlertModal({
   const DURATION_MS = 5000;
   const INTERVAL_MS = 50;
 
+  // Refs estáveis para evitar recriar o intervalo ao pausar/desaunsar
+  const isPausedRef = useRef(isPaused);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
   // Filtra e classifica os clientes por vencimento estritamente dentro dos períodos: Hoje, Amanhã, 2 dias e 3 dias
   const expiringClients: ExpiringClientItem[] = React.useMemo(() => {
     const now = new Date();
@@ -142,7 +148,7 @@ export function AdminExpiryAlertModal({
     return list.sort((a, b) => priority[a.category] - priority[b.category]);
   }, [clients]);
 
-  // Timer decrescente de 5 segundos
+  // Timer decrescente de 5 segundos — recria APENAS quando o modal abre/fecha
   useEffect(() => {
     if (!isOpen) {
       setProgress(100);
@@ -151,22 +157,36 @@ export function AdminExpiryAlertModal({
 
     setProgress(100);
     const step = (INTERVAL_MS / DURATION_MS) * 100;
+    let done = false;
 
     const timer = setInterval(() => {
-      if (!isPaused) {
-        setProgress((prev) => {
-          if (prev <= step) {
-            clearInterval(timer);
-            onClose();
-            return 0;
-          }
-          return prev - step;
-        });
+      if (done) return;
+      if (isPausedRef.current) return;
+
+      setProgress((prev) => {
+        const next = prev - step;
+        if (next <= 0) {
+          done = true;
+          return 0;
+        }
+        return next;
+      });
+    }, INTERVAL_MS);
+
+    // Observa quando `done` vira true e chama onClose
+    const closedWatcher = setInterval(() => {
+      if (done) {
+        clearInterval(timer);
+        clearInterval(closedWatcher);
+        onCloseRef.current();
       }
     }, INTERVAL_MS);
 
-    return () => clearInterval(timer);
-  }, [isOpen, isPaused, onClose]);
+    return () => {
+      clearInterval(timer);
+      clearInterval(closedWatcher);
+    };
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Se não estiver aberto ou não houver nenhum cliente vencendo nesses períodos específicos, não exibe nada
   if (!isOpen || expiringClients.length === 0) return null;

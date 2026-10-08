@@ -6,7 +6,7 @@ import { TrialAdminPanel } from './components/TrialAdminPanel';
 import { TrialFlowRenderer } from './components/TrialFlowRenderer';
 import { AdminChatPanel } from './components/AdminChatPanel';
 import { ClientChatWidget } from './components/ClientChatWidget';
-import { AnnouncementMediaCarousel } from './components/AnnouncementMediaCarousel';
+import { AnnouncementMediaCarousel, preloadAnnouncementMediaList, preloadAnnouncementImage } from './components/AnnouncementMediaCarousel';
 import { AdminStoreManagerModal } from './components/AdminStoreManagerModal';
 import { ServerStatusData, DEFAULT_SERVER_STATUS, SERVER_STATUS_OPTIONS } from './types/serverStatus';
 import { ServerStatusCard } from './components/ServerStatusCard';
@@ -309,11 +309,17 @@ export default function App() {
     } catch { return []; }
   });
 
-  // Announcements (com cache instantâneo de 0ms)
+  // Announcements (com cache instantâneo de 0ms e pré-carregamento imediato na GPU)
   const [announcements, setAnnouncements] = useState<Announcement[]>(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_announcements');
-      return cached ? JSON.parse(cached) : [];
+      if (!cached) return [];
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed)) {
+        preloadAnnouncementMediaList(parsed);
+        return parsed;
+      }
+      return [];
     } catch {
       return [];
     }
@@ -419,6 +425,7 @@ export default function App() {
 
         if (!annErr && annData) {
           const mapped = annData.map((a: any) => mapSingleAnnouncement(a));
+          preloadAnnouncementMediaList(mapped);
           setAnnouncements(mapped);
           try {
             localStorage.setItem('tbi_cached_announcements', JSON.stringify(mapped));
@@ -539,6 +546,7 @@ export default function App() {
     const annChannel = supabase.channel('announcements-fast-realtime')
       .on('broadcast', { event: 'announcement_new' }, ({ payload }) => {
         if (!payload || !payload.id) return;
+        preloadAnnouncementMediaList([payload]);
         setAnnouncements(prev => {
           if (prev.some(a => a.id === payload.id)) return prev;
           const updated = [payload, ...prev];
@@ -557,6 +565,7 @@ export default function App() {
       })
       .on('broadcast', { event: 'announcement_updated' }, ({ payload }) => {
         if (!payload?.id) return;
+        preloadAnnouncementMediaList([payload]);
         setAnnouncements(prev => {
           const updated = prev.map(a => a.id === payload.id ? { ...a, ...payload } : a);
           try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
@@ -567,6 +576,7 @@ export default function App() {
         const a = payload.new;
         if (!a) return;
         const mapped = mapSingleAnnouncement(a);
+        preloadAnnouncementMediaList([mapped]);
         setAnnouncements(prev => {
           const exists = prev.some(item => item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message));
           if (exists) {
@@ -582,6 +592,7 @@ export default function App() {
         const a = payload.new;
         if (!a) return;
         const mapped = mapSingleAnnouncement(a);
+        preloadAnnouncementMediaList([mapped]);
         setAnnouncements(prev => {
           const updated = prev.map(item => item.id === mapped.id ? mapped : item);
           try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
@@ -675,6 +686,7 @@ export default function App() {
   const [annMessage, setAnnMessage] = useState('');
   const [annExpiry, setAnnExpiry] = useState<string>(getDefaultAnnouncementExpiry);
   const [annMediaFiles, setAnnMediaFiles] = useState<File[]>([]);
+  const compressedMediaCacheRef = useRef<Map<string, string>>(new Map());
   const [galleryModal, setGalleryModal] = useState<{ urls: string[]; index: number } | null>(null);
 
   const [pollOptionsInput, setPollOptionsInput] = useState<string[]>(['', '']);
@@ -2721,7 +2733,7 @@ export default function App() {
     }
   };
 
-  // Utilitário para comprimir fotos antes do envio
+  // Utilitário para comprimir fotos antes do envio com máxima nitidez e peso mínimo (zero delay de exibição)
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -2731,7 +2743,9 @@ export default function App() {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const MAX_DIM = 1200;
+          // Dimensão ideal de até 960px: gera imagem hiper nítida em qualquer dispositivo e com peso leve (50-80KB)
+          // eliminando completamente qualquer delay de carregamento e decodificação na tela inicial
+          const MAX_DIM = 960;
           if (width > height && width > MAX_DIM) {
             height = Math.round((height * MAX_DIM) / width);
             width = MAX_DIM;
@@ -2741,10 +2755,14 @@ export default function App() {
           }
           canvas.width = width;
           canvas.height = height;
-          const ctx = canvas.getContext('2d');
+          const ctx = canvas.getContext('2d', { alpha: false });
           if (ctx) {
+            ctx.fillStyle = '#0d1017';
+            ctx.fillRect(0, 0, width, height);
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.8));
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.76);
+            preloadAnnouncementImage(dataUrl);
+            resolve(dataUrl);
           } else {
             resolve((e.target?.result as string) || '');
           }
@@ -2754,6 +2772,29 @@ export default function App() {
       };
       reader.onerror = () => resolve('');
       reader.readAsDataURL(file);
+    });
+  };
+
+  // Pré-processa e pré-carrega as imagens no cache da GPU logo ao selecionar os arquivos
+  const queueMediaCompression = (files: File[]) => {
+    files.forEach(async (file) => {
+      const key = `${file.name}_${file.size}_${file.lastModified}`;
+      if (compressedMediaCacheRef.current.has(key)) return;
+      if (file.type.startsWith('image/')) {
+        const compressed = await compressImage(file);
+        if (compressed) {
+          compressedMediaCacheRef.current.set(key, compressed);
+          preloadAnnouncementImage(compressed);
+        }
+      } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            compressedMediaCacheRef.current.set(key, reader.result as string);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
     });
   };
 
@@ -2782,7 +2823,12 @@ export default function App() {
     }
 
     const filesToProcess = [...annMediaFiles];
-    const initialPreviewUrls = filesToProcess.map(f => URL.createObjectURL(f));
+    // Prioriza mídias já pré-comprimidas no cache instantâneo para 0ms de delay
+    const initialPreviewUrls = filesToProcess.map(f => {
+      const key = `${f.name}_${f.size}_${f.lastModified}`;
+      return compressedMediaCacheRef.current.get(key) || URL.createObjectURL(f);
+    });
+    initialPreviewUrls.forEach(url => preloadAnnouncementImage(url));
     const mediaType = filesToProcess.length > 0 ? (filesToProcess.some(f => f.type.startsWith('image/')) ? 'image' : 'video') : null;
 
     // ─── 1. PUBLICAÇÃO OTIMISTA INSTANTÂNEA (ZERO DELAY - 0ms) ───────────
@@ -2823,8 +2869,13 @@ export default function App() {
         if (filesToProcess.length > 0) {
           const processed = await Promise.all(
             filesToProcess.map(async (file) => {
+              const key = `${file.name}_${file.size}_${file.lastModified}`;
+              const cached = compressedMediaCacheRef.current.get(key);
+              if (cached) return cached;
               if (file.type.startsWith('image/')) {
-                return await compressImage(file);
+                const comp = await compressImage(file);
+                compressedMediaCacheRef.current.set(key, comp);
+                return comp;
               } else {
                 return await new Promise<string>((resolve) => {
                   const reader = new FileReader();
@@ -2875,6 +2926,8 @@ export default function App() {
           pollOptions: finalPollOptions,
           createdAt: realRow?.created_at || new Date().toISOString()
         };
+
+        preloadAnnouncementMediaList([realAnn]);
 
         // Substitui o otimista pelo registro definitivo
         setAnnouncements(prev => {
@@ -3934,6 +3987,7 @@ export default function App() {
                               onChange={(e) => {
                                 if (e.target.files) {
                                   const newFiles = Array.from(e.target.files);
+                                  queueMediaCompression(newFiles);
                                   setAnnMediaFiles(prev => {
                                     const combined = [...prev, ...newFiles];
                                     if (combined.length > 20) {

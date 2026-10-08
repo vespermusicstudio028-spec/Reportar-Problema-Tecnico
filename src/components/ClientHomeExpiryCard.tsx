@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Clock, Copy, Check, MessageCircle, MessageSquare, Eye, X, Sparkles, ChevronRight, ShieldAlert } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { AlertTriangle, Clock, Copy, Check, MessageCircle, MessageSquare, X, Sparkles } from 'lucide-react';
 
 export interface ClientExpiryNoticeData {
   type: 'trial_expired' | 'trial_active' | 'today' | 'tomorrow' | 'in_2_days' | 'in_3_days';
@@ -9,8 +10,8 @@ export interface ClientExpiryNoticeData {
   glowColor: string;
   borderColor: string;
   bgGradient: string;
-  flyerUrl: string;
-  flyerAlt: string;
+  flyerUrl?: string;
+  flyerAlt?: string;
   description: string;
   expiryFormatted: string;
   daysRemaining: number | null;
@@ -25,16 +26,65 @@ interface ClientHomeExpiryCardProps {
   clientName: string;
   clientCode: string;
   onOpenChat: () => void;
+  onClose?: () => void;
 }
 
 export const ClientHomeExpiryCard: React.FC<ClientHomeExpiryCardProps> = ({
   notice,
   clientName,
   clientCode,
-  onOpenChat
+  onOpenChat,
+  onClose
 }) => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(100);
   const [copiedPix, setCopiedPix] = useState(false);
-  const [showImageZoom, setShowImageZoom] = useState(false);
+
+  const DURATION_MS = 5000;
+  const INTERVAL_MS = 50;
+
+  const isPausedRef = useRef(isPaused);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Timer decrescente de 5 segundos: ao completar, fecha e some da tela inicial
+  useEffect(() => {
+    setProgress(100);
+    const step = (INTERVAL_MS / DURATION_MS) * 100;
+    let done = false;
+
+    const timer = setInterval(() => {
+      if (done) return;
+      if (isPausedRef.current) return;
+
+      setProgress((prev) => {
+        const next = prev - step;
+        if (next <= 0) {
+          done = true;
+          return 0;
+        }
+        return next;
+      });
+    }, INTERVAL_MS);
+
+    const closedWatcher = setInterval(() => {
+      if (done) {
+        clearInterval(timer);
+        clearInterval(closedWatcher);
+        setIsVisible(false);
+        if (onCloseRef.current) {
+          onCloseRef.current();
+        }
+      }
+    }, INTERVAL_MS);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(closedWatcher);
+    };
+  }, []);
 
   const pixKey = notice.pixKey || 'thebestiptv10@gmail.com';
   const whatsappNumber = '5521959368651';
@@ -54,113 +104,118 @@ export const ClientHomeExpiryCard: React.FC<ClientHomeExpiryCardProps> = ({
   };
 
   const isUrgent = notice.type === 'trial_expired' || notice.type === 'today';
+  const secondsLeft = Math.max(1, Math.ceil((progress / 100) * 5));
 
   return (
-    <>
-      <div
-        className={`w-full rounded-3xl border ${notice.borderColor} bg-gradient-to-br ${notice.bgGradient} shadow-2xl ${notice.glowColor} overflow-hidden transition-all duration-300 relative`}
-      >
-        {/* Faixa Superior com Efeito Glow */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-
-        {/* Cabeçalho do Card */}
-        <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: -20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.96, height: 0, marginBottom: 0 }}
+          transition={{ duration: 0.3 }}
+          onMouseEnter={() => setIsPaused(true)}
+          onMouseLeave={() => setIsPaused(false)}
+          onTouchStart={() => setIsPaused(true)}
+          onTouchEnd={() => setIsPaused(false)}
+          className={`w-full rounded-3xl border ${notice.borderColor} bg-gradient-to-br ${notice.bgGradient} shadow-2xl ${notice.glowColor} overflow-hidden transition-all duration-300 relative`}
+        >
+          {/* Barra de Progresso Decrescente de 5 Segundos (some ao zerar) */}
+          <div className="w-full h-1.5 bg-black/40 overflow-hidden relative">
             <div
-              className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+              className={`h-full transition-all duration-75 ${
                 isUrgent
-                  ? 'bg-rose-500/25 border-rose-500/40 text-rose-300 shadow-lg shadow-rose-950/40'
-                  : 'bg-amber-500/20 border-amber-500/35 text-amber-300 shadow-lg shadow-amber-950/30'
+                  ? 'bg-gradient-to-r from-rose-500 to-red-500'
+                  : 'bg-gradient-to-r from-amber-400 to-orange-500'
               }`}
-            >
-              {isUrgent ? (
-                <AlertTriangle size={20} className="animate-pulse" />
-              ) : (
-                <Clock size={20} className="animate-pulse" />
-              )}
-            </div>
+              style={{ width: `${progress}%` }}
+            />
+          </div>
 
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${notice.badgeColor}`}>
-                  {notice.badge}
-                </span>
-                <span className="text-xs font-mono text-slate-400 bg-black/40 px-2 py-0.5 rounded-md border border-white/10">
-                  Código: <strong className="text-white">{clientCode}</strong>
-                </span>
+          {/* Cabeçalho do Card */}
+          <div className="p-4 sm:p-5 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                  isUrgent
+                    ? 'bg-rose-500/25 border-rose-500/40 text-rose-300 shadow-lg shadow-rose-950/40'
+                    : 'bg-amber-500/20 border-amber-500/35 text-amber-300 shadow-lg shadow-amber-950/30'
+                }`}
+              >
+                {isUrgent ? (
+                  <AlertTriangle size={20} className="animate-pulse" />
+                ) : (
+                  <Clock size={20} className="animate-pulse" />
+                )}
               </div>
-              <h3 className="text-base sm:text-lg font-black text-white mt-1 tracking-tight leading-tight">
-                {notice.title}
-              </h3>
-            </div>
-          </div>
 
-          <div className="text-right shrink-0 ml-auto hidden sm:block">
-            <span className="text-[11px] font-bold text-slate-300 block">{clientName}</span>
-            <span className="text-[10px] text-slate-400 font-mono">{notice.expiryFormatted}</span>
-          </div>
-        </div>
-
-        {/* Corpo: Layout Responsivo com Flyer Oficial e Ações */}
-        <div className="p-4 sm:p-6 flex flex-col md:flex-row gap-5 items-center">
-          {/* Coluna do Flyer */}
-          <div className="w-full md:w-48 lg:w-56 shrink-0 flex flex-col items-center">
-            <div
-              onClick={() => setShowImageZoom(true)}
-              className="relative group cursor-pointer overflow-hidden rounded-2xl border border-white/15 shadow-xl bg-black/60 max-w-[220px] md:max-w-none w-full transition-transform duration-300 hover:scale-[1.02]"
-              title="Clique para ver o flyer em tamanho grande"
-            >
-              <img
-                src={notice.flyerUrl}
-                alt={notice.flyerAlt}
-                className="w-full h-auto object-cover rounded-2xl"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-3">
-                <span className="text-[11px] font-bold text-white bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 shadow-lg">
-                  <Eye size={13} /> Ver flyer ampliado
-                </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${notice.badgeColor}`}>
+                    {notice.badge}
+                  </span>
+                  <span className="text-xs font-mono text-slate-400 bg-black/40 px-2 py-0.5 rounded-md border border-white/10">
+                    Código: <strong className="text-white">{clientCode}</strong>
+                  </span>
+                  <span className="text-[10px] font-semibold text-slate-400 bg-black/30 px-2 py-0.5 rounded-full flex items-center gap-1 border border-white/5">
+                    <Clock size={11} className={isPaused ? 'text-amber-400' : 'text-slate-400'} />
+                    {isPaused ? 'Pausado' : `Some em ${secondsLeft}s`}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white mt-1 tracking-tight leading-tight">
+                  {notice.title}
+                </h3>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setShowImageZoom(true)}
-              className="mt-2 text-[11px] font-semibold text-slate-400 hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <Eye size={12} /> Clique para ampliar o flyer
-            </button>
+
+            <div className="flex items-center gap-2 ml-auto shrink-0">
+              <div className="text-right hidden sm:block">
+                <span className="text-[11px] font-bold text-slate-300 block">{clientName}</span>
+                <span className="text-[10px] text-slate-400 font-mono">{notice.expiryFormatted}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsVisible(false)}
+                className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                title="Fechar aviso agora"
+              >
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
-          {/* Coluna de Informações e Ações */}
-          <div className="flex-1 w-full space-y-4">
-            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+          {/* Corpo: 100% Textual (sem foto), com destaque e ações rápidas */}
+          <div className="p-4 sm:p-6 space-y-4">
+            <p className="text-xs sm:text-sm text-slate-100 leading-relaxed font-medium">
               {notice.description}
             </p>
 
-            <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-3 text-xs">
-              <span className="text-slate-400 font-medium">Prazo de validade:</span>
-              <span className={`font-bold font-mono ${isUrgent ? 'text-rose-300' : 'text-amber-300'}`}>
+            <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between gap-3 text-xs sm:text-sm flex-wrap">
+              <span className="text-slate-400 font-semibold flex items-center gap-1.5">
+                <Clock size={15} className="text-indigo-400" /> Data de Validade / Vencimento:
+              </span>
+              <span className={`font-bold font-mono text-sm ${isUrgent ? 'text-rose-300' : 'text-amber-300'}`}>
                 {notice.expiryFormatted}
               </span>
             </div>
 
             {/* Box da Chave Pix com 1-Clique Copia */}
-            <div className="p-3.5 rounded-2xl bg-black/50 border border-emerald-500/30 space-y-2">
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-black/50 border border-emerald-500/35 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                  <Sparkles size={13} /> Chave Pix Oficial de Renovação
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                  <Sparkles size={14} /> Chave Pix Oficial de Renovação
                 </span>
-                <span className="text-[10px] text-slate-400">Banco / Nubank</span>
+                <span className="text-[11px] text-slate-400">Banco / Nubank</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex-1 min-w-0 bg-black/60 px-3 py-2 rounded-xl border border-white/10 font-mono text-xs text-emerald-300 font-bold truncate select-all">
+                <div className="flex-1 min-w-0 bg-black/60 px-3.5 py-2.5 rounded-xl border border-white/10 font-mono text-xs sm:text-sm text-emerald-300 font-bold truncate select-all">
                   {pixKey}
                 </div>
                 <button
                   type="button"
                   onClick={handleCopyPix}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-md cursor-pointer active:scale-95 ${
+                  className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-md cursor-pointer active:scale-95 ${
                     copiedPix
                       ? 'bg-emerald-600 text-white'
                       : 'bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 hover:text-white border border-emerald-500/40'
@@ -194,68 +249,9 @@ export const ClientHomeExpiryCard: React.FC<ClientHomeExpiryCardProps> = ({
               </button>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Modal de Zoom do Flyer em Alta Resolução */}
-      {showImageZoom && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setShowImageZoom(false)}
-        >
-          <div
-            className="relative max-w-lg w-full bg-[#0d1017] rounded-3xl border border-white/20 overflow-hidden shadow-2xl p-4 flex flex-col items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-full flex items-center justify-between pb-3 border-b border-white/10 mb-3">
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${notice.badgeColor}`}>
-                  {notice.badge}
-                </span>
-                <span className="text-xs font-bold text-white">{notice.title}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowImageZoom(false)}
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                title="Fechar"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <img
-              src={notice.flyerUrl}
-              alt={notice.flyerAlt}
-              className="w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl"
-            />
-
-            <div className="w-full mt-4 flex items-center justify-between gap-3">
-              <button
-                type="button"
-                onClick={handleCopyPix}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all"
-              >
-                {copiedPix ? <Check size={14} /> : <Copy size={14} />}
-                <span>{copiedPix ? 'Chave Pix Copiada!' : 'Copiar Chave Pix'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setShowImageZoom(false);
-                  onOpenChat();
-                }}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg transition-all"
-              >
-                <MessageSquare size={14} />
-                <span>Abrir Chat de Suporte</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        </motion.div>
       )}
-    </>
+    </AnimatePresence>
   );
 };
 
@@ -299,8 +295,6 @@ export function computeClientExpiryNotice(client: {
             glowColor: 'shadow-rose-950/40',
             borderColor: 'border-rose-500/50',
             bgGradient: 'from-rose-950/45 via-[#16121c] to-[#0d1017]',
-            flyerUrl: '/teste-3h-venceu.jpg',
-            flyerAlt: 'Flyer: Seu Teste de 3 Horas Venceu',
             description: 'O seu período de avaliação gratuita de 3 horas chegou ao fim. Gostou dos canais, filmes e séries? Contrate seu plano completo agora mesmo e continue assistindo sem interrupções!',
             expiryFormatted: `Venceu em ${expDate.toLocaleDateString('pt-BR')} às ${expDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`,
             daysRemaining: -1,
@@ -320,8 +314,6 @@ export function computeClientExpiryNotice(client: {
             glowColor: 'shadow-amber-950/35',
             borderColor: 'border-amber-500/50',
             bgGradient: 'from-amber-950/40 via-[#18141c] to-[#0d1017]',
-            flyerUrl: '/teste-3h-venceu.jpg',
-            flyerAlt: 'Flyer: Teste Grátis de 3 Horas',
             description: `Seu teste está liberado e expira hoje às ${expDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}. Aproveite e antecipe sua contratação para manter seu acesso contínuo!`,
             expiryFormatted: `Vence hoje às ${expDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (restam ${hours > 0 ? `${hours}h ` : ''}${mins}min)`,
             daysRemaining: 0,
@@ -342,8 +334,6 @@ export function computeClientExpiryNotice(client: {
       glowColor: 'shadow-rose-950/40',
       borderColor: 'border-rose-500/50',
       bgGradient: 'from-rose-950/45 via-[#16121c] to-[#0d1017]',
-      flyerUrl: '/teste-3h-venceu.jpg',
-      flyerAlt: 'Flyer: Seu Teste de 3 Horas Venceu',
       description: 'O seu período de avaliação de 3 horas foi finalizado. Contrate o plano completo agora para continuar assistindo com acesso total!',
       expiryFormatted: 'Período de 3h finalizado',
       daysRemaining: -1,
@@ -373,8 +363,6 @@ export function computeClientExpiryNotice(client: {
       glowColor: 'shadow-red-950/45',
       borderColor: 'border-red-500/50',
       bgGradient: 'from-red-950/50 via-[#181119] to-[#0d1017]',
-      flyerUrl: '/vence-hoje.jpg',
-      flyerAlt: 'Flyer: Seu plano vence hoje',
       description: isPast
         ? 'Seu plano de streaming já venceu. Para continuar assistindo aos canais, filmes e séries sem bloqueio, envie seu pagamento Pix agora mesmo!'
         : 'Seu plano de streaming vence HOJE! Realize o pagamento pelo Pix abaixo para garantir que o seu sinal continue ativo sem interrupções.',
@@ -397,8 +385,6 @@ export function computeClientExpiryNotice(client: {
       glowColor: 'shadow-orange-950/40',
       borderColor: 'border-orange-500/50',
       bgGradient: 'from-orange-950/40 via-[#181318] to-[#0d1017]',
-      flyerUrl: '/vence-amanha.png',
-      flyerAlt: 'Flyer: Seu plano vence amanhã',
       description: 'Aviso preventivo: seu plano de streaming vence amanhã! Faça a renovação antecipada pelo Pix e garanta que sua programação continue sem nenhuma pausa.',
       expiryFormatted: `Vence amanhã, ${expDate.toLocaleDateString('pt-BR')}`,
       daysRemaining: 1,
@@ -417,8 +403,6 @@ export function computeClientExpiryNotice(client: {
       glowColor: 'shadow-amber-950/35',
       borderColor: 'border-amber-500/50',
       bgGradient: 'from-amber-950/40 via-[#17141b] to-[#0d1017]',
-      flyerUrl: '/vence-em-2-dias.jpg',
-      flyerAlt: 'Flyer: Seu plano vence em 2 dias',
       description: 'Lembrete de vencimento: faltam apenas 2 dias para a renovação da sua assinatura. Aproveite a agilidade do Pix para renovar com praticidade!',
       expiryFormatted: `Vence em ${expDate.toLocaleDateString('pt-BR')} (restam 2 dias)`,
       daysRemaining: 2,
@@ -437,8 +421,6 @@ export function computeClientExpiryNotice(client: {
       glowColor: 'shadow-yellow-950/30',
       borderColor: 'border-yellow-500/40',
       bgGradient: 'from-yellow-950/35 via-[#16151c] to-[#0d1017]',
-      flyerUrl: '/vence-em-3-dias.jpg',
-      flyerAlt: 'Flyer: Seu plano vence em 3 dias',
       description: 'Informamos que o seu plano de streaming vence em 3 dias. Realize sua renovação com antecedência para manter sua diversão 100% garantida!',
       expiryFormatted: `Vence em ${expDate.toLocaleDateString('pt-BR')} (restam 3 dias)`,
       daysRemaining: 3,

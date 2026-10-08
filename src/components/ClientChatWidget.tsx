@@ -272,7 +272,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   }, [activeCode]);
 
   // Rolar para a última mensagem de forma inteligente:
-  // - Ao abrir o chat: vai para o fim
+  // - Ao abrir o chat: vai para o fim (com duplo timeout para garantir DOM montado + mensagens async carregadas)
   // - Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima
   const prevIsOpenRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
@@ -285,12 +285,17 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
     prevMessagesCountRef.current = messages.length;
 
     if (justOpened) {
+      // Ao abrir: scroll em dois tempos — 50ms para o cache e 250ms para aguardar mensagens async do servidor
       userScrolledUpRef.current = false;
       setShowScrollBottomBtn(false);
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
       }, 50);
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 250);
     } else if (isOpen && countIncreased && !userScrolledUpRef.current) {
+      // Nova mensagem chegou enquanto o usuário estava na parte inferior
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages.length, isOpen]);

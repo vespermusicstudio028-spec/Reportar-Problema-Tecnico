@@ -389,7 +389,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     : [];
 
   // Rolar para o final de forma inteligente:
-  // 1. Ao trocar de conversa: rola instantaneamente para o fim
+  // 1. Ao trocar de conversa: rola instantaneamente para o fim (duplo timeout: cache + async do servidor)
   // 2. Quando chega nova mensagem: SÓ rola se o usuário NÃO tiver rolado para cima para ler mensagens antigas
   const prevSelectedClientCodeRef = useRef<string | null>(null);
   const prevActiveMessagesCountRef = useRef<number>(0);
@@ -402,12 +402,17 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     prevActiveMessagesCountRef.current = activeMessages.length;
 
     if (conversationChanged) {
+      // Ao trocar conversa: scroll em dois tempos para garantir DOM e mensagens async carregadas
       userScrolledUpRef.current = false;
       setShowScrollBottomBtn(false);
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
       }, 50);
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 250);
     } else if (countIncreased && !userScrolledUpRef.current) {
+      // Nova mensagem chegou enquanto o usuário estava na parte inferior
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [activeMessages.length, selectedClientCode]);

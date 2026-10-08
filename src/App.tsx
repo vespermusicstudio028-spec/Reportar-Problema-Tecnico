@@ -13,7 +13,8 @@ import { ServerStatusCard } from './components/ServerStatusCard';
 import { AdminServerStatusPanel } from './components/AdminServerStatusPanel';
 import { AdminExpiryAlertModal } from './components/AdminExpiryAlertModal';
 import { AdminExpiryCalendarModal } from './components/AdminExpiryCalendarModal';
-import { ClientHomeExpiryCard, computeClientExpiryNotice } from './components/ClientHomeExpiryCard';
+import { ClientHomeExpiryCard } from './components/ClientHomeExpiryCard';
+import { computeClientExpiryNotice } from './lib/clientExpiryNotice';
 
 import { 
   RefreshCcw,

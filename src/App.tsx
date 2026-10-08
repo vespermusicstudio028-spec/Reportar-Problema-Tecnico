@@ -13,6 +13,7 @@ import { ServerStatusCard } from './components/ServerStatusCard';
 import { AdminServerStatusPanel } from './components/AdminServerStatusPanel';
 import { AdminExpiryAlertModal } from './components/AdminExpiryAlertModal';
 import { AdminExpiryCalendarModal } from './components/AdminExpiryCalendarModal';
+import { ClientHomeExpiryCard, computeClientExpiryNotice } from './components/ClientHomeExpiryCard';
 
 import { 
   RefreshCcw,
@@ -752,7 +753,7 @@ export default function App() {
   const [showExpiryCalendarModal, setShowExpiryCalendarModal] = useState(false);
   
   const [loggedClientCode, setLoggedClientCode] = useState(() => {
-    return localStorage.getItem('iptv_access_code_v1') || '';
+    return localStorage.getItem('iptv_access_code_v1') || localStorage.getItem('tbi_active_client_code') || '';
   });
   const [loggedClientName, setLoggedClientName] = useState(() => {
     return localStorage.getItem('tbi_active_client_name') || '';
@@ -795,6 +796,16 @@ export default function App() {
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [activeScreenTab, setActiveScreenTab] = useState<number>(1);
+
+  const currentClient = (loggedClientCode 
+    ? clients.find(c => c.code.trim().toUpperCase() === loggedClientCode.trim().toUpperCase()) 
+    : null) || (loggedClientCode ? {
+      id: 'local_client',
+      name: loggedClientName || localStorage.getItem('tbi_active_client_name') || 'Cliente',
+      code: loggedClientCode,
+      canvasLink: 'https://thebestiptv.com',
+      addedAt: new Date().toISOString()
+    } : null);
 
   useEffect(() => {
     if (adminTab === 'clientes' && !clientCode) {
@@ -1437,6 +1448,39 @@ export default function App() {
             onClick={isAdminLogged ? handleOpenServerStatusAdmin : undefined}
           />
         </div>
+
+        {/* ─── Aviso de Vencimento do Cliente na Tela Inicial (Testes, Vence Hoje, Amanhã, 2 Dias, 3 Dias) ─── */}
+        {!isAdminLogged && currentClient && (() => {
+          const notice = computeClientExpiryNotice(currentClient);
+          if (!notice) return null;
+          return (
+            <div className="w-full max-w-xl mb-5">
+              <ClientHomeExpiryCard
+                notice={notice}
+                clientName={currentClient.name}
+                clientCode={currentClient.code}
+                onOpenChat={() => setIsClientChatOpen(true)}
+              />
+            </div>
+          );
+        })()}
+
+        {/* Atalho para consultar validade se ainda não digitou código */}
+        {!isAdminLogged && !loggedClientCode && (
+          <div className="w-full max-w-xl mb-4 p-3 rounded-2xl bg-[#121622]/90 border border-indigo-500/20 flex items-center justify-between gap-3 text-xs shadow-lg">
+            <div className="flex items-center gap-2 text-slate-300">
+              <User size={15} className="text-indigo-400 shrink-0" />
+              <span>Já é cliente ou fez um teste grátis?</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCodeModal(true)}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 hover:text-white font-bold border border-indigo-500/40 transition-all cursor-pointer text-[11px]"
+            >
+              Consultar Validade
+            </button>
+          </div>
+        )}
 
 <div id="tour-announcements" className="w-full max-w-xl mb-6">
           <button 
@@ -2249,16 +2293,6 @@ export default function App() {
     </motion.div>
   );
 
-  const currentClient = (loggedClientCode 
-    ? clients.find(c => c.code.trim().toUpperCase() === loggedClientCode.trim().toUpperCase()) 
-    : null) || (loggedClientCode ? {
-      id: 'local_client',
-      name: loggedClientName || localStorage.getItem('tbi_active_client_name') || 'Cliente',
-      code: loggedClientCode,
-      canvasLink: 'https://thebestiptv.com',
-      addedAt: new Date().toISOString()
-    } : null);
-
   const renderProfileView = () => {
     const isAdminSession = isAdminLogged;
     const isClientSession = !!currentClient;
@@ -2319,13 +2353,19 @@ export default function App() {
 
             const streamStatus = (() => {
               if (!streamExp || isNaN(streamExp.getTime())) return { label: 'Sem data', color: 'text-slate-400', bg: 'bg-slate-700/30', border: 'border-slate-600/40', dot: 'bg-slate-500' };
-              if (isTrial) return { label: 'Teste de 3h', color: 'text-amber-300', bg: 'bg-amber-500/15', border: 'border-amber-500/30', dot: 'bg-amber-400 animate-pulse' };
-              const diffMs = streamExp.getTime() - now.getTime();
-              const diffH = diffMs / (1000 * 60 * 60);
-              if (diffMs < 0) return { label: 'Expirado', color: 'text-red-400', bg: 'bg-red-500/15', border: 'border-red-500/30', dot: 'bg-red-400' };
-              if (diffH <= 24) return { label: 'Vence Hoje', color: 'text-red-300', bg: 'bg-red-500/15', border: 'border-red-500/30', dot: 'bg-red-400 animate-pulse' };
-              if (diffH <= 48) return { label: 'Vence Amanhã', color: 'text-orange-300', bg: 'bg-orange-500/15', border: 'border-orange-500/30', dot: 'bg-orange-400 animate-pulse' };
-              if (diffH <= 72) return { label: 'Vence em 3 dias', color: 'text-yellow-300', bg: 'bg-yellow-500/15', border: 'border-yellow-500/30', dot: 'bg-yellow-400 animate-pulse' };
+              if (isTrial) {
+                const diffMs = streamExp.getTime() - now.getTime();
+                if (diffMs <= 0) return { label: 'Teste Vencido', color: 'text-rose-400', bg: 'bg-rose-500/15', border: 'border-rose-500/30', dot: 'bg-rose-400' };
+                return { label: 'Teste de 3h', color: 'text-amber-300', bg: 'bg-amber-500/15', border: 'border-amber-500/30', dot: 'bg-amber-400 animate-pulse' };
+              }
+              const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+              const expMidnight = new Date(streamExp.getFullYear(), streamExp.getMonth(), streamExp.getDate(), 0, 0, 0, 0);
+              const diffDays = Math.round((expMidnight.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+              if (diffDays < 0) return { label: 'Expirado', color: 'text-red-400', bg: 'bg-red-500/15', border: 'border-red-500/30', dot: 'bg-red-400' };
+              if (diffDays === 0) return { label: 'Vence Hoje', color: 'text-red-300', bg: 'bg-red-500/15', border: 'border-red-500/30', dot: 'bg-red-400 animate-pulse' };
+              if (diffDays === 1) return { label: 'Vence Amanhã', color: 'text-orange-300', bg: 'bg-orange-500/15', border: 'border-orange-500/30', dot: 'bg-orange-400 animate-pulse' };
+              if (diffDays === 2) return { label: 'Vence em 2 dias', color: 'text-amber-300', bg: 'bg-amber-500/15', border: 'border-amber-500/30', dot: 'bg-amber-400 animate-pulse' };
+              if (diffDays === 3) return { label: 'Vence em 3 dias', color: 'text-yellow-300', bg: 'bg-yellow-500/15', border: 'border-yellow-500/30', dot: 'bg-yellow-400 animate-pulse' };
               return { label: 'Ativo', color: 'text-emerald-400', bg: 'bg-emerald-500/12', border: 'border-emerald-500/30', dot: 'bg-emerald-400 animate-pulse' };
             })();
 

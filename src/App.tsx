@@ -46,6 +46,7 @@ import {
   Eye,
   EyeOff,
   Pencil,
+  Save,
   X,
   Search,
   PlusCircle,
@@ -580,7 +581,9 @@ export default function App() {
         setAnnouncements(prev => {
           const exists = prev.some(item => item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message));
           if (exists) {
-            return prev.map(item => (item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message) ? mapped : item));
+            const updated = prev.map(item => (item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message) ? mapped : item));
+            try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+            return updated;
           }
           const updated = [mapped, ...prev];
           try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
@@ -704,6 +707,23 @@ export default function App() {
   const [annSearchTerm, setAnnSearchTerm] = useState('');
   const [annFilterStatus, setAnnFilterStatus] = useState<string>('todos');
   const adminInformesTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Estados para edição inline de informe no histórico
+  const [editingAnnId, setEditingAnnId] = useState<string | null>(null);
+  const [editAnnData, setEditAnnData] = useState<{
+    name: string;
+    category: string;
+    status: string;
+    message: string;
+    expiryDate: string;
+  }>({
+    name: '',
+    category: 'Canal',
+    status: 'Problemas Técnicos',
+    message: '',
+    expiryDate: ''
+  });
+  const [isSavingAnnEdit, setIsSavingAnnEdit] = useState(false);
 
 
 
@@ -1292,6 +1312,11 @@ export default function App() {
     setDeviceOther('');
     setFileName('');
     setSubmitStatus('idle');
+    // Garante que a seção de Avisos fique visível ao voltar para a home
+    // se houver informes ativos (não expirados)
+    const now = new Date();
+    const hasActive = announcements.some(a => now <= new Date(a.expiryDate));
+    if (hasActive) setIsAnnouncementsOpen(true);
   };
 
   const handleReset = () => {
@@ -2959,6 +2984,94 @@ export default function App() {
     setAdminInformesTab('novo');
   };
 
+  const handleStartEditAnnouncement = (ann: Announcement) => {
+    setEditingAnnId(ann.id);
+    let formattedExpiry = '';
+    try {
+      if (ann.expiryDate) {
+        const d = new Date(ann.expiryDate);
+        if (!isNaN(d.getTime())) {
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0');
+          const mins = String(d.getMinutes()).padStart(2, '0');
+          formattedExpiry = `${year}-${month}-${day}T${hours}:${mins}`;
+        }
+      }
+    } catch {}
+    if (!formattedExpiry) {
+      formattedExpiry = getDefaultAnnouncementExpiry();
+    }
+    setEditAnnData({
+      name: ann.name || '',
+      category: ann.category || 'Canal',
+      status: ann.status || 'Problemas Técnicos',
+      message: ann.message || '',
+      expiryDate: formattedExpiry
+    });
+  };
+
+  const handleCancelEditAnnouncement = () => {
+    setEditingAnnId(null);
+    setIsSavingAnnEdit(false);
+  };
+
+  const handleSaveEditAnnouncement = async (id: string) => {
+    if (!editAnnData.message.trim() || !editAnnData.expiryDate) {
+      alert('Por favor, informe a mensagem e a data de expiração.');
+      return;
+    }
+    const finalName = editAnnData.name.trim() || (editAnnData.category === 'Serviço de Streaming' ? 'Serviço de Streaming' : editAnnData.status);
+    const finalExpiryIso = new Date(editAnnData.expiryDate).toISOString();
+
+    setIsSavingAnnEdit(true);
+
+    const updatedAnnData = {
+      id,
+      name: finalName,
+      category: editAnnData.category,
+      status: editAnnData.status,
+      message: editAnnData.message,
+      expiryDate: finalExpiryIso
+    };
+
+    // 1. Atualização otimista imediata (0ms de delay)
+    setAnnouncements(prev => {
+      const updated = prev.map(a => a.id === id ? { ...a, ...updatedAnnData } : a);
+      try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+
+    // 2. Notificação instantânea via WebSocket broadcast
+    annChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'announcement_updated',
+      payload: updatedAnnData
+    });
+
+    setEditingAnnId(null);
+    setIsSavingAnnEdit(false);
+
+    // 3. Persistência no banco Supabase
+    try {
+      const { error } = await supabase.from('announcements').update({
+        name: finalName,
+        category: editAnnData.category,
+        status: editAnnData.status,
+        message: editAnnData.message,
+        expiry_date: finalExpiryIso
+      }).eq('id', id);
+
+      if (error) {
+        console.error('Erro ao atualizar informe no servidor:', error);
+        alert('Atenção: Houve um erro ao salvar o informe no servidor: ' + error.message);
+      }
+    } catch (err: any) {
+      console.error('Erro inesperado ao salvar informe:', err);
+    }
+  };
+
   const handleDeleteAnnouncement = async (id: string) => {
     // Atualização otimista imediata (0ms)
     setAnnouncements(prev => {
@@ -4266,114 +4379,280 @@ export default function App() {
                           <span>Exibindo {filtered.length} de {announcements.length} informe(s)</span>
                         </div>
 
-                        {filtered.map((ann) => (
-                          <div key={ann.id} className="p-5 md:p-6 rounded-2xl border bg-[#0f131c] border-slate-800/90 space-y-4 shadow-xl hover:border-slate-700/80 transition-all">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                              <div>
-                                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                                    {ann.category}
-                                  </span>
-                                  <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
-                                    ann.status === 'Removido' ? 'bg-red-500/15 text-red-400 border border-red-500/30' :
-                                    ann.status === 'Mudança' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
-                                    ann.status === 'Problema Resolvido' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
-                                    ann.status === 'Enquete' || ann.status === 'Evento' ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30' :
-                                    'bg-orange-500/15 text-orange-400 border border-orange-500/30'
-                                  }`}>
-                                    {ann.status}
-                                  </span>
+                        {filtered.map((ann) => {
+                          const isEditing = editingAnnId === ann.id;
+                          return (
+                            <div 
+                              key={ann.id} 
+                              className={`p-5 md:p-6 rounded-2xl border transition-all space-y-4 shadow-xl ${
+                                isEditing 
+                                  ? 'bg-[#121624] border-indigo-500/50 shadow-indigo-500/10 ring-1 ring-indigo-500/30' 
+                                  : 'bg-[#0f131c] border-slate-800/90 hover:border-slate-700/80'
+                              }`}
+                            >
+                              {isEditing ? (
+                                /* FORMULÁRIO DE EDIÇÃO INLINE DO INFORME */
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between pb-3 border-b border-indigo-500/20">
+                                    <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm md:text-base">
+                                      <Pencil size={18} className="text-amber-400" />
+                                      <span>Editar Informe</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEditAnnouncement}
+                                      className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+                                      title="Sair sem salvar"
+                                    >
+                                      <X size={18} />
+                                    </button>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                    <div className="space-y-1.5">
+                                      <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Categoria</label>
+                                      <select
+                                        value={editAnnData.category}
+                                        onChange={(e) => {
+                                          const newCat = e.target.value;
+                                          let newStat = editAnnData.status;
+                                          if (newCat === 'Enquete / Evento') {
+                                            if (newStat !== 'Enquete' && newStat !== 'Evento') newStat = 'Evento';
+                                          } else {
+                                            if (newStat === 'Enquete' || newStat === 'Evento') newStat = 'Problemas Técnicos';
+                                          }
+                                          setEditAnnData(prev => ({ ...prev, category: newCat, status: newStat }));
+                                        }}
+                                        className="w-full bg-[#181d2a] border border-slate-700 text-slate-100 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none focus:border-indigo-500 transition-colors"
+                                      >
+                                        <option>Canal</option>
+                                        <option>Filme</option>
+                                        <option>Série</option>
+                                        <option>Serviço de Streaming</option>
+                                        <option>Enquete / Evento</option>
+                                      </select>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                      <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">Status / Motivo</label>
+                                      <select
+                                        value={editAnnData.status}
+                                        onChange={(e) => setEditAnnData(prev => ({ ...prev, status: e.target.value }))}
+                                        className="w-full bg-[#181d2a] border border-slate-700 text-slate-100 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none focus:border-indigo-500 transition-colors"
+                                      >
+                                        {editAnnData.category === 'Enquete / Evento' ? (
+                                          <>
+                                            <option>Enquete</option>
+                                            <option>Evento</option>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <option>Problemas Técnicos</option>
+                                            <option>Em Manutenção</option>
+                                            <option>Instabilidade</option>
+                                            <option>Mudança</option>
+                                            <option>Removido</option>
+                                            <option>Problema Resolvido</option>
+                                          </>
+                                        )}
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                    <div className="space-y-1.5">
+                                      <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                                        Título / Nome do Conteúdo
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={editAnnData.name}
+                                        onChange={(e) => setEditAnnData(prev => ({ ...prev, name: e.target.value }))}
+                                        placeholder="Ex: HBO Max, Servidor IPTV..."
+                                        className="w-full bg-[#181d2a] border border-slate-700 text-slate-100 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none focus:border-indigo-500 transition-colors"
+                                      />
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                      <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                                        Data e Hora de Expiração
+                                      </label>
+                                      <input
+                                        type="datetime-local"
+                                        value={editAnnData.expiryDate}
+                                        onChange={(e) => setEditAnnData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                                        className="w-full bg-[#181d2a] border border-slate-700 text-slate-100 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none focus:border-indigo-500 transition-colors"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1.5">
+                                    <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+                                      Mensagem do Informe
+                                    </label>
+                                    <textarea
+                                      rows={3}
+                                      value={editAnnData.message}
+                                      onChange={(e) => setEditAnnData(prev => ({ ...prev, message: e.target.value }))}
+                                      placeholder="Descreva o comunicado ou informe..."
+                                      className="w-full bg-[#181d2a] border border-slate-700 text-slate-100 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none focus:border-indigo-500 transition-colors resize-y leading-relaxed"
+                                    />
+                                  </div>
+
+                                  {/* Barra de Ações: Sair e Salvar */}
+                                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEditAnnouncement}
+                                      disabled={isSavingAnnEdit}
+                                      className="px-4 py-2.5 rounded-xl border border-slate-700 hover:border-slate-600 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                                    >
+                                      <X size={16} />
+                                      <span>Sair</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveEditAnnouncement(ann.id)}
+                                      disabled={isSavingAnnEdit}
+                                      className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-600/25 cursor-pointer disabled:opacity-50"
+                                    >
+                                      {isSavingAnnEdit ? (
+                                        <>
+                                          <Loader2 size={16} className="animate-spin" />
+                                          <span>Salvando...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Save size={16} />
+                                          <span>Salvar</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
-                                <h4 className="text-white font-bold text-base md:text-lg">{ann.name}</h4>
-                              </div>
+                              ) : (
+                                /* MODO VISUALIZAÇÃO PADRÃO COM O LÁPIS */
+                                <>
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                                          {ann.category}
+                                        </span>
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
+                                          ann.status === 'Removido' ? 'bg-red-500/15 text-red-400 border border-red-500/30' :
+                                          ann.status === 'Mudança' ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30' :
+                                          ann.status === 'Problema Resolvido' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
+                                          ann.status === 'Enquete' || ann.status === 'Evento' ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30' :
+                                          'bg-orange-500/15 text-orange-400 border border-orange-500/30'
+                                        }`}>
+                                          {ann.status}
+                                        </span>
+                                      </div>
+                                      <h4 className="text-white font-bold text-base md:text-lg">{ann.name}</h4>
+                                    </div>
 
-                              <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap">
-                                {ann.status !== 'Problema Resolvido' && (
-                                  <button 
-                                    title="Marcar como Resolvido"
-                                    onClick={() => handleResolveAnnouncement(ann.id)} 
-                                    className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20 active:scale-95"
-                                  >
-                                    <CheckCircle2 size={18} />
-                                  </button>
-                                )}
-                                <button 
-                                  title="Enviar via WhatsApp"
-                                  onClick={() => {
-                                    const text = `📢 *${ann.name}*\n\n*Status:* ${ann.status}\n*Informe:* ${ann.message}\n\n_Expira em: ${new Date(ann.expiryDate).toLocaleString()}_`;
-                                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                                  }} 
-                                  className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20 active:scale-95"
-                                >
-                                  <MessageCircle size={18} />
-                                </button>
-                                <button 
-                                  title="Duplicar / Editar (vai para o formulário)"
-                                  onClick={() => handleDuplicateAnnouncement(ann)} 
-                                  className="p-2.5 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors border border-blue-500/20 active:scale-95"
-                                >
-                                  <Copy size={18} />
-                                </button>
-                                <button 
-                                  title="Excluir Informe"
-                                  onClick={() => {
-                                    if (window.confirm(`Deseja realmente excluir o informe "${ann.name}"?`)) {
-                                      handleDeleteAnnouncement(ann.id);
-                                    }
-                                  }} 
-                                  className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20 active:scale-95"
-                                >
-                                  <Trash2 size={18} />
-                                </button>
-                              </div>
-                            </div>
-                            
-                            <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{ann.message}</p>
-                            
-                            {((ann.mediaUrls && ann.mediaUrls.length > 0) || ann.mediaUrl) && (
-                              <div className="max-w-md">
-                                <AnnouncementMediaCarousel 
-                                  mediaUrls={ann.mediaUrls && ann.mediaUrls.length > 0 ? ann.mediaUrls : [ann.mediaUrl!]}
-                                  mediaType={ann.mediaType}
-                                  maxHeightClass="max-h-52"
-                                  onImageClick={(_, allUrls, index) => {
-                                    setGalleryModal({ urls: allUrls, index });
-                                  }}
-                                />
-                              </div>
-                            )}
+                                    <div className="flex items-center gap-1.5 self-end sm:self-auto flex-wrap">
+                                      {/* Lápis para Editar */}
+                                      <button 
+                                        type="button"
+                                        title="Editar Informe"
+                                        onClick={() => handleStartEditAnnouncement(ann)} 
+                                        className="p-2.5 text-amber-400 hover:bg-amber-500/10 rounded-xl transition-colors border border-amber-500/20 active:scale-95 flex items-center gap-1.5 text-xs font-bold"
+                                      >
+                                        <Pencil size={18} />
+                                        <span className="hidden sm:inline">Editar</span>
+                                      </button>
 
-                            {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
-                              const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
-                              const totalVotes = annVotes.length;
-                              return (
-                                <div className="space-y-2 bg-[#141822] p-4 rounded-xl border border-indigo-500/20">
-                                  <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">📊 Enquete · {totalVotes} voto(s)</p>
-                                  {ann.pollOptions.map((opt: PollOption) => {
-                                    const optVotes = annVotes.filter(v => v.option_id === opt.id).length;
-                                    const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
+                                      {ann.status !== 'Problema Resolvido' && (
+                                        <button 
+                                          title="Marcar como Resolvido"
+                                          onClick={() => handleResolveAnnouncement(ann.id)} 
+                                          className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20 active:scale-95"
+                                        >
+                                          <CheckCircle2 size={18} />
+                                        </button>
+                                      )}
+                                      <button 
+                                        title="Enviar via WhatsApp"
+                                        onClick={() => {
+                                          const text = `📢 *${ann.name}*\n\n*Status:* ${ann.status}\n*Informe:* ${ann.message}\n\n_Expira em: ${new Date(ann.expiryDate).toLocaleString()}_`;
+                                          window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                        }} 
+                                        className="p-2.5 text-emerald-400 hover:bg-emerald-500/10 rounded-xl transition-colors border border-emerald-500/20 active:scale-95"
+                                      >
+                                        <MessageCircle size={18} />
+                                      </button>
+                                      <button 
+                                        title="Duplicar / Copiar para novo formulário"
+                                        onClick={() => handleDuplicateAnnouncement(ann)} 
+                                        className="p-2.5 text-blue-400 hover:bg-blue-500/10 rounded-xl transition-colors border border-blue-500/20 active:scale-95"
+                                      >
+                                        <Copy size={18} />
+                                      </button>
+                                      <button 
+                                        title="Excluir Informe"
+                                        onClick={() => {
+                                          if (window.confirm(`Deseja realmente excluir o informe "${ann.name}"?`)) {
+                                            handleDeleteAnnouncement(ann.id);
+                                          }
+                                        }} 
+                                        className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-colors border border-red-500/20 active:scale-95"
+                                      >
+                                        <Trash2 size={18} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-wrap">{ann.message}</p>
+
+                                  {((ann.mediaUrls && ann.mediaUrls.length > 0) || ann.mediaUrl) && (
+                                    <div className="max-w-md">
+                                      <AnnouncementMediaCarousel 
+                                        mediaUrls={ann.mediaUrls && ann.mediaUrls.length > 0 ? ann.mediaUrls : [ann.mediaUrl!]}
+                                        mediaType={ann.mediaType}
+                                        maxHeightClass="max-h-52"
+                                        onImageClick={(_, allUrls, index) => {
+                                          setGalleryModal({ urls: allUrls, index });
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {ann.pollOptions && ann.pollOptions.length > 0 && (() => {
+                                    const annVotes = pollVotes.filter(v => v.announcement_id === ann.id);
+                                    const totalVotes = annVotes.length;
                                     return (
-                                      <div key={opt.id} className="flex items-center gap-2">
-                                        <div className="flex-1 bg-slate-800/60 rounded-lg h-8 relative overflow-hidden">
-                                          <div className="absolute inset-0 bg-indigo-500/25 rounded-lg transition-all duration-500" style={{ width: `${pct}%` }} />
-                                          <span className="absolute inset-0 flex items-center px-3 text-xs text-slate-200 font-medium">{opt.text}</span>
-                                        </div>
-                                        <span className="text-xs text-indigo-300 font-bold w-12 text-right">{pct}%</span>
+                                      <div className="space-y-2 bg-[#141822] p-4 rounded-xl border border-indigo-500/20">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">📊 Enquete · {totalVotes} voto(s)</p>
+                                        {ann.pollOptions.map((opt: PollOption) => {
+                                          const optVotes = annVotes.filter(v => v.option_id === opt.id).length;
+                                          const pct = totalVotes > 0 ? Math.round((optVotes / totalVotes) * 100) : 0;
+                                          return (
+                                            <div key={opt.id} className="flex items-center gap-2">
+                                              <div className="flex-1 bg-slate-800/60 rounded-lg h-8 relative overflow-hidden">
+                                                <div className="absolute inset-0 bg-indigo-500/25 rounded-lg transition-all duration-500" style={{ width: `${pct}%` }} />
+                                                <span className="absolute inset-0 flex items-center px-3 text-xs text-slate-200 font-medium">{opt.text}</span>
+                                              </div>
+                                              <span className="text-xs text-indigo-300 font-bold w-12 text-right">{pct}%</span>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
                                     );
-                                  })}
-                                </div>
-                              );
-                            })()}
+                                  })()}
 
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
-                              <span>Expira em: {new Date(ann.expiryDate).toLocaleString()}</span>
-                              {ann.createdAt && (
-                                <span>Publicado em: {new Date(ann.createdAt).toLocaleString()}</span>
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-800/80 text-xs text-slate-500 font-mono">
+                                    <span>Expira em: {new Date(ann.expiryDate).toLocaleString()}</span>
+                                    {ann.createdAt && (
+                                      <span>Publicado em: {new Date(ann.createdAt).toLocaleString()}</span>
+                                    )}
+                                  </div>
+                                </>
                               )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </motion.div>

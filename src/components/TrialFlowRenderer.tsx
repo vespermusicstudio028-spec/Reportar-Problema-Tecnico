@@ -17,7 +17,8 @@ import {
   Check,
   Copy,
   Sparkles,
-  CheckCircle2
+  CheckCircle2,
+  Maximize2
 } from 'lucide-react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from '../types/trial';
 import { supabase } from '../lib/supabase';
@@ -52,6 +53,26 @@ interface Props {
 // estável entre re-renders. Se fosse definido dentro, o React o trataria como
 // um componente DIFERENTE a cada render (causando desmontagem/remontagem e
 // consequentemente perda de foco do input + scroll para o topo).
+const enterFullscreen = (elem: any) => {
+  if (!elem) return;
+  try {
+    if (elem.requestFullscreen) {
+      elem.requestFullscreen().catch(() => {});
+    } else if (elem.webkitEnterFullscreen) {
+      // iOS Safari (necessário no elemento <video>)
+      elem.webkitEnterFullscreen();
+    } else if (elem.webkitRequestFullscreen) {
+      elem.webkitRequestFullscreen();
+    } else if (elem.mozRequestFullScreen) {
+      elem.mozRequestFullScreen();
+    } else if (elem.msRequestFullscreen) {
+      elem.msRequestFullscreen();
+    }
+  } catch (err) {
+    console.warn('Erro ao abrir vídeo em tela cheia:', err);
+  }
+};
+
 interface TrialScreenWrapperProps {
   containerRef: React.RefObject<HTMLDivElement>;
   onClose: () => void;
@@ -842,21 +863,57 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                         if (!embed) return null;
                         if (embed.type === 'iframe') {
                           return (
-                            <iframe 
-                              src={embed.url} 
-                              className="w-full h-full rounded-xl"
-                              allow="autoplay; encrypted-media; fullscreen"
-                              allowFullScreen
-                            />
+                            <div className="relative w-full h-full">
+                              <iframe 
+                                src={embed.url} 
+                                className="w-full h-full rounded-xl"
+                                allow="autoplay; encrypted-media; fullscreen"
+                                allowFullScreen
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  const container = e.currentTarget.parentElement;
+                                  if (container) enterFullscreen(container);
+                                }}
+                                className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-black/75 hover:bg-black/95 text-white backdrop-blur-md border border-white/20 transition-all z-20 shadow-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
+                                title="Assistir em Tela Cheia"
+                              >
+                                <Maximize2 size={14} />
+                                <span className="hidden sm:inline">Tela Cheia</span>
+                              </button>
+                            </div>
                           );
                         }
                         return (
-                          <video 
-                            src={embed.url} 
-                            controls 
-                            playsInline 
-                            className="w-full h-full object-contain rounded-xl bg-black" 
-                          />
+                          <div className="relative w-full h-full flex items-center justify-center group">
+                            <video 
+                              src={embed.url} 
+                              controls 
+                              playsInline 
+                              onPlay={(e) => {
+                                enterFullscreen(e.currentTarget);
+                              }}
+                              className="w-full h-full object-contain rounded-xl bg-black cursor-pointer" 
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                const video = e.currentTarget.parentElement?.querySelector('video');
+                                if (video) {
+                                  if (video.paused) {
+                                    video.play().catch(() => {});
+                                  }
+                                  enterFullscreen(video);
+                                }
+                              }}
+                              className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-black/75 hover:bg-black/95 text-white backdrop-blur-md border border-white/20 transition-all z-20 shadow-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
+                              title="Assistir em Tela Cheia"
+                            >
+                              <Maximize2 size={14} />
+                              <span className="hidden sm:inline">Tela Cheia</span>
+                            </button>
+                          </div>
                         );
                       })()
                     )}

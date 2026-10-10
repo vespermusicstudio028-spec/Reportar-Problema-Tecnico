@@ -183,6 +183,11 @@ const getDefaultAnnouncementExpiry = (): string => {
   return `${year}-${month}-${day}T23:59`;
 };
 
+// Canal dedicado para sincronização instantânea inter-abas/janelas (0ms absoluto)
+const announcementsBroadcastChannel = typeof window !== 'undefined' && 'BroadcastChannel' in window
+  ? new BroadcastChannel('tbi_announcements_channel')
+  : null;
+
 const mapSingleAnnouncement = (a: any): Announcement => {
   let mediaUrls: string[] = [];
   let singleMediaUrl = a.media_url || undefined;
@@ -319,6 +324,83 @@ export default function App() {
       return [];
     }
   });
+
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
+    // Abre automaticamente se já houver informes ativos no cache local (0ms, sem delay)
+    try {
+      const cached = localStorage.getItem('tbi_cached_announcements');
+      if (!cached) return false;
+      const parsed: Announcement[] = JSON.parse(cached);
+      if (!Array.isArray(parsed) || parsed.length === 0) return false;
+      const now = new Date();
+      return parsed.some(a => {
+        try { return now <= new Date(a.expiryDate); } catch { return false; }
+      });
+    } catch { return false; }
+  });
+
+  // Listener local de 0ms para BroadcastChannel (sincronização imediata entre abas/janelas do navegador)
+  useEffect(() => {
+    if (!announcementsBroadcastChannel) return;
+    const handleBroadcastMessage = (event: MessageEvent) => {
+      const { type, payload, tempId } = event.data || {};
+      if (type === 'announcement_new' && payload) {
+        preloadAnnouncementMediaList([payload]);
+        setAnnouncements(prev => {
+          if (prev.some(a => a.id === payload.id)) return prev;
+          const updated = [payload, ...prev];
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+        setIsAnnouncementsOpen(true);
+      } else if (type === 'announcement_confirmed' && payload) {
+        preloadAnnouncementMediaList([payload]);
+        setAnnouncements(prev => {
+          const updated = prev.map(a => (a.id === tempId || a.id === payload.id) ? payload : a);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      } else if (type === 'announcement_deleted' && payload?.id) {
+        setAnnouncements(prev => {
+          const updated = prev.filter(a => a.id !== payload.id);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      } else if (type === 'announcement_updated' && payload?.id) {
+        preloadAnnouncementMediaList([payload]);
+        setAnnouncements(prev => {
+          const updated = prev.map(a => a.id === payload.id ? { ...a, ...payload } : a);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
+      }
+    };
+    announcementsBroadcastChannel.addEventListener('message', handleBroadcastMessage);
+    return () => {
+      announcementsBroadcastChannel.removeEventListener('message', handleBroadcastMessage);
+    };
+  }, []);
+
+  // Listener para evento 'storage' (para garantir atualização instantânea de 0ms entre abas)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'tbi_cached_announcements' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setAnnouncements(parsed);
+            const now = new Date();
+            const hasActive = parsed.some(a => {
+              try { return now <= new Date(a.expiryDate); } catch { return false; }
+            });
+            if (hasActive) setIsAnnouncementsOpen(true);
+          }
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     if (announcements.length > 0) {
@@ -554,7 +636,11 @@ export default function App() {
     fetchData();
 
     // Canal dedicado para Avisos com resposta instantânea (0ms via WebSocket broadcast + postgres_changes granular)
-    const annChannel = supabase.channel('announcements-fast-realtime')
+    const annChannel = supabase.channel('announcements-fast-realtime', {
+      config: {
+        broadcast: { ack: false, self: false }
+      }
+    })
       .on('broadcast', { event: 'announcement_new' }, ({ payload }) => {
         if (!payload || !payload.id) return;
         preloadAnnouncementMediaList([payload]);
@@ -565,6 +651,16 @@ export default function App() {
           return updated;
         });
         setIsAnnouncementsOpen(true);
+      })
+      .on('broadcast', { event: 'announcement_confirmed' }, ({ payload }) => {
+        if (!payload?.realAnn) return;
+        const { tempId, realAnn } = payload;
+        preloadAnnouncementMediaList([realAnn]);
+        setAnnouncements(prev => {
+          const updated = prev.map(a => (a.id === tempId || a.id === realAnn.id) ? realAnn : a);
+          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          return updated;
+        });
       })
       .on('broadcast', { event: 'announcement_deleted' }, ({ payload }) => {
         if (!payload?.id) return;
@@ -754,19 +850,6 @@ export default function App() {
   const [forgotCodePhone, setForgotCodePhone] = useState('');
   const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
-  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
-    // Abre automaticamente se já houver informes ativos no cache local (0ms, sem delay)
-    try {
-      const cached = localStorage.getItem('tbi_cached_announcements');
-      if (!cached) return false;
-      const parsed: Announcement[] = JSON.parse(cached);
-      if (!Array.isArray(parsed) || parsed.length === 0) return false;
-      const now = new Date();
-      return parsed.some(a => {
-        try { return now <= new Date(a.expiryDate); } catch { return false; }
-      });
-    } catch { return false; }
-  });
 
 
 
@@ -1015,10 +1098,9 @@ export default function App() {
 
       // PRIORIDADE DOS FECHAMENTOS (do mais "superficial" ao mais "profundo"):
 
-      // 1. Galeria de fotos/imagens -> Fecha visualização e recolhe a seção de informes
+      // 1. Galeria de fotos/imagens -> Fecha visualização
       if (galleryModalRef.current !== null) {
         setGalleryModal(null);
-        setIsAnnouncementsOpen(false);
         rebase();
         return;
       }
@@ -2893,6 +2975,7 @@ export default function App() {
       createdAt: new Date().toISOString()
     };
 
+    // 1.1 Atualiza imediatamente a UI local e o cache de 0ms
     setAnnouncements(prev => [optimisticAnn, ...prev]);
     setIsAnnouncementsOpen(true);
     try {
@@ -2900,6 +2983,19 @@ export default function App() {
       const list = cached ? [optimisticAnn, ...JSON.parse(cached)] : [optimisticAnn];
       localStorage.setItem('tbi_cached_announcements', JSON.stringify(list));
     } catch {}
+
+    // 1.2 Transmite INSTANTANEAMENTE (0ms) para outras abas/janelas locais via BroadcastChannel
+    announcementsBroadcastChannel?.postMessage({
+      type: 'announcement_new',
+      payload: optimisticAnn
+    });
+
+    // 1.3 Transmite INSTANTANEAMENTE via WebSocket para outros dispositivos sem esperar o banco
+    annChannelRef.current?.send({
+      type: 'broadcast',
+      event: 'announcement_new',
+      payload: optimisticAnn
+    });
 
     // Limpa os campos do formulário e redireciona instantaneamente sem travar a interface
     setAnnName('');
@@ -2956,6 +3052,22 @@ export default function App() {
           console.error('Erro ao sincronizar informe com o servidor:', error);
           alert('Erro ao publicar informe: ' + error.message);
           setAnnouncements(prev => prev.filter(a => a.id !== tempId));
+          try {
+            const cached = localStorage.getItem('tbi_cached_announcements');
+            if (cached) {
+              const list = JSON.parse(cached).filter((a: any) => a.id !== tempId);
+              localStorage.setItem('tbi_cached_announcements', JSON.stringify(list));
+            }
+          } catch {}
+          announcementsBroadcastChannel?.postMessage({
+            type: 'announcement_deleted',
+            payload: { id: tempId }
+          });
+          annChannelRef.current?.send({
+            type: 'broadcast',
+            event: 'announcement_deleted',
+            payload: { id: tempId }
+          });
           return;
         }
 
@@ -2983,11 +3095,17 @@ export default function App() {
           return updated;
         });
 
-        // ─── 3. BROADCAST VIA WEBSOCKET (ZERO DELAY PARA TODOS OS CLIENTES) ─
+        // ─── 3. CONFIRMAÇÃO DEFINITIVA VIA BROADCAST ──────────────
+        announcementsBroadcastChannel?.postMessage({
+          type: 'announcement_confirmed',
+          tempId: tempId,
+          payload: realAnn
+        });
+
         annChannelRef.current?.send({
           type: 'broadcast',
-          event: 'announcement_new',
-          payload: realAnn
+          event: 'announcement_confirmed',
+          payload: { tempId, realAnn }
         });
 
       } catch (err: any) {
@@ -3065,7 +3183,12 @@ export default function App() {
       return updated;
     });
 
-    // 2. Notificação instantânea via WebSocket broadcast
+    // 2. Notificação instantânea via BroadcastChannel (abas locais) e WebSocket broadcast (outros clientes)
+    announcementsBroadcastChannel?.postMessage({
+      type: 'announcement_updated',
+      payload: updatedAnnData
+    });
+
     annChannelRef.current?.send({
       type: 'broadcast',
       event: 'announcement_updated',
@@ -3102,7 +3225,12 @@ export default function App() {
       return updated;
     });
 
-    // Notifica instantaneamente todos os clientes via WebSocket
+    // Notifica instantaneamente todos os clientes e abas locais
+    announcementsBroadcastChannel?.postMessage({
+      type: 'announcement_deleted',
+      payload: { id }
+    });
+
     annChannelRef.current?.send({
       type: 'broadcast',
       event: 'announcement_deleted',
@@ -3120,7 +3248,12 @@ export default function App() {
       return updated;
     });
 
-    // Notifica instantaneamente todos os clientes via WebSocket
+    // Notifica instantaneamente todos os clientes e abas locais
+    announcementsBroadcastChannel?.postMessage({
+      type: 'announcement_updated',
+      payload: { id, status: 'Problema Resolvido' }
+    });
+
     annChannelRef.current?.send({
       type: 'broadcast',
       event: 'announcement_updated',
@@ -3454,7 +3587,13 @@ export default function App() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto"
-          onClick={() => setShowLoginModal(false)}
+          onClick={() => {
+            setShowLoginModal(false);
+            const now = new Date();
+            if (announcements.some(a => now <= new Date(a.expiryDate))) {
+              setIsAnnouncementsOpen(true);
+            }
+          }}
         >
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
@@ -3464,7 +3603,13 @@ export default function App() {
             className={`bg-[#0d1017] border border-slate-800/80 rounded-3xl p-6 md:p-8 w-full ${isAdminLogged ? 'max-w-2xl' : 'max-w-md'} shadow-2xl relative my-auto`}
           >
             <button 
-              onClick={() => setShowLoginModal(false)}
+              onClick={() => {
+                setShowLoginModal(false);
+                const now = new Date();
+                if (announcements.some(a => now <= new Date(a.expiryDate))) {
+                  setIsAnnouncementsOpen(true);
+                }
+              }}
               className="absolute top-6 right-6 w-9 h-9 rounded-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
             >
               <X size={18} />
@@ -3690,6 +3835,10 @@ export default function App() {
                      setIsAdminLogged(false);
                      setShowLoginModal(false);
                      setAdminTab(null);
+                     const now = new Date();
+                     if (announcements.some(a => now <= new Date(a.expiryDate))) {
+                       setIsAnnouncementsOpen(true);
+                     }
                    }}
                    className="w-full pt-4 border-t border-slate-800/80 text-slate-400 hover:text-red-400 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                  >
@@ -7108,7 +7257,6 @@ export default function App() {
             className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-black/95 backdrop-blur-md select-none"
             onClick={() => {
               setGalleryModal(null);
-              setIsAnnouncementsOpen(false);
             }}
             onTouchStart={(e) => {
               const touch = e.touches[0];
@@ -7140,7 +7288,6 @@ export default function App() {
               onClick={(e) => {
                 e.stopPropagation();
                 setGalleryModal(null);
-                setIsAnnouncementsOpen(false);
               }}
               title="Fechar (ESC)"
             >

@@ -325,6 +325,16 @@ export default function App() {
       preloadAnnouncementMediaList(announcements);
     }
   }, []);
+
+  // Abre a seção de Avisos sempre que os informes forem carregados/atualizados e houver ativos
+  useEffect(() => {
+    if (announcements.length === 0) return;
+    const now = new Date();
+    const hasActive = announcements.some(a => {
+      try { return now <= new Date(a.expiryDate); } catch { return false; }
+    });
+    if (hasActive) setIsAnnouncementsOpen(true);
+  }, [announcements]);
   const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_announcements');
@@ -744,7 +754,19 @@ export default function App() {
   const [forgotCodePhone, setForgotCodePhone] = useState('');
   const [isRecoveringCode, setIsRecoveringCode] = useState(false);
   const [showUpdatesModal, setShowUpdatesModal] = useState(false);
-  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(false);
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
+    // Abre automaticamente se já houver informes ativos no cache local (0ms, sem delay)
+    try {
+      const cached = localStorage.getItem('tbi_cached_announcements');
+      if (!cached) return false;
+      const parsed: Announcement[] = JSON.parse(cached);
+      if (!Array.isArray(parsed) || parsed.length === 0) return false;
+      const now = new Date();
+      return parsed.some(a => {
+        try { return now <= new Date(a.expiryDate); } catch { return false; }
+      });
+    } catch { return false; }
+  });
 
 
 

@@ -357,23 +357,13 @@ export default function App() {
   });
 
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
-    // Abre automaticamente se já houver informes ativos no cache local (0ms, sem delay)
-    // Persiste no sessionStorage para sobreviver ao F5/refresh da página
+    // Recolhido/minimizado por padrão; preserva a escolha do usuário ao atualizar a página
     try {
-      const sessionVal = sessionStorage.getItem('tbi_announcements_open');
-      if (sessionVal === 'true') return true;
-      if (sessionVal === 'false') return false;
+      const saved = sessionStorage.getItem('tbi_announcements_open') ?? localStorage.getItem('tbi_announcements_open');
+      if (saved === 'true') return true;
+      if (saved === 'false') return false;
     } catch {}
-    try {
-      const cached = localStorage.getItem('tbi_cached_announcements');
-      if (!cached) return false;
-      const parsed: Announcement[] = JSON.parse(cached);
-      if (!Array.isArray(parsed) || parsed.length === 0) return false;
-      const now = new Date();
-      return parsed.some(a => {
-        try { return now <= new Date(a.expiryDate); } catch { return false; }
-      });
-    } catch { return false; }
+    return false;
   });
 
   // Listener local de 0ms para BroadcastChannel (sincronização imediata entre abas/janelas do navegador)
@@ -389,7 +379,6 @@ export default function App() {
           saveCachedAnnouncements(updated);
           return updated;
         });
-        setIsAnnouncementsOpen(true);
       } else if (type === 'announcement_confirmed' && payload) {
         preloadAnnouncementMediaList([payload]);
         setAnnouncements(prev => {
@@ -418,7 +407,7 @@ export default function App() {
     };
   }, []);
 
-  // Listener para evento 'storage' (para garantir atualização instantânea de 0ms entre abas)
+  // Listener para evento 'storage' (para sincronização entre abas)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'tbi_cached_announcements' && e.newValue) {
@@ -426,11 +415,6 @@ export default function App() {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
             setAnnouncements(parsed);
-            const now = new Date();
-            const hasActive = parsed.some(a => {
-              try { return now <= new Date(a.expiryDate); } catch { return false; }
-            });
-            if (hasActive) setIsAnnouncementsOpen(true);
           }
         } catch {}
       }
@@ -445,20 +429,13 @@ export default function App() {
     }
   }, []);
 
-  // Persiste o estado de aberto/fechado no sessionStorage (sobrevive ao F5)
+  // Persiste o estado de aberto/fechado (sobrevive ao F5/atualização)
   useEffect(() => {
-    try { sessionStorage.setItem('tbi_announcements_open', String(isAnnouncementsOpen)); } catch {}
+    try {
+      sessionStorage.setItem('tbi_announcements_open', String(isAnnouncementsOpen));
+      localStorage.setItem('tbi_announcements_open', String(isAnnouncementsOpen));
+    } catch {}
   }, [isAnnouncementsOpen]);
-
-  // Abre a seção de Avisos sempre que os informes forem carregados/atualizados e houver ativos
-  useEffect(() => {
-    if (announcements.length === 0) return;
-    const now = new Date();
-    const hasActive = announcements.some(a => {
-      try { return now <= new Date(a.expiryDate); } catch { return false; }
-    });
-    if (hasActive) setIsAnnouncementsOpen(true);
-  }, [announcements]);
   const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(() => {
     try {
       const cached = localStorage.getItem('tbi_cached_announcements');
@@ -698,7 +675,6 @@ export default function App() {
           saveCachedAnnouncements(updated);
           return updated;
         });
-        setIsAnnouncementsOpen(true);
       })
       .on('broadcast', { event: 'announcement_confirmed' }, ({ payload }) => {
         if (!payload?.realAnn) return;
@@ -743,7 +719,6 @@ export default function App() {
           saveCachedAnnouncements(updated);
           return updated;
         });
-        setIsAnnouncementsOpen(true);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'announcements' }, (payload) => {
         const a = payload.new;
@@ -1540,11 +1515,6 @@ export default function App() {
     setDeviceOther('');
     setFileName('');
     setSubmitStatus('idle');
-    // Garante que a seção de Avisos fique visível ao voltar para a home
-    // se houver informes ativos (não expirados)
-    const now = new Date();
-    const hasActive = announcements.some(a => now <= new Date(a.expiryDate));
-    if (hasActive) setIsAnnouncementsOpen(true);
   };
 
   const handleReset = () => {
@@ -3709,10 +3679,6 @@ export default function App() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 overflow-y-auto"
           onClick={() => {
             setShowLoginModal(false);
-            const now = new Date();
-            if (announcements.some(a => now <= new Date(a.expiryDate))) {
-              setIsAnnouncementsOpen(true);
-            }
           }}
         >
           <motion.div
@@ -3725,10 +3691,6 @@ export default function App() {
             <button 
               onClick={() => {
                 setShowLoginModal(false);
-                const now = new Date();
-                if (announcements.some(a => now <= new Date(a.expiryDate))) {
-                  setIsAnnouncementsOpen(true);
-                }
               }}
               className="absolute top-6 right-6 w-9 h-9 rounded-full bg-slate-800/50 hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
             >
@@ -3955,10 +3917,7 @@ export default function App() {
                      setIsAdminLogged(false);
                      setShowLoginModal(false);
                      setAdminTab(null);
-                     const now = new Date();
-                     if (announcements.some(a => now <= new Date(a.expiryDate))) {
-                       setIsAnnouncementsOpen(true);
-                     }
+
                    }}
                    className="w-full pt-4 border-t border-slate-800/80 text-slate-400 hover:text-red-400 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
                  >

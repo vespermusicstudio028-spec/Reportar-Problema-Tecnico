@@ -224,6 +224,37 @@ const mapSingleAnnouncement = (a: any): Announcement => {
   };
 };
 
+// Salva os informes no cache local de forma segura (sem estourar os 5MB do localStorage por causa de fotos base64)
+const saveCachedAnnouncements = (list: Announcement[]) => {
+  try {
+    if (!list || !Array.isArray(list)) return;
+    const now = new Date();
+    // Prioriza informes ativos (não expirados) para exibição imediata (0ms)
+    const active = list.filter(a => {
+      try { return now <= new Date(a.expiryDate); } catch { return false; }
+    });
+    // Adiciona até 5 inativos recentes
+    const inactive = list.filter(a => !active.some(act => act.id === a.id)).slice(0, 5);
+    const toCache = [...active, ...inactive];
+
+    try {
+      localStorage.setItem('tbi_cached_announcements', JSON.stringify(toCache));
+    } catch {
+      // Se estourar a cota de 5MB por causa de base64 de imagem, salva somente os ativos
+      const safeActive = active.map(a => ({
+        ...a,
+        mediaUrl: (a.mediaUrl && a.mediaUrl.length > 250000) ? undefined : a.mediaUrl,
+        mediaUrls: (a.mediaUrls ? a.mediaUrls.filter(u => u.length <= 250000) : [])
+      }));
+      try {
+        localStorage.setItem('tbi_cached_announcements', JSON.stringify(safeActive));
+      } catch {}
+    }
+  } catch (err) {
+    console.warn('Erro ao salvar cache de avisos:', err);
+  }
+};
+
 export default function App() {
   const annChannelRef = useRef<any>(null);
   const [contentType, setContentType] = useState<ContentType>(null);
@@ -349,7 +380,7 @@ export default function App() {
         setAnnouncements(prev => {
           if (prev.some(a => a.id === payload.id)) return prev;
           const updated = [payload, ...prev];
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
         setIsAnnouncementsOpen(true);
@@ -357,20 +388,20 @@ export default function App() {
         preloadAnnouncementMediaList([payload]);
         setAnnouncements(prev => {
           const updated = prev.map(a => (a.id === tempId || a.id === payload.id) ? payload : a);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       } else if (type === 'announcement_deleted' && payload?.id) {
         setAnnouncements(prev => {
           const updated = prev.filter(a => a.id !== payload.id);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       } else if (type === 'announcement_updated' && payload?.id) {
         preloadAnnouncementMediaList([payload]);
         setAnnouncements(prev => {
           const updated = prev.map(a => a.id === payload.id ? { ...a, ...payload } : a);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       }
@@ -505,24 +536,30 @@ export default function App() {
 
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
-    // 1. Carregamento instantâneo e prioritário de Avisos Importantes (leve e filtrado)
+    // 1. Carregamento ultra-rápido de Avisos Importantes (apenas os 10 mais recentes/ativos: <100ms em vez de baixar 24MB)
     const fetchAnnouncementsFast = async () => {
       try {
-        // Busca todos os informes cadastrados para o histórico completo do administrador
         const { data: annData, error: annErr } = await supabase
           .from('announcements')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false })
+          .limit(10);
 
         setIsAnnouncementsLoading(false);
 
         if (!annErr && annData) {
           const mapped = annData.map((a: any) => mapSingleAnnouncement(a));
           preloadAnnouncementMediaList(mapped);
-          setAnnouncements(mapped);
-          try {
-            localStorage.setItem('tbi_cached_announcements', JSON.stringify(mapped));
-          } catch {}
+          setAnnouncements(prev => {
+            const map = new Map<string, Announcement>();
+            mapped.forEach(a => map.set(a.id, a));
+            prev.forEach(a => {
+              if (!map.has(a.id)) map.set(a.id, a);
+            });
+            const merged = Array.from(map.values());
+            saveCachedAnnouncements(merged);
+            return merged;
+          });
         }
 
         // Votos, reações e views rodam em segundo plano sem travar o anúncio
@@ -647,7 +684,7 @@ export default function App() {
         setAnnouncements(prev => {
           if (prev.some(a => a.id === payload.id)) return prev;
           const updated = [payload, ...prev];
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
         setIsAnnouncementsOpen(true);
@@ -658,7 +695,7 @@ export default function App() {
         preloadAnnouncementMediaList([realAnn]);
         setAnnouncements(prev => {
           const updated = prev.map(a => (a.id === tempId || a.id === realAnn.id) ? realAnn : a);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       })
@@ -666,7 +703,7 @@ export default function App() {
         if (!payload?.id) return;
         setAnnouncements(prev => {
           const updated = prev.filter(a => a.id !== payload.id);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       })
@@ -675,7 +712,7 @@ export default function App() {
         preloadAnnouncementMediaList([payload]);
         setAnnouncements(prev => {
           const updated = prev.map(a => a.id === payload.id ? { ...a, ...payload } : a);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       })
@@ -688,11 +725,11 @@ export default function App() {
           const exists = prev.some(item => item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message));
           if (exists) {
             const updated = prev.map(item => (item.id === mapped.id || (item.name === mapped.name && item.message === mapped.message) ? mapped : item));
-            try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+            saveCachedAnnouncements(updated);
             return updated;
           }
           const updated = [mapped, ...prev];
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
         setIsAnnouncementsOpen(true);
@@ -704,7 +741,7 @@ export default function App() {
         preloadAnnouncementMediaList([mapped]);
         setAnnouncements(prev => {
           const updated = prev.map(item => item.id === mapped.id ? mapped : item);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       })
@@ -712,7 +749,7 @@ export default function App() {
         if (!payload.old?.id) return;
         setAnnouncements(prev => {
           const updated = prev.filter(item => item.id !== payload.old.id);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
       })
@@ -740,6 +777,7 @@ export default function App() {
       annChannelRef.current = null;
     };
   }, []);
+
 
   // States specific to 'Outro' selections
   const [issueType, setIssueType] = useState<string>('');
@@ -810,6 +848,31 @@ export default function App() {
       setAnnExpiry(getDefaultAnnouncementExpiry());
     }
   }, [adminInformesTab, annExpiry]);
+
+  // Quando o admin entra na aba de Informes, carrega o restante do histórico antigo em background sem travar a interface
+  useEffect(() => {
+    if (isAdminLogged && adminTab === 'informes') {
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from('announcements')
+            .select('*')
+            .order('created_at', { ascending: false });
+          if (data && data.length > 0) {
+            const mapped = data.map((a: any) => mapSingleAnnouncement(a));
+            setAnnouncements(prev => {
+              const map = new Map<string, Announcement>();
+              mapped.forEach(a => map.set(a.id, a));
+              prev.forEach(a => {
+                if (!map.has(a.id)) map.set(a.id, a);
+              });
+              return Array.from(map.values());
+            });
+          }
+        } catch {}
+      })();
+    }
+  }, [isAdminLogged, adminTab]);
   const [annSearchTerm, setAnnSearchTerm] = useState('');
   const [annFilterStatus, setAnnFilterStatus] = useState<string>('todos');
   const adminInformesTouchStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -2976,13 +3039,12 @@ export default function App() {
     };
 
     // 1.1 Atualiza imediatamente a UI local e o cache de 0ms
-    setAnnouncements(prev => [optimisticAnn, ...prev]);
+    setAnnouncements(prev => {
+      const updated = [optimisticAnn, ...prev];
+      saveCachedAnnouncements(updated);
+      return updated;
+    });
     setIsAnnouncementsOpen(true);
-    try {
-      const cached = localStorage.getItem('tbi_cached_announcements');
-      const list = cached ? [optimisticAnn, ...JSON.parse(cached)] : [optimisticAnn];
-      localStorage.setItem('tbi_cached_announcements', JSON.stringify(list));
-    } catch {}
 
     // 1.2 Transmite INSTANTANEAMENTE (0ms) para outras abas/janelas locais via BroadcastChannel
     announcementsBroadcastChannel?.postMessage({
@@ -3051,14 +3113,11 @@ export default function App() {
         if (error) {
           console.error('Erro ao sincronizar informe com o servidor:', error);
           alert('Erro ao publicar informe: ' + error.message);
-          setAnnouncements(prev => prev.filter(a => a.id !== tempId));
-          try {
-            const cached = localStorage.getItem('tbi_cached_announcements');
-            if (cached) {
-              const list = JSON.parse(cached).filter((a: any) => a.id !== tempId);
-              localStorage.setItem('tbi_cached_announcements', JSON.stringify(list));
-            }
-          } catch {}
+          setAnnouncements(prev => {
+            const updated = prev.filter(a => a.id !== tempId);
+            saveCachedAnnouncements(updated);
+            return updated;
+          });
           announcementsBroadcastChannel?.postMessage({
             type: 'announcement_deleted',
             payload: { id: tempId }
@@ -3091,7 +3150,7 @@ export default function App() {
         // Substitui o otimista pelo registro definitivo
         setAnnouncements(prev => {
           const updated = prev.map(a => a.id === tempId ? realAnn : a);
-          try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+          saveCachedAnnouncements(updated);
           return updated;
         });
 
@@ -3179,7 +3238,7 @@ export default function App() {
     // 1. Atualização otimista imediata (0ms de delay)
     setAnnouncements(prev => {
       const updated = prev.map(a => a.id === id ? { ...a, ...updatedAnnData } : a);
-      try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+      saveCachedAnnouncements(updated);
       return updated;
     });
 
@@ -3221,7 +3280,7 @@ export default function App() {
     // Atualização otimista imediata (0ms)
     setAnnouncements(prev => {
       const updated = prev.filter(a => a.id !== id);
-      try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+      saveCachedAnnouncements(updated);
       return updated;
     });
 
@@ -3244,7 +3303,7 @@ export default function App() {
     // Atualização otimista imediata (0ms)
     setAnnouncements(prev => {
       const updated = prev.map(a => a.id === id ? { ...a, status: 'Problema Resolvido' } : a);
-      try { localStorage.setItem('tbi_cached_announcements', JSON.stringify(updated)); } catch {}
+      saveCachedAnnouncements(updated);
       return updated;
     });
 

@@ -358,6 +358,12 @@ export default function App() {
 
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
     // Abre automaticamente se já houver informes ativos no cache local (0ms, sem delay)
+    // Persiste no sessionStorage para sobreviver ao F5/refresh da página
+    try {
+      const sessionVal = sessionStorage.getItem('tbi_announcements_open');
+      if (sessionVal === 'true') return true;
+      if (sessionVal === 'false') return false;
+    } catch {}
     try {
       const cached = localStorage.getItem('tbi_cached_announcements');
       if (!cached) return false;
@@ -438,6 +444,11 @@ export default function App() {
       preloadAnnouncementMediaList(announcements);
     }
   }, []);
+
+  // Persiste o estado de aberto/fechado no sessionStorage (sobrevive ao F5)
+  useEffect(() => {
+    try { sessionStorage.setItem('tbi_announcements_open', String(isAnnouncementsOpen)); } catch {}
+  }, [isAnnouncementsOpen]);
 
   // Abre a seção de Avisos sempre que os informes forem carregados/atualizados e houver ativos
   useEffect(() => {
@@ -775,6 +786,56 @@ export default function App() {
       supabase.removeChannel(annChannel);
       supabase.removeChannel(channel);
       annChannelRef.current = null;
+    };
+  }, []);
+
+  // ─── POLLING DE FALLBACK: garante 0ms percebido mesmo sem WebSocket estável ───
+  // Busca informes a cada 8s e ao voltar para a aba (visibilitychange)
+  // Assim outros dispositivos/celulares recebem sem depender só do WebSocket
+  useEffect(() => {
+    let lastFetchedAt = Date.now();
+
+    const quickFetch = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('announcements')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(10);
+        if (!error && data) {
+          const mapped = data.map((a: any) => mapSingleAnnouncement(a));
+          setAnnouncements(prev => {
+            const map = new Map<string, Announcement>();
+            mapped.forEach(a => map.set(a.id, a));
+            prev.forEach(a => { if (!map.has(a.id)) map.set(a.id, a); });
+            const merged = Array.from(map.values());
+            // Só salva no cache se houver mudança real
+            const prevIds = prev.map(a => a.id).join(',');
+            const mergedIds = merged.map(a => a.id).join(',');
+            if (prevIds !== mergedIds) {
+              saveCachedAnnouncements(merged);
+            }
+            return merged;
+          });
+          lastFetchedAt = Date.now();
+        }
+      } catch {}
+    };
+
+    // Polling a cada 8 segundos como fallback do WebSocket
+    const pollInterval = setInterval(quickFetch, 8000);
+
+    // Ao voltar para a aba, busca imediatamente se passaram >3s desde o último fetch
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && Date.now() - lastFetchedAt > 3000) {
+        quickFetch();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, []);
 
@@ -1706,10 +1767,10 @@ export default function App() {
           <AnimatePresence>
             {isAnnouncementsOpen && (
               <motion.div
-                initial={{ height: 0, opacity: 0 }}
+                initial={false}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.1 }}
+                transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
                 <div className="space-y-3 pt-2">

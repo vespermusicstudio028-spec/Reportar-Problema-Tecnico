@@ -357,13 +357,13 @@ export default function App() {
   });
 
   const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState(() => {
-    // Recolhido/minimizado por padrão; preserva a escolha do usuário ao atualizar a página
+    // Aberto por padrão para que clientes e clientes testes vejam os informes publicados
     try {
       const saved = sessionStorage.getItem('tbi_announcements_open') ?? localStorage.getItem('tbi_announcements_open');
-      if (saved === 'true') return true;
       if (saved === 'false') return false;
+      if (saved === 'true') return true;
     } catch {}
-    return false;
+    return true;
   });
 
   // Listener local de 0ms para BroadcastChannel (sincronização imediata entre abas/janelas do navegador)
@@ -379,6 +379,7 @@ export default function App() {
           saveCachedAnnouncements(updated);
           return updated;
         });
+        setIsAnnouncementsOpen(true);
       } else if (type === 'announcement_confirmed' && payload) {
         preloadAnnouncementMediaList([payload]);
         setAnnouncements(prev => {
@@ -415,6 +416,11 @@ export default function App() {
           const parsed = JSON.parse(e.newValue);
           if (Array.isArray(parsed)) {
             setAnnouncements(parsed);
+            const now = new Date();
+            const hasActive = parsed.some(a => {
+              try { return now <= new Date(a.expiryDate); } catch { return false; }
+            });
+            if (hasActive) setIsAnnouncementsOpen(true);
           }
         } catch {}
       }
@@ -428,6 +434,25 @@ export default function App() {
       preloadAnnouncementMediaList(announcements);
     }
   }, []);
+
+  // Abre a seção de avisos sempre que houver informes ativos para exibição imediata
+  useEffect(() => {
+    if (announcements.length === 0) return;
+    const now = new Date();
+    const hasActive = announcements.some(a => {
+      try { return now <= new Date(a.expiryDate); } catch { return false; }
+    });
+    if (hasActive) {
+      try {
+        const saved = sessionStorage.getItem('tbi_announcements_open');
+        if (saved !== 'false') {
+          setIsAnnouncementsOpen(true);
+        }
+      } catch {
+        setIsAnnouncementsOpen(true);
+      }
+    }
+  }, [announcements]);
 
   // Persiste o estado de aberto/fechado (sobrevive ao F5/atualização)
   useEffect(() => {
@@ -675,6 +700,7 @@ export default function App() {
           saveCachedAnnouncements(updated);
           return updated;
         });
+        setIsAnnouncementsOpen(true);
       })
       .on('broadcast', { event: 'announcement_confirmed' }, ({ payload }) => {
         if (!payload?.realAnn) return;
@@ -719,6 +745,7 @@ export default function App() {
           saveCachedAnnouncements(updated);
           return updated;
         });
+        setIsAnnouncementsOpen(true);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'announcements' }, (payload) => {
         const a = payload.new;
@@ -1751,7 +1778,9 @@ export default function App() {
                         <div>
                           <h4 className={`font-bold leading-tight ${ann.status === 'Problema Resolvido' ? 'text-emerald-50' : 'text-amber-50'}`}>{ann.name} <span className={`font-normal text-xs ml-2 ${ann.status === 'Problema Resolvido' ? 'text-emerald-400/80' : 'text-amber-400/80'}`}>({ann.status})</span></h4>
                           <p className={`text-sm mt-1 leading-snug ${ann.status === 'Problema Resolvido' ? 'text-emerald-200/80' : 'text-amber-200/80'}`}>{ann.message}</p>
-                          <p className={`text-[10px] mt-2 font-mono ${ann.status === 'Problema Resolvido' ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>Expira em: {new Date(ann.expiryDate).toLocaleString()}</p>
+                          {isAdminLogged && (
+                            <p className={`text-[10px] mt-2 font-mono ${ann.status === 'Problema Resolvido' ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>Expira em: {new Date(ann.expiryDate).toLocaleString()}</p>
+                          )}
                           {((ann.mediaUrls && ann.mediaUrls.length > 0) || ann.mediaUrl) && (
                             <AnnouncementMediaCarousel 
                               mediaUrls={ann.mediaUrls && ann.mediaUrls.length > 0 ? ann.mediaUrls : [ann.mediaUrl!]}
@@ -1862,8 +1891,12 @@ export default function App() {
                                 const timeStr = ann.createdAt ? new Date(ann.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
                                 return (
                                   <>
-                                    <span>{formattedViews}</span>
-                                    <Eye size={12} className="mx-0.5" />
+                                    {isAdminLogged && (
+                                      <>
+                                        <span>{formattedViews}</span>
+                                        <Eye size={12} className="mx-0.5" />
+                                      </>
+                                    )}
                                     {timeStr && <span>{timeStr}</span>}
                                   </>
                                 )

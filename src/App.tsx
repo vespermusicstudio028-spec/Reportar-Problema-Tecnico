@@ -773,15 +773,73 @@ export default function App() {
 
     annChannelRef.current = annChannel;
 
-    // Canal para demais dados
+    // Canal dedicado para sincronização 100% online em tempo real de todas as tabelas
     const channel = supabase.channel('db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'movie_updates' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_updates' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, fetchData)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'movie_updates' }, async () => {
+        const { data } = await supabase.from('movie_updates').select('id, title').order('created_at', { ascending: false });
+        if (data) {
+          setMovieUpdates(data);
+          try { localStorage.setItem('tbi_cached_movie_updates', JSON.stringify(data)); } catch {}
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'series_updates' }, async () => {
+        const { data } = await supabase.from('series_updates').select('id, title').order('created_at', { ascending: false });
+        if (data) {
+          setSeriesUpdates(data);
+          try { localStorage.setItem('tbi_cached_series_updates', JSON.stringify(data)); } catch {}
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, async () => {
+        const { data } = await supabase.from('clients').select('*').order('added_at', { ascending: false });
+        if (data) {
+          const mapped = data.map((c: any) => ({
+            id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
+            plan: c.plan || '', price: c.price ?? undefined,
+            activeApp: c.active_app || '',
+            accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
+            addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at,
+            expirationDate: c.expiration_date || undefined
+          }));
+          setClients(mapped);
+          try { localStorage.setItem('tbi_cached_clients', JSON.stringify(mapped)); } catch {}
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_reports' }, async () => {
+        const { data } = await supabase.from('user_reports').select('*').order('timestamp', { ascending: false });
+        if (data) {
+          const mapped = data.map((r: any) => ({
+            id: r.id, type: r.type, name: r.name, issue: r.issue, device: r.device, description: r.description, timestamp: r.timestamp, client_code: r.client_code
+          }));
+          setUserReports(mapped);
+          try { localStorage.setItem('tbi_cached_reports', JSON.stringify(mapped)); } catch {}
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'content_requests' }, async () => {
+        const { data } = await supabase.from('content_requests').select('*').order('created_at', { ascending: false });
+        if (data) {
+          setContentRequests(data);
+          try { localStorage.setItem('tbi_cached_content_requests', JSON.stringify(data)); } catch {}
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_messages' }, async () => {
+        const { data } = await supabase.from('chat_messages').select('id').eq('sender', 'client').eq('read_by_admin', false);
+        if (data) {
+          setUnreadChatCount(data.length);
+          try { localStorage.setItem('tbi_cached_unread_count', String(data.length)); } catch {}
+        }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload) => {
+        const row = payload.new as any;
+        if (row?.id === 'server_status' && row.config_data?.statusKey) {
+          setServerStatus(row.config_data as ServerStatusData);
+          try { localStorage.setItem('tbi_cached_server_status', JSON.stringify(row.config_data)); } catch {}
+        } else if (row?.id === 'trial_config' && row.config_data?.devices) {
+          setTrialConfig(row.config_data as TrialConfig);
+          try { localStorage.setItem('tbi_cached_trial_config', JSON.stringify(row.config_data)); } catch {}
+        } else {
+          fetchData();
+        }
+      })
       .subscribe();
 
     return () => {
@@ -791,54 +849,18 @@ export default function App() {
     };
   }, []);
 
-  // ─── POLLING DE FALLBACK: garante 0ms percebido mesmo sem WebSocket estável ───
-  // Busca informes a cada 8s e ao voltar para a aba (visibilitychange)
-  // Assim outros dispositivos/celulares recebem sem depender só do WebSocket
+  // ─── RECONEXÃO INTELIGENTE: atualiza apenas ao voltar para a aba após longo período ───
   useEffect(() => {
-    let lastFetchedAt = Date.now();
-
-    const quickFetch = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('announcements')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(10);
-        if (!error && data) {
-          const mapped = data.map((a: any) => mapSingleAnnouncement(a));
-          setAnnouncements(prev => {
-            const map = new Map<string, Announcement>();
-            mapped.forEach(a => map.set(a.id, a));
-            prev.forEach(a => { if (!map.has(a.id)) map.set(a.id, a); });
-            const merged = Array.from(map.values());
-            // Só salva no cache se houver mudança real
-            const prevIds = prev.map(a => a.id).join(',');
-            const mergedIds = merged.map(a => a.id).join(',');
-            if (prevIds !== mergedIds) {
-              saveCachedAnnouncements(merged);
-            }
-            return merged;
-          });
-          lastFetchedAt = Date.now();
-        }
-      } catch {}
-    };
-
-    // Polling a cada 8 segundos como fallback do WebSocket
-    const pollInterval = setInterval(quickFetch, 8000);
-
-    // Ao voltar para a aba, busca imediatamente se passaram >3s desde o último fetch
+    let lastActiveAt = Date.now();
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && Date.now() - lastFetchedAt > 3000) {
-        quickFetch();
+      if (document.visibilityState === 'visible' && Date.now() - lastActiveAt > 60000) {
+        lastActiveAt = Date.now();
+        fetchAnnouncementsFast();
+        fetchData();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(pollInterval);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
 

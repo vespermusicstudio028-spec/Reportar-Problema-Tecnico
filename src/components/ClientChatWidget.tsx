@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { ChatMessage } from '../types/chat';
 import { getSupportBusinessHoursStatus, getAutomatedAbsenceMessage } from '../lib/businessHours';
 import { 
@@ -385,11 +385,11 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       // Fallback: tenta envio direto via fetch REST nativo
       let fallbackSuccess = false;
       try {
-        const directRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://kcarjbybxaeyfechklko.supabase.co'}/rest/v1/chat_messages`, {
+        const directRes = await fetch(`${SUPABASE_URL}/rest/v1/chat_messages`, {
           method: 'POST',
           headers: {
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA'}`,
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal'
           },

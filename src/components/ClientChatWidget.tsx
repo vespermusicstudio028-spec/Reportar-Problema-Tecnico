@@ -433,7 +433,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         }, 1200);
       }
     } catch (err: any) {
-      alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
+      const errMsg = err?.message || 'Erro desconhecido';
+      const isOffline = errMsg === 'Failed to fetch' || errMsg.toLowerCase().includes('exceed_egress_quota') || errMsg.toLowerCase().includes('restricted') || errMsg.toLowerCase().includes('networkerror');
+      if (isOffline) {
+        alert('⚠️ Serviço temporariamente indisponível.\nSua mensagem foi salva localmente.\nTente novamente em alguns instantes.');
+      } else {
+        alert('Erro ao enviar mensagem: ' + errMsg);
+      }
+
     } finally {
       setIsSending(false);
     }

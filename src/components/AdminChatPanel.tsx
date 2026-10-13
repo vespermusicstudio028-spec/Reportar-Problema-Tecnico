@@ -126,6 +126,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
   const [isDeletingConversation, setIsDeletingConversation] = useState(false);
   const [holdingClientCode, setHoldingClientCode] = useState<string | null>(null);
   const [isAutoCheckingExpiry, setIsAutoCheckingExpiry] = useState(false);
+  const [dbOffline, setDbOffline] = useState(false);
+  const [dbOfflineReason, setDbOfflineReason] = useState('');
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -255,8 +257,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        const msg = error.message || '';
+        if (msg.includes('exceed_egress_quota') || msg.includes('restricted') || msg.includes('quota')) {
+          setDbOffline(true);
+          setDbOfflineReason('Limite de transferência do banco de dados atingido. O serviço será restaurado no início do próximo mês.');
+        }
+        throw error;
+      }
       if (data) {
+        setDbOffline(false);
         setMessages((prev) => {
           if (prev.length === data.length && prev.length > 0) {
             const lastPrev = prev[prev.length - 1];
@@ -273,7 +283,12 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         });
         try { localStorage.setItem('tbi_cached_chat_messages', JSON.stringify(data)); } catch {}
       }
-    } catch (err) {
+    } catch (err: any) {
+      const msg = (err?.message || '').toLowerCase();
+      if (msg.includes('exceed_egress_quota') || msg.includes('restricted') || msg.includes('service for this project') || msg.includes('failed to fetch') || msg.includes('networkerror')) {
+        setDbOffline(true);
+        setDbOfflineReason('Banco de dados temporariamente indisponível. O chat está em modo offline (usando cache local).');
+      }
       console.error('Erro ao buscar mensagens do chat:', err);
     } finally {
       setIsLoading(false);
@@ -550,8 +565,17 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       });
 
       if (error) throw error;
+      setDbOffline(false);
     } catch (err: any) {
-      alert('Erro ao enviar mensagem: ' + (err.message || 'Erro desconhecido.'));
+      const errMsg = err?.message || 'Erro desconhecido';
+      const isQuota = errMsg.toLowerCase().includes('exceed_egress_quota') || errMsg.toLowerCase().includes('restricted') || errMsg.toLowerCase().includes('service for this project') || errMsg === 'Failed to fetch';
+      if (isQuota) {
+        setDbOffline(true);
+        setDbOfflineReason('Limite de transferência atingido. O banco de dados está temporariamente bloqueado. Aguarde o início do próximo mês ou troque de projeto Supabase.');
+        // Manter mensagem otimista no chat como fallback visual
+      } else {
+        alert('Erro ao enviar mensagem: ' + errMsg);
+      }
     } finally {
       setIsSending(false);
     }
@@ -1109,6 +1133,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
   return (
     <div className="bg-[#0f131c] border border-slate-800/80 rounded-none overflow-hidden shadow-2xl flex flex-col h-full">
+      {/* Banner de aviso quando banco de dados está offline ou com quota excedida */}
+      {dbOffline && (
+        <div className="bg-red-900/80 border-b border-red-700/60 px-4 py-2.5 flex items-start gap-2.5 shrink-0">
+          <span className="text-red-300 text-lg shrink-0">⚠️</span>
+          <div className="flex-1">
+            <p className="text-red-200 text-xs font-semibold">Banco de dados indisponível</p>
+            <p className="text-red-300/80 text-[11px] leading-tight mt-0.5">{dbOfflineReason || 'Erro de conexão com o servidor. O chat está em modo offline.'}</p>
+          </div>
+        </div>
+      )}
       {/* Grid Principal: Lista de Conversas (Esquerda) e Chat Ativo (Direita) */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Coluna da Esquerda: Lista de Conversas */}

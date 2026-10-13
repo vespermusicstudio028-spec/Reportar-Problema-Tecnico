@@ -567,14 +567,47 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       if (error) throw error;
       setDbOffline(false);
     } catch (err: any) {
-      const errMsg = err?.message || 'Erro desconhecido';
-      const isQuota = errMsg.toLowerCase().includes('exceed_egress_quota') || errMsg.toLowerCase().includes('restricted') || errMsg.toLowerCase().includes('service for this project') || errMsg === 'Failed to fetch';
-      if (isQuota) {
-        setDbOffline(true);
-        setDbOfflineReason('Limite de transferência atingido. O banco de dados está temporariamente bloqueado. Aguarde o início do próximo mês ou troque de projeto Supabase.');
-        // Manter mensagem otimista no chat como fallback visual
-      } else {
-        alert('Erro ao enviar mensagem: ' + errMsg);
+      // Fallback: tenta envio direto via fetch REST nativo
+      let fallbackSuccess = false;
+      try {
+        const directRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://kcarjbybxaeyfechklko.supabase.co'}/rest/v1/chat_messages`, {
+          method: 'POST',
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA'}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            client_code: selectedClientCode,
+            client_name: activeClientName,
+            sender: 'admin',
+            message: text,
+            read_by_admin: true,
+            read_by_client: false
+          })
+        });
+        if (directRes.ok) {
+          fallbackSuccess = true;
+          setDbOffline(false);
+        }
+      } catch (fErr) {
+        console.warn('Fallback direto fetch falhou:', fErr);
+      }
+
+      if (!fallbackSuccess) {
+        const errMsg = err?.message || 'Erro de rede';
+        const isQuota = errMsg.toLowerCase().includes('exceed_egress_quota') || errMsg.toLowerCase().includes('restricted') || errMsg.toLowerCase().includes('service for this project');
+        const isFetchFail = errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('networkerror');
+        
+        if (isQuota) {
+          setDbOffline(true);
+          setDbOfflineReason('Limite de transferência atingido no Supabase.');
+        } else if (isFetchFail) {
+          alert('⚠️ Falha ao conectar ao Supabase (Failed to fetch).\n\nSe estiver no Brave, desative o Brave Shields para este site (ícone do leão na barra de endereços) ou recarregue a página com Ctrl + Shift + R.');
+        } else {
+          alert('Erro ao enviar mensagem: ' + errMsg);
+        }
       }
     } finally {
       setIsSending(false);

@@ -381,7 +381,49 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       });
 
       if (error) throw error;
+    } catch (insertErr: any) {
+      // Fallback: tenta envio direto via fetch REST nativo
+      let fallbackSuccess = false;
+      try {
+        const directRes = await fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://kcarjbybxaeyfechklko.supabase.co'}/rest/v1/chat_messages`, {
+          method: 'POST',
+          headers: {
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA'}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            client_code: activeCode,
+            client_name: currentClientDisplayName,
+            sender: 'client',
+            message: text,
+            read_by_admin: false,
+            read_by_client: true
+          })
+        });
+        if (directRes.ok) {
+          fallbackSuccess = true;
+        }
+      } catch (fErr) {
+        console.warn('Fallback direto fetch cliente falhou:', fErr);
+      }
 
+      if (!fallbackSuccess) {
+        const errMsg = insertErr?.message || 'Erro de rede';
+        const isQuota = errMsg.toLowerCase().includes('exceed_egress_quota') || errMsg.toLowerCase().includes('restricted');
+        const isFetchFail = errMsg.toLowerCase().includes('failed to fetch') || errMsg.toLowerCase().includes('networkerror');
+
+        if (isQuota || isFetchFail) {
+          alert('⚠️ Falha ao enviar mensagem.\n\nSe estiver usando o Brave, desative a proteção do Brave Shields (ícone do leão na barra de endereço) para este site ou recarregue a página com Ctrl + Shift + R.');
+        } else {
+          alert('Erro ao enviar mensagem: ' + errMsg);
+        }
+        return;
+      }
+    }
+
+    try {
       // Disparar Atendimento Inteligente com Memória Persistente do Cliente sem delay
       const isSystemPayload = text.startsWith('[FOTOS_SUPORTE]') || text.startsWith('[PIX_COMPROVANTE]');
       if (!isSystemPayload) {
@@ -433,14 +475,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         }, 1200);
       }
     } catch (err: any) {
-      const errMsg = err?.message || 'Erro desconhecido';
-      const isOffline = errMsg === 'Failed to fetch' || errMsg.toLowerCase().includes('exceed_egress_quota') || errMsg.toLowerCase().includes('restricted') || errMsg.toLowerCase().includes('networkerror');
-      if (isOffline) {
-        alert('⚠️ Serviço temporariamente indisponível.\nSua mensagem foi salva localmente.\nTente novamente em alguns instantes.');
-      } else {
-        alert('Erro ao enviar mensagem: ' + errMsg);
-      }
-
+      console.error('Erro no pós-processamento da mensagem:', err);
     } finally {
       setIsSending(false);
     }

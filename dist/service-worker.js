@@ -1,5 +1,5 @@
 // Service Worker com suporte a Push Notifications
-const CACHE_NAME = 'streaming-support-v2';
+const CACHE_NAME = 'streaming-support-v5';
 const APP_URL = self.location.origin;
 
 self.addEventListener('install', (event) => {
@@ -7,11 +7,20 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
+  // Ignora requisições que não sejam GET ou que sejam para APIs externas (como Supabase)
   if (event.request.method !== 'GET') return;
+  if (event.request.url.includes('supabase.co')) return;
+
   event.respondWith(
     fetch(event.request).catch(() => caches.match(event.request))
   );

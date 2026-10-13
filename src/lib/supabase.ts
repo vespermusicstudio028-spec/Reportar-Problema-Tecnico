@@ -22,10 +22,6 @@ export const supabase = createClient(envUrl, envKey || defaultAnonKey, {
       eventsPerSecond: 10,
     },
   },
-  global: {
-    fetch: fetch.bind(globalThis),
-    headers: { 'x-application-name': 'reportar-problema-tecnico' },
-  },
   db: {
     schema: 'public',
   },

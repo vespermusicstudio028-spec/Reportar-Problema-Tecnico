@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const defaultUrl = 'https://rrjxvuvkniyxnocvlbqn.supabase.co';
-const defaultAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJyanh2dXZrbml5eG5vY3ZsYnFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODMxNjMsImV4cCI6MjEwNzQ1OTE2M30.wJFzIjkgXXDVHradO2Pze-n44CrLnzP4ql9BVyELcUc';
+const defaultUrl = 'https://kcarjbybxaeyfechklko.supabase.co';
+const defaultAnonKey = 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA';
 
 let envUrl = import.meta.env.VITE_SUPABASE_URL;
 let envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Reorder } from 'motion/react';
 import { TrialConfig, defaultTrialConfig, TrialDevice, TrialSubOption, TrialContentBlock, TrialLink, TrialMedia } from '../types/trial';
-import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2, Eye, EyeOff, Copy, AlertTriangle } from 'lucide-react';
+import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2, Eye, EyeOff, Copy, AlertTriangle, Play, ExternalLink } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getVideoEmbedInfo, isVideoUrl, ensureAbsoluteUrl } from '../lib/videoUtils';
 
 interface Props {
   config: TrialConfig;
@@ -320,11 +321,13 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
                     value={media.url}
                     onChange={(e) => {
                       const newItems = [...items];
-                      newItems[idx] = { ...media, url: e.target.value };
+                      const val = e.target.value;
+                      const autoType = isVideoUrl(val) ? 'video' : media.type;
+                      newItems[idx] = { ...media, url: val, type: autoType };
                       updateItems(newItems);
                     }}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-indigo-500"
-                    placeholder="Cole aqui a URL (Google Drive, YouTube, CDN...)"
+                    placeholder="Cole aqui a URL (YouTube, Shorts, Google Drive, Vimeo, MP4, abre.ai...)"
                   />
                 ) : (
                   <div>
@@ -370,23 +373,36 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
 
                 {/* Preview */}
                 {media.url && !isUploading && (
-                  <div className="h-24 w-full rounded-lg overflow-hidden border border-slate-800 bg-slate-950/60 relative">
-                    {media.type === 'image' ? (
-                      <img src={media.url} className="w-full h-full object-cover" alt="preview" />
+                  <div className="h-28 w-full rounded-lg overflow-hidden border border-slate-800 bg-slate-950/80 relative">
+                    {media.type === 'image' && !isVideoUrl(media.url) ? (
+                      <img src={ensureAbsoluteUrl(media.url)} className="w-full h-full object-cover" alt="preview" />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-slate-500">
-                        <Video size={20} />
-                        <span className="text-[10px]">Vídeo — clique para verificar</span>
-                        <a
-                          href={media.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-indigo-400 hover:underline"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          Abrir link ↗
-                        </a>
-                      </div>
+                      (() => {
+                        const embed = getVideoEmbedInfo(media.url);
+                        return (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 p-2 bg-gradient-to-b from-slate-900 to-black text-center">
+                            <div className="flex items-center gap-1.5 text-indigo-400 font-bold text-xs">
+                              <Video size={16} />
+                              <span>{embed.serviceName} Detectado</span>
+                            </div>
+                            <span className="text-[11px] text-slate-400 truncate max-w-full px-3 font-mono">
+                              {embed.rawUrl}
+                            </span>
+                            <div className="flex items-center gap-2 mt-1">
+                              <a
+                                href={ensureAbsoluteUrl(media.url)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-200 hover:text-white rounded-md text-[11px] font-semibold transition-colors flex items-center gap-1"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <ExternalLink size={12} />
+                                <span>Testar / Abrir Link ↗</span>
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })()
                     )}
                   </div>
                 )}
@@ -520,44 +536,55 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
           )}
 
           <div className="space-y-2">
-            {(c.links || []).map((link, i) => (
-              <div key={link.id} className="flex gap-2 items-center bg-[#0c0e12] p-3 rounded-xl border border-slate-800">
-                <div className="flex-1 space-y-1.5">
-                  <input
-                    type="text"
-                    placeholder="URL (https://...)"
-                    value={link.url}
-                    onChange={e => {
+            {(c.links || []).map((link, i) => {
+              const isVideo = isVideoUrl(link.url) || /vídeo|video|tutorial|assistir|assista/i.test(link.label || '');
+              return (
+                <div key={link.id} className="flex gap-2 items-center bg-[#0c0e12] p-3 rounded-xl border border-slate-800">
+                  <div className="flex-1 space-y-1.5">
+                    <div>
+                      <input
+                        type="text"
+                        placeholder="URL (https://youtube.com/..., abre.ai/..., etc.)"
+                        value={link.url}
+                        onChange={e => {
+                          const newLinks = [...(c.links || [])];
+                          newLinks[i] = { ...newLinks[i], url: e.target.value };
+                          setField({ links: newLinks });
+                        }}
+                        className="w-full bg-slate-800 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                      {isVideo && (
+                        <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                          <Play size={10} className="fill-emerald-400" />
+                          <span>Vídeo detectado — abrirá player diretamente para o cliente!</span>
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Texto visível no botão (Ex: Assistir Vídeo Tutorial)"
+                      value={link.label}
+                      onChange={e => {
+                        const newLinks = [...(c.links || [])];
+                        newLinks[i] = { ...newLinks[i], label: e.target.value };
+                        setField({ links: newLinks });
+                      }}
+                      className="w-full bg-slate-800 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
                       const newLinks = [...(c.links || [])];
-                      newLinks[i] = { ...newLinks[i], url: e.target.value };
+                      newLinks.splice(i, 1);
                       setField({ links: newLinks });
                     }}
-                    className="w-full bg-slate-800 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Texto visível no botão"
-                    value={link.label}
-                    onChange={e => {
-                      const newLinks = [...(c.links || [])];
-                      newLinks[i] = { ...newLinks[i], label: e.target.value };
-                      setField({ links: newLinks });
-                    }}
-                    className="w-full bg-slate-800 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                  />
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    const newLinks = [...(c.links || [])];
-                    newLinks.splice(i, 1);
-                    setField({ links: newLinks });
-                  }}
-                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded-lg transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

@@ -18,10 +18,14 @@ import {
   Copy,
   Sparkles,
   CheckCircle2,
-  Maximize2
+  Maximize2,
+  Play,
+  ExternalLink,
+  Video
 } from 'lucide-react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from '../types/trial';
 import { supabase } from '../lib/supabase';
+import { getVideoEmbedInfo, isVideoUrl, ensureAbsoluteUrl } from '../lib/videoUtils';
 
 interface Props {
   config: TrialConfig;
@@ -132,6 +136,7 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [pendingContent, setPendingContent] = useState<TrialContentBlock | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [activeVideoModal, setActiveVideoModal] = useState<{ url: string; title: string } | null>(null);
 
   // Refs para suportar navegação segura com botão Voltar do celular
   const selectedDeviceIdRef = useRef<string | null>(null);
@@ -634,26 +639,14 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
 
   const getEmbedUrl = (url: string) => {
     if (!url) return null;
-    
-    // Google Drive
-    if (url.includes('drive.google.com/file/d/')) {
-      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (match && match[1]) {
-        return { type: 'iframe', url: `https://drive.google.com/file/d/${match[1]}/preview` };
-      }
+    const embedInfo = getVideoEmbedInfo(url);
+    if (embedInfo.isIframe) {
+      return { type: 'iframe', url: embedInfo.embedUrl, rawUrl: embedInfo.rawUrl, serviceName: embedInfo.serviceName };
     }
-    
-    // YouTube
-    if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
-      const videoId = url.includes('youtube.com/watch') 
-        ? new URLSearchParams(url.split('?')[1]).get('v')
-        : url.split('youtu.be/')[1]?.split('?')[0];
-      if (videoId) {
-        return { type: 'iframe', url: `https://www.youtube.com/embed/${videoId}` };
-      }
+    if (embedInfo.type === 'direct') {
+      return { type: 'video', url: embedInfo.embedUrl, rawUrl: embedInfo.rawUrl, serviceName: embedInfo.serviceName };
     }
-
-    return { type: 'video', url };
+    return { type: 'other', url: embedInfo.embedUrl, rawUrl: embedInfo.rawUrl, serviceName: embedInfo.serviceName };
   };
 
   const renderModals = () => (
@@ -816,6 +809,99 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
           </motion.div>
         </div>
       )}
+
+      {/* Modal 3: Player de Vídeo Dedicado para Vídeos dos Links e Tutoriais */}
+      {activeVideoModal && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center p-3 sm:p-6 bg-black/90 backdrop-blur-md">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            className="bg-[#0e121b] border border-indigo-500/30 rounded-2xl sm:rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col relative"
+          >
+            {/* Header do Modal de Vídeo */}
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-slate-950/70">
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                  <Play size={16} className="fill-indigo-400" />
+                </div>
+                <h3 className="text-white font-bold text-sm sm:text-base truncate">
+                  {activeVideoModal.title || 'Assistir Vídeo Tutorial'}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={ensureAbsoluteUrl(activeVideoModal.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white transition-colors flex items-center gap-1.5"
+                  title="Abrir no navegador ou aplicativo nativo"
+                >
+                  <ExternalLink size={13} />
+                  <span className="hidden sm:inline">Abrir no Navegador</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setActiveVideoModal(null)}
+                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+                  title="Fechar vídeo"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Corpo do Player */}
+            <div className="w-full aspect-video bg-black relative flex items-center justify-center">
+              {(() => {
+                const embedInfo = getVideoEmbedInfo(activeVideoModal.url);
+                if (embedInfo.type === 'direct') {
+                  return (
+                    <video
+                      src={embedInfo.embedUrl}
+                      controls
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-contain bg-black"
+                    />
+                  );
+                }
+                if (embedInfo.isIframe) {
+                  return (
+                    <iframe
+                      src={embedInfo.embedUrl}
+                      title={activeVideoModal.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                      allowFullScreen
+                      referrerPolicy="strict-origin-when-cross-origin"
+                    />
+                  );
+                }
+                return (
+                  <div className="p-8 text-center flex flex-col items-center justify-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                      <Play size={24} className="fill-indigo-400 ml-1" />
+                    </div>
+                    <p className="text-slate-300 text-sm max-w-md">
+                      Este link aponta para uma página externa de vídeo. Clique abaixo para abrir e assistir diretamente no seu navegador ou app:
+                    </p>
+                    <a
+                      href={ensureAbsoluteUrl(activeVideoModal.url)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-sm shadow-lg flex items-center gap-2 active:scale-95 transition-all"
+                    >
+                      <Play size={16} className="fill-white" />
+                      <span>Abrir e Assistir Vídeo ↗</span>
+                    </a>
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        </div>
+      )}
     </AnimatePresence>
   );
 
@@ -851,44 +937,26 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
               return (
                 <div className="w-full mb-6">
                   <div className="w-full aspect-video rounded-2xl overflow-hidden shadow-2xl shadow-black/70 border border-white/15 relative bg-black flex items-center justify-center">
-                    {activeItem.type === 'image' ? (
-                      <img 
-                        src={activeItem.url} 
-                        alt="Mídia" 
-                        className="w-full h-full object-contain" 
-                      />
-                    ) : (
-                      (() => {
-                        const embed = getEmbedUrl(activeItem.url);
-                        if (!embed) return null;
-                        if (embed.type === 'iframe') {
-                          return (
-                            <div className="relative w-full h-full">
-                              <iframe 
-                                src={embed.url} 
-                                className="w-full h-full rounded-xl"
-                                allow="autoplay; encrypted-media; fullscreen"
-                                allowFullScreen
-                              />
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  const container = e.currentTarget.parentElement;
-                                  if (container) enterFullscreen(container);
-                                }}
-                                className="absolute top-2.5 right-2.5 p-2 rounded-xl bg-black/75 hover:bg-black/95 text-white backdrop-blur-md border border-white/20 transition-all z-20 shadow-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
-                                title="Assistir em Tela Cheia"
-                              >
-                                <Maximize2 size={14} />
-                                <span className="hidden sm:inline">Tela Cheia</span>
-                              </button>
-                            </div>
-                          );
-                        }
+                    {(() => {
+                      const isVideo = activeItem.type === 'video' || isVideoUrl(activeItem.url);
+
+                      if (!isVideo) {
+                        return (
+                          <img 
+                            src={activeItem.url} 
+                            alt="Mídia" 
+                            className="w-full h-full object-contain" 
+                          />
+                        );
+                      }
+
+                      const embed = getVideoEmbedInfo(activeItem.url);
+
+                      if (embed.type === 'direct') {
                         return (
                           <div className="relative w-full h-full flex items-center justify-center group">
                             <video 
-                              src={embed.url} 
+                              src={embed.embedUrl} 
                               controls 
                               playsInline 
                               onPlay={(e) => {
@@ -915,8 +983,70 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                             </button>
                           </div>
                         );
-                      })()
-                    )}
+                      }
+
+                      if (embed.isIframe) {
+                        return (
+                          <div className="relative w-full h-full">
+                            <iframe 
+                              src={embed.embedUrl} 
+                              className="w-full h-full rounded-xl"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                              allowFullScreen
+                              referrerPolicy="strict-origin-when-cross-origin"
+                            />
+                            <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-20">
+                              <a
+                                href={embed.rawUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 px-2.5 rounded-xl bg-black/75 hover:bg-black/95 text-white backdrop-blur-md border border-white/20 transition-all shadow-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
+                                title={`Abrir no ${embed.serviceName}`}
+                              >
+                                <ExternalLink size={13} />
+                                <span className="hidden sm:inline">{embed.serviceName}</span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  const container = e.currentTarget.parentElement?.parentElement;
+                                  if (container) enterFullscreen(container);
+                                }}
+                                className="p-2 rounded-xl bg-black/75 hover:bg-black/95 text-white backdrop-blur-md border border-white/20 transition-all shadow-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
+                                title="Assistir em Tela Cheia"
+                              >
+                                <Maximize2 size={14} />
+                                <span className="hidden sm:inline">Tela Cheia</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Link de vídeo que precisa ser aberto externamente (ex: encurtador abre.ai)
+                      return (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-slate-900 to-black gap-3">
+                          <div className="w-14 h-14 rounded-full bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-400">
+                            <Play size={26} className="fill-indigo-400 ml-1" />
+                          </div>
+                          <div>
+                            <p className="text-white font-bold text-base">Vídeo Tutorial Pronto para Assistir</p>
+                            <p className="text-slate-400 text-xs mt-1 max-w-sm">
+                              Clique no botão abaixo para assistir ao vídeo tutorial completo:
+                            </p>
+                          </div>
+                          <a
+                            href={embed.rawUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs sm:text-sm shadow-lg flex items-center gap-2 active:scale-95 transition-all"
+                          >
+                            <Play size={14} className="fill-white" />
+                            <span>Assistir Vídeo Tutorial ↗</span>
+                          </a>
+                        </div>
+                      );
+                    })()}
 
                     {/* Navegação do Carrossel */}
                     {items.length > 1 && (
@@ -962,18 +1092,71 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
               <p key={i} className="font-medium text-white">{p}</p>
             ))}
 
-            {content.links && content.links.map(link => (
-              <div key={link.id} className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl my-4 text-center">
-                <a 
-                  href={link.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-white font-bold underline hover:text-indigo-400 break-all text-lg"
-                >
-                  {link.label}
-                </a>
+            {content.links && content.links.length > 0 && (
+              <div className="space-y-3 my-5">
+                {content.links.map(link => {
+                  const absoluteUrl = ensureAbsoluteUrl(link.url);
+                  const isVideo = isVideoUrl(link.url) || /vídeo|video|tutorial|assistir|assista/i.test(link.label || '');
+
+                  if (isVideo) {
+                    return (
+                      <div 
+                        key={link.id} 
+                        className="bg-gradient-to-r from-indigo-950/60 to-purple-950/60 border border-indigo-500/30 hover:border-indigo-500/60 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg shadow-indigo-950/20 transition-all group text-left"
+                      >
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-600/40 group-hover:scale-105 transition-transform">
+                            <Play size={18} className="fill-white ml-0.5" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="text-white font-bold text-sm sm:text-base leading-snug line-clamp-2">
+                              {link.label || 'Assistir Vídeo Tutorial'}
+                            </p>
+                            <span className="text-[11px] text-indigo-300 flex items-center gap-1 mt-0.5">
+                              <span>🎬 Vídeo Tutorial Interativo</span>
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setActiveVideoModal({ url: absoluteUrl, title: link.label || 'Vídeo Tutorial' })}
+                            className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs sm:text-sm font-bold shadow-md shadow-indigo-600/30 flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                          >
+                            <Play size={14} className="fill-white" />
+                            <span>Assistir Agora</span>
+                          </button>
+                          <a
+                            href={absoluteUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-colors"
+                            title="Abrir no navegador"
+                          >
+                            <ExternalLink size={16} />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={link.id} className="bg-indigo-500/10 border border-indigo-500/20 hover:border-indigo-500/40 p-3 sm:p-4 rounded-xl text-center transition-all">
+                      <a 
+                        href={absoluteUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-white font-bold underline hover:text-indigo-300 break-all text-base sm:text-lg flex items-center justify-center gap-2"
+                      >
+                        <span>{link.label || link.url}</span>
+                        <ExternalLink size={16} className="shrink-0 text-indigo-400" />
+                      </a>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            )}
 
             {content.changelog && (
               <div className="mt-6 mb-4">

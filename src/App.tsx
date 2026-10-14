@@ -5632,6 +5632,86 @@ export default function App() {
                                         )}
                                       </div>
                                     )}
+
+                                    {/* ── Vencimentos: Sinal e App ── */}
+                                    {(() => {
+                                      const firstPoint = points[0];
+                                      const appExpiresAt = firstPoint?.expiresAt;
+                                      const appIsLifetime = firstPoint?.isLifetime;
+                                      const appName = firstPoint?.appName || client.activeApp || 'App';
+
+                                      // Vencimento do Sinal de Streaming
+                                      let streamBadge = null;
+                                      if (client.expirationDate) {
+                                        const exp = new Date(client.expirationDate);
+                                        const now = new Date();
+                                        const diffMs = exp.getTime() - now.getTime();
+                                        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                                        const isExpired = diffMs < 0;
+                                        const fmt = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                        const fmtH = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                                        let streamColor = 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25';
+                                        let streamLabel = `📡 Sinal: ${fmt} ${fmtH}`;
+                                        if (isExpired) {
+                                          streamColor = 'bg-red-500/15 text-red-300 border-red-500/30';
+                                          streamLabel = `📡 Sinal VENCIDO: ${fmt} ${fmtH}`;
+                                        } else if (diffDays <= 1) {
+                                          streamColor = 'bg-rose-600/20 text-rose-200 border-rose-500/40';
+                                          streamLabel = `📡 Sinal HOJE: ${fmt} ${fmtH}`;
+                                        } else if (diffDays <= 3) {
+                                          streamColor = 'bg-amber-500/15 text-amber-200 border-amber-500/30';
+                                          streamLabel = `📡 Sinal em ${diffDays}d: ${fmt} ${fmtH}`;
+                                        }
+                                        streamBadge = (
+                                          <span className={`text-[11px] px-2.5 py-0.5 rounded-lg border font-medium flex items-center gap-1 ${streamColor}`}>
+                                            {streamLabel}
+                                          </span>
+                                        );
+                                      }
+
+                                      // Vencimento do App
+                                      let appBadge = null;
+                                      if (appIsLifetime || !appExpiresAt || appExpiresAt === 'VITALÍCIO') {
+                                        appBadge = (
+                                          <span className="text-[11px] px-2.5 py-0.5 rounded-lg border bg-indigo-500/10 text-indigo-300 border-indigo-500/25 font-medium flex items-center gap-1">
+                                            📱 {appName}: Vitalício
+                                          </span>
+                                        );
+                                      } else if (appExpiresAt) {
+                                        try {
+                                          const appExp = new Date(appExpiresAt);
+                                          const now = new Date();
+                                          const diffMs = appExp.getTime() - now.getTime();
+                                          const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                                          const isExpired = diffMs < 0;
+                                          const fmt = appExp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+                                          let appColor = 'bg-indigo-500/10 text-indigo-300 border-indigo-500/25';
+                                          let appLabel = `📱 ${appName}: ${fmt}`;
+                                          if (isExpired) {
+                                            appColor = 'bg-red-500/10 text-red-300 border-red-500/25';
+                                            appLabel = `📱 ${appName} VENCIDO: ${fmt}`;
+                                          } else if (diffDays <= 30) {
+                                            appColor = 'bg-amber-500/10 text-amber-200 border-amber-500/25';
+                                            appLabel = `📱 ${appName}: ${fmt} (${diffDays}d)`;
+                                          }
+                                          appBadge = (
+                                            <span className={`text-[11px] px-2.5 py-0.5 rounded-lg border font-medium flex items-center gap-1 ${appColor}`}>
+                                              {appLabel}
+                                            </span>
+                                          );
+                                        } catch {}
+                                      }
+
+                                      if (!streamBadge && !appBadge) return null;
+                                      return (
+                                        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                          {streamBadge}
+                                          {appBadge}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                   <div className="flex items-center shrink-0 gap-1.5">
                                     <button 

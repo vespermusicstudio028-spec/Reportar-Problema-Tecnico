@@ -548,6 +548,10 @@ export default function App() {
 
 
 
+  // Refs para expor as funções de fetch ao useEffect de reconexão (visibilitychange)
+  const fetchAnnouncementsFastRef = useRef<(() => Promise<void>) | null>(null);
+  const fetchDataRef = useRef<(() => Promise<void>) | null>(null);
+
   // Carregar dados iniciais e escutar mudanças em tempo real
   useEffect(() => {
     // 1. Carregamento ultra-rápido de Avisos Importantes (apenas os 10 mais recentes/ativos: <100ms em vez de baixar 24MB)
@@ -598,6 +602,9 @@ export default function App() {
         console.error("Error fetching announcements:", e);
       }
     };
+
+    // Expõe fetchAnnouncementsFast ao ref para uso externo (ex: reconexão por visibilitychange)
+    fetchAnnouncementsFastRef.current = fetchAnnouncementsFast;
 
     // Dispara busca ultra rápida dos avisos imediatamente
     // Timeout de segurança: máx 1s de loading, depois mostra o que tiver
@@ -683,6 +690,8 @@ export default function App() {
         console.error("Error fetching general data:", e);
       }
     };
+
+    fetchDataRef.current = fetchData;
 
     fetchData();
 
@@ -856,8 +865,8 @@ export default function App() {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && Date.now() - lastActiveAt > 60000) {
         lastActiveAt = Date.now();
-        fetchAnnouncementsFast();
-        fetchData();
+        fetchAnnouncementsFastRef.current?.();
+        fetchDataRef.current?.();
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);

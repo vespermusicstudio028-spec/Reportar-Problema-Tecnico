@@ -561,13 +561,14 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
       try {
         const { data: cliData } = await supabase
           .from('clients')
-          .select('access_points, plan, price')
+          .select('access_points, plan, plan_price')
           .eq('code', activeCode)
           .maybeSingle();
 
         if (cliData) {
-          if (cliData.price !== undefined && cliData.price !== null) {
-            effectivePrice = cliData.price;
+          const rawPrice = (cliData as any).price ?? (cliData as any).plan_price;
+          if (rawPrice !== undefined && rawPrice !== null) {
+            effectivePrice = rawPrice;
           }
           if (cliData.access_points && (!currentScreens || currentScreens.length === 0)) {
             currentScreens = Array.isArray(cliData.access_points) 

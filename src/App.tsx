@@ -649,11 +649,11 @@ export default function App() {
         if (cliRes.data) {
           const mapped = cliRes.data.map((c: any) => ({
             id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
-            plan: c.plan || '', price: c.price ?? undefined,
+            plan: c.plan || '', price: c.price ?? c.plan_price ?? undefined,
             activeApp: c.active_app || '',
             accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
             addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at,
-            expirationDate: c.expiration_date || undefined
+            expirationDate: c.expiration_date || c.due_date || undefined
           }));
           setClients(mapped);
           try { localStorage.setItem('tbi_cached_clients', JSON.stringify(mapped)); } catch {}
@@ -794,11 +794,11 @@ export default function App() {
         if (data) {
           const mapped = data.map((c: any) => ({
             id: c.id, name: c.name, code: c.code, canvasLink: c.canvas_link, email: c.email, phone: c.phone,
-            plan: c.plan || '', price: c.price ?? undefined,
+            plan: c.plan || '', price: c.price ?? c.plan_price ?? undefined,
             activeApp: c.active_app || '',
             accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
             addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at,
-            expirationDate: c.expiration_date || undefined
+            expirationDate: c.expiration_date || c.due_date || undefined
           }));
           setClients(mapped);
           try { localStorage.setItem('tbi_cached_clients', JSON.stringify(mapped)); } catch {}
@@ -3490,12 +3490,16 @@ export default function App() {
     }
 
     try {
-      const { data, error } = await supabase.from('clients').insert([{
+      const insertObj: any = {
         name: clientName,
         code: clientCode,
-        canvas_link: clientLink,
-        expiration_date: clientExpiry ? new Date(clientExpiry).toISOString() : null
-      }]).select();
+        canvas_link: clientLink
+      };
+      if (clientExpiry) {
+        insertObj.due_date = new Date(clientExpiry).toISOString();
+      }
+
+      const { data, error } = await supabase.from('clients').insert([insertObj]).select();
 
       if (error) {
         console.error('Erro ao cadastrar cliente:', error);
@@ -3518,11 +3522,12 @@ export default function App() {
           email: c.email,
           phone: c.phone,
           plan: c.plan || '',
-          price: c.price ?? undefined,
+          price: c.price ?? c.plan_price ?? undefined,
           activeApp: c.active_app || '',
           accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
           addedAt: c.added_at,
-          lastRecoveryAt: c.last_recovery_at
+          lastRecoveryAt: c.last_recovery_at,
+          expirationDate: c.expiration_date || c.due_date || undefined
         })));
       }
 
@@ -3548,10 +3553,10 @@ export default function App() {
           email: updatedClient.email,
           phone: updatedClient.phone,
           plan: updatedClient.plan || null,
-          price: updatedClient.price ?? null,
+          plan_price: updatedClient.price ?? null,
           access_points: updatedClient.accessPoints || [],
           active_app: updatedClient.activeApp || updatedClient.accessPoints?.[0]?.appName || null,
-          expiration_date: updatedClient.expirationDate ? new Date(updatedClient.expirationDate).toISOString() : null,
+          due_date: updatedClient.expirationDate ? new Date(updatedClient.expirationDate).toISOString() : null,
         })
         .eq('id', updatedClient.id);
 
@@ -3588,7 +3593,7 @@ export default function App() {
       const { error } = await supabase
         .from('clients')
         .update({ 
-          expiration_date: nextDateISO,
+          due_date: nextDateISO,
           plan: newPlan
         })
         .eq('id', clientId);

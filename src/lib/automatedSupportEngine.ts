@@ -427,8 +427,9 @@ export async function processClientSupportMessage(
 
   // Preço real e plano
   const planName = clientDbData?.plan || memory.plan || 'Mensal';
-  const realPrice = clientDbData?.price
-    ? Number(clientDbData.price).toFixed(2).replace('.', ',')
+  const effectivePriceNum = clientDbData?.price ?? clientDbData?.plan_price;
+  const realPrice = effectivePriceNum != null
+    ? Number(effectivePriceNum).toFixed(2).replace('.', ',')
     : '35,00';
   const numScreens = Array.isArray(clientDbData?.access_points)
     ? clientDbData.access_points.length

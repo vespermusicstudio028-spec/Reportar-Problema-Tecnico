@@ -530,10 +530,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         code: newCode,
         canvas_link: 'https://thebestiptv.com',
         plan: calculatedPlan,
-        price: calculatedPrice,
+        plan_price: calculatedPrice,
         active_app: appName,
         access_points: clientAccessPoints,
-        expiration_date: trialExpirationDate
+        due_date: trialExpirationDate
       }]).select();
 
       if (clientInsertErr) {

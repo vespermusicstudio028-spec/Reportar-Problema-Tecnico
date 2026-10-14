@@ -151,7 +151,7 @@ export async function autoProcessPaymentReceiptAndRenew(
     // 1. Buscar dados atuais do cliente
     const { data: client, error: fetchErr } = await supabase
       .from('clients')
-      .select('id, name, expiration_date, access_points, plan, price')
+      .select('id, name, due_date, access_points, plan, plan_price')
       .eq('code', clientCode)
       .maybeSingle();
 
@@ -165,8 +165,9 @@ export async function autoProcessPaymentReceiptAndRenew(
 
     // Se o cliente ainda tem dias restantes antes de vencer, somamos 30 dias a partir da data de vencimento
     // para não perder os dias já pagos. Se já venceu, somamos a partir de hoje.
-    if (client.expiration_date) {
-      const currentExp = new Date(client.expiration_date);
+    const expDate = (client as any).due_date || (client as any).expiration_date;
+    if (expDate) {
+      const currentExp = new Date(expDate);
       if (!isNaN(currentExp.getTime()) && currentExp > now) {
         baseDate = currentExp;
       }
@@ -192,7 +193,7 @@ export async function autoProcessPaymentReceiptAndRenew(
     const { error: updateErr } = await supabase
       .from('clients')
       .update({
-        expiration_date: nextDateISO,
+        due_date: nextDateISO,
         access_points: updatedPoints,
         status: 'active'
       })
@@ -279,7 +280,7 @@ export async function checkAndSendAutomaticExpiryNotices(
     // 1. Buscar todos os clientes com código e data de vencimento
     const { data: clients, error } = await supabase
       .from('clients')
-      .select('id, name, code, expiration_date, status, plan, access_points')
+      .select('id, name, code, due_date, status, plan, access_points')
       .not('code', 'is', null);
 
     if (error || !clients) {
@@ -296,7 +297,7 @@ export async function checkAndSendAutomaticExpiryNotices(
       }
 
       // Determinar a data de expiração efetiva
-      let expiryIso = client.expiration_date;
+      let expiryIso = (client as any).due_date || (client as any).expiration_date;
       if (!expiryIso && client.access_points) {
         try {
           const pts = Array.isArray(client.access_points) ? client.access_points : JSON.parse(client.access_points);

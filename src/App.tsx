@@ -15,6 +15,7 @@ import { AdminExpiryAlertModal } from './components/AdminExpiryAlertModal';
 import { AdminExpiryCalendarModal } from './components/AdminExpiryCalendarModal';
 import { ClientHomeExpiryCard } from './components/ClientHomeExpiryCard';
 import { computeClientExpiryNotice } from './lib/clientExpiryNotice';
+import { buildCanvasClientUrl } from './lib/canvasUrlBuilder';
 
 import { 
   RefreshCcw,
@@ -1035,6 +1036,29 @@ export default function App() {
   });
   const [clientLink, setClientLink] = useState('https://testetestettt.my.canva.site/sr-carlos');
   const [clientExpiry, setClientExpiry] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientAppName, setClientAppName] = useState('NEW HYBRID');
+  const [clientAppDurationType, setClientAppDurationType] = useState<'vitalicio' | '1ano' | '6meses' | '1mes' | 'custom'>('vitalicio');
+  const [clientAppExpiresAt, setClientAppExpiresAt] = useState('');
+  const [clientAppIsLifetime, setClientAppIsLifetime] = useState(true);
+  const [clientAttachDataToLink, setClientAttachDataToLink] = useState(true);
+  const [copiedLinkPreview, setCopiedLinkPreview] = useState(false);
+
+  // ─── Perfil do Admin / Suporte (persistido no localStorage) ───────────────────
+  const [adminProfileName, setAdminProfileName] = useState(() =>
+    localStorage.getItem('tbi_admin_profile_name') || 'THE BEST IPTV+'
+  );
+  const [adminProfilePhone, setAdminProfilePhone] = useState(() =>
+    localStorage.getItem('tbi_admin_profile_phone') || ''
+  );
+
+  // Persiste automaticamente o perfil do admin no localStorage quando mudar
+  useEffect(() => {
+    localStorage.setItem('tbi_admin_profile_name', adminProfileName);
+  }, [adminProfileName]);
+  useEffect(() => {
+    localStorage.setItem('tbi_admin_profile_phone', adminProfilePhone);
+  }, [adminProfilePhone]);
   const [showExpiryAlert, setShowExpiryAlert] = useState(false);
   const [showExpiryCalendarModal, setShowExpiryCalendarModal] = useState(false);
   
@@ -2782,6 +2806,79 @@ export default function App() {
                       </div>
                     )}
                   </div>
+
+                  {/* ─── Bloco Exclusivo: Link da Área do Cliente (Canva / Página) ─── */}
+                  <div className="pt-4 border-t border-indigo-500/15 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <ExternalLink size={13} /> Área do Cliente (Canva / Página)
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                        Dados Vinculados
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-slate-900 border border-indigo-500/30 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white/4 p-2.5 rounded-lg border border-white/5">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Aplicativo</span>
+                          <span className="text-amber-300 font-bold text-xs truncate block">{fallbackApp}</span>
+                        </div>
+                        <div className="bg-white/4 p-2.5 rounded-lg border border-white/5">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Tempo do App</span>
+                          <span className="text-purple-300 font-bold text-xs truncate block">
+                            {accessPoints[0] ? getAppExpLabel(accessPoints[0]) : (fallbackIsHybrid ? 'Vitalício / Indeterminado' : 'Ativo')}
+                          </span>
+                        </div>
+                        <div className="bg-white/4 p-2.5 rounded-lg border border-white/5 sm:col-span-2">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold block">Vencimento Sinal Streaming</span>
+                          <span className="text-emerald-300 font-bold text-xs truncate block">
+                            {streamExp && !isNaN(streamExp.getTime()) ? formatDatePtBR(streamExp) : 'Sem vencimento cadastrado'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const fullUrl = buildCanvasClientUrl(currentClient.canvasLink || 'https://testetestettt.my.canva.site/sr-carlos', {
+                              nome: currentClient.name,
+                              codigo: currentClient.code,
+                              app: fallbackApp,
+                              tempo_app: accessPoints[0] ? getAppExpLabel(accessPoints[0]) : (fallbackIsHybrid ? 'Vitalício / Indeterminado' : 'Ativo'),
+                              vencimento_streaming: streamExp && !isNaN(streamExp.getTime()) ? formatDatePtBR(streamExp) : 'Sem vencimento',
+                              telefone: currentClient.phone
+                            });
+                            window.open(fullUrl, '_blank');
+                          }}
+                          className="flex-1 py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2 active:scale-98"
+                        >
+                          <Tv size={15} /> Acessar Minha Área (Canva)
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const fullUrl = buildCanvasClientUrl(currentClient.canvasLink || 'https://testetestettt.my.canva.site/sr-carlos', {
+                              nome: currentClient.name,
+                              codigo: currentClient.code,
+                              app: fallbackApp,
+                              tempo_app: accessPoints[0] ? getAppExpLabel(accessPoints[0]) : (fallbackIsHybrid ? 'Vitalício / Indeterminado' : 'Ativo'),
+                              vencimento_streaming: streamExp && !isNaN(streamExp.getTime()) ? formatDatePtBR(streamExp) : 'Sem vencimento',
+                              telefone: currentClient.phone
+                            });
+                            navigator.clipboard.writeText(fullUrl);
+                            alert('✅ Link da sua Área do Cliente copiado com sucesso!');
+                          }}
+                          className="px-3.5 py-2.5 bg-slate-800/80 hover:bg-slate-700 text-indigo-300 border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shrink-0"
+                          title="Copiar link completo da área do cliente"
+                        >
+                          <Copy size={14} /> Copiar Link
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             );
@@ -2862,7 +2959,26 @@ export default function App() {
                   <>
                     <button
                       type="button"
-                      onClick={() => window.open(currentClient!.canvasLink, '_blank')}
+                      onClick={() => {
+                        const fallbackApp = currentClient?.activeApp || currentClient?.accessPoints?.[0]?.appName || 'NEW HYBRID';
+                        const isHybrid = fallbackApp.toLowerCase().includes('hybrid');
+                        const isLifetime = currentClient?.accessPoints?.[0]?.isLifetime ?? isHybrid;
+                        const appExp = currentClient?.accessPoints?.[0]?.expiresAt || (isLifetime ? 'Vitalício / Indeterminado' : 'Ativo');
+                        const streamExpFormatted = currentClient?.expirationDate 
+                          ? new Date(currentClient.expirationDate).toLocaleDateString('pt-BR') + ' às ' + new Date(currentClient.expirationDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                          : 'Sem vencimento cadastrado';
+
+                        const fullUrl = buildCanvasClientUrl(currentClient!.canvasLink || 'https://testetestettt.my.canva.site/sr-carlos', {
+                          nome: currentClient!.name,
+                          codigo: currentClient!.code,
+                          app: fallbackApp,
+                          tempo_app: appExp,
+                          vencimento_streaming: streamExpFormatted,
+                          telefone: currentClient!.phone
+                        });
+
+                        window.open(fullUrl, '_blank');
+                      }}
                       className="w-full py-3 bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/30 text-indigo-300 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2"
                     >
                       <Tv size={18} /> Minha Área Exclusiva
@@ -3484,16 +3600,85 @@ export default function App() {
     e.preventDefault();
     if (!clientName || !clientCode || !clientLink) return;
 
-    if (clients.some(c => c.code === clientCode)) {
+    if (clients.some(c => c.code.trim().toUpperCase() === clientCode.trim().toUpperCase())) {
       alert("Atenção: Este código já está em uso por outro cliente.");
       return;
     }
 
+    // Determina tempo e validade do aplicativo
+    let appDurationLabel = 'Vitalício / Indeterminado';
+    let appExpiresAtValue = 'VITALÍCIO';
+    let isLifetimeVal = true;
+
+    if (clientAppDurationType === 'vitalicio' || clientAppIsLifetime) {
+      appDurationLabel = 'Vitalício / Indeterminado';
+      appExpiresAtValue = 'VITALÍCIO';
+      isLifetimeVal = true;
+    } else if (clientAppDurationType === '1ano') {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() + 1);
+      appExpiresAtValue = d.toISOString();
+      appDurationLabel = `1 Ano (Até ${d.toLocaleDateString('pt-BR')})`;
+      isLifetimeVal = false;
+    } else if (clientAppDurationType === '6meses') {
+      const d = new Date();
+      d.setMonth(d.getMonth() + 6);
+      appExpiresAtValue = d.toISOString();
+      appDurationLabel = `6 Meses (Até ${d.toLocaleDateString('pt-BR')})`;
+      isLifetimeVal = false;
+    } else if (clientAppDurationType === '1mes') {
+      const d = new Date();
+      d.setMonth(d.getMonth() + 1);
+      appExpiresAtValue = d.toISOString();
+      appDurationLabel = `1 Mês (Até ${d.toLocaleDateString('pt-BR')})`;
+      isLifetimeVal = false;
+    } else if (clientAppExpiresAt) {
+      try {
+        const d = new Date(clientAppExpiresAt);
+        appExpiresAtValue = d.toISOString();
+        appDurationLabel = d.toLocaleDateString('pt-BR');
+      } catch {
+        appExpiresAtValue = clientAppExpiresAt;
+        appDurationLabel = clientAppExpiresAt;
+      }
+      isLifetimeVal = false;
+    }
+
+    // Formata o vencimento do streaming
+    const vencimentoStreamingFormatted = clientExpiry 
+      ? new Date(clientExpiry).toLocaleDateString('pt-BR') + ' às ' + new Date(clientExpiry).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : 'Sem vencimento cadastrado';
+
+    // Se selecionado, anexa os dados cadastrais diretamente na URL do Canva / Página
+    const finalLink = clientAttachDataToLink
+      ? buildCanvasClientUrl(clientLink, {
+          suporte_nome: adminProfileName.trim() || undefined,
+          suporte_whatsapp: adminProfilePhone.trim() || undefined,
+          nome: clientName.trim(),
+          codigo: clientCode.trim(),
+          app: clientAppName.trim() || 'NEW HYBRID',
+          tempo_app: appDurationLabel,
+          vencimento_streaming: vencimentoStreamingFormatted,
+          telefone: clientPhone.trim() || undefined
+        })
+      : clientLink.trim();
+
     try {
+      const accessPointScreen: AccessPointScreen = {
+        screenNumber: 1,
+        appName: clientAppName.trim() || 'NEW HYBRID',
+        isLifetime: isLifetimeVal,
+        expiresAt: appExpiresAtValue,
+        authType: 'mac'
+      };
+
       const insertObj: any = {
-        name: clientName,
-        code: clientCode,
-        canvas_link: clientLink
+        name: clientName.trim(),
+        code: clientCode.trim(),
+        canvas_link: finalLink,
+        phone: clientPhone.trim() || null,
+        active_app: clientAppName.trim() || 'NEW HYBRID',
+        access_points: [accessPointScreen]
       };
       if (clientExpiry) {
         insertObj.due_date = new Date(clientExpiry).toISOString();
@@ -3535,7 +3720,13 @@ export default function App() {
       setClientCode(generateUniqueClientCode());
       setClientLink('https://testetestettt.my.canva.site/sr-carlos');
       setClientExpiry('');
-      alert(`✅ Cliente "${clientName}" cadastrado com sucesso!`);
+      setClientPhone('');
+      setClientAppName('NEW HYBRID');
+      setClientAppDurationType('vitalicio');
+      setClientAppExpiresAt('');
+      setClientAppIsLifetime(true);
+
+      alert(`✅ Cliente "${clientName}" cadastrado com sucesso!\n\n📱 App: ${insertObj.active_app} (${appDurationLabel})\n📡 Sinal: ${vencimentoStreamingFormatted}\n🌐 Canva: Dados vinculados à URL!`);
     } catch (err: any) {
       console.error('Erro inesperado ao cadastrar:', err);
       alert('Erro inesperado ao cadastrar cliente: ' + (err.message || 'Tente novamente.'));
@@ -4976,6 +5167,42 @@ export default function App() {
               {/* ───────────────────────────────────── */}
               {adminTab === 'clientes' && (
                 <div className="space-y-8">
+
+                  {/* Bloco de Configuração do Perfil do Admin */}
+                  <div className="bg-[#0f131c] p-5 md:p-6 rounded-3xl border border-indigo-500/30 space-y-4 shadow-xl">
+                    <h3 className="text-white font-bold text-base flex items-center gap-2 border-b border-slate-800 pb-3">
+                      <Shield size={18} className="text-indigo-400"/> Perfil do Suporte / Admin
+                      <span className="ml-auto text-[11px] font-normal text-indigo-300 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">Incluído no link do cliente</span>
+                    </h3>
+                    <p className="text-xs text-slate-400">Estes dados aparecem automaticamente no link da Área do Cliente quando um cliente é cadastrado.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <User size={12}/> Nome do Suporte / Empresa
+                        </label>
+                        <input
+                          type="text"
+                          value={adminProfileName}
+                          onChange={(e) => setAdminProfileName(e.target.value)}
+                          placeholder="Ex: THE BEST IPTV+"
+                          className="w-full bg-[#151922] border border-indigo-700/50 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                          <MessageCircle size={12}/> WhatsApp do Suporte
+                        </label>
+                        <input
+                          type="tel"
+                          value={adminProfilePhone}
+                          onChange={(e) => setAdminProfilePhone(e.target.value)}
+                          placeholder="Ex: 5511999999999"
+                          className="w-full bg-[#151922] border border-indigo-700/50 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Formulário Novo Cliente */}
                   <form onSubmit={handleAddClient} className="bg-[#0f131c] p-6 md:p-8 rounded-3xl border border-slate-800/80 space-y-5 shadow-2xl">
                     <h3 className="text-white font-bold text-lg flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -5010,6 +5237,20 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* WhatsApp do Cliente */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                        <MessageCircle size={12}/> WhatsApp do Cliente (Opcional)
+                      </label>
+                      <input
+                        type="tel"
+                        value={clientPhone}
+                        onChange={(e) => setClientPhone(e.target.value)}
+                        placeholder="Ex: 5511999999999"
+                        className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+
                     <div className="space-y-1.5">
                       <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Link da Área do Cliente (Canva / Página)</label>
                       <input
@@ -5017,6 +5258,54 @@ export default function App() {
                         placeholder="https://..."
                         className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
                       />
+                    </div>
+
+                    {/* Dados do Aplicativo */}
+                    <div className="bg-[#0c1018] p-4 rounded-2xl border border-blue-500/20 space-y-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-blue-300 flex items-center gap-1.5">
+                        <Smartphone size={13}/> Dados do Aplicativo
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Nome do App</label>
+                          <input
+                            type="text"
+                            value={clientAppName}
+                            onChange={(e) => setClientAppName(e.target.value)}
+                            placeholder="Ex: NEW HYBRID"
+                            className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Tempo do Aplicativo</label>
+                          <select
+                            value={clientAppDurationType}
+                            onChange={(e) => {
+                              const val = e.target.value as 'vitalicio' | '1ano' | '6meses' | '1mes' | 'custom';
+                              setClientAppDurationType(val);
+                              setClientAppIsLifetime(val === 'vitalicio');
+                            }}
+                            className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                          >
+                            <option value="vitalicio">Vitalício / Indeterminado</option>
+                            <option value="1ano">1 Ano</option>
+                            <option value="6meses">6 Meses</option>
+                            <option value="1mes">1 Mês</option>
+                            <option value="custom">Data Personalizada</option>
+                          </select>
+                        </div>
+                      </div>
+                      {clientAppDurationType === 'custom' && (
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-slate-400 font-bold uppercase tracking-wider">Data de Vencimento do App</label>
+                          <input
+                            type="datetime-local"
+                            value={clientAppExpiresAt}
+                            onChange={(e) => setClientAppExpiresAt(e.target.value)}
+                            className="w-full bg-[#151922] border border-slate-700 text-slate-50 px-4 py-3 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -5050,11 +5339,49 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* Preview do Link Gerado */}
+                    {clientLink && clientName && (
+                      <div className="bg-[#0c1018] p-4 rounded-2xl border border-emerald-500/20 space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                          <ExternalLink size={13}/> Preview do Link Gerado
+                        </p>
+                        <p className="text-[11px] text-slate-400 break-all font-mono leading-relaxed">
+                          {(() => {
+                            try {
+                              const venc = clientExpiry
+                                ? new Date(clientExpiry).toLocaleDateString('pt-BR') + ' às ' + new Date(clientExpiry).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                                : 'Sem vencimento cadastrado';
+                              let tempApp = 'Vitalício / Indeterminado';
+                              if (clientAppDurationType === '1ano') tempApp = '1 Ano';
+                              else if (clientAppDurationType === '6meses') tempApp = '6 Meses';
+                              else if (clientAppDurationType === '1mes') tempApp = '1 Mês';
+                              else if (clientAppDurationType === 'custom' && clientAppExpiresAt) tempApp = new Date(clientAppExpiresAt).toLocaleDateString('pt-BR');
+                              return buildCanvasClientUrl(clientLink, {
+                                suporte_nome: adminProfileName.trim() || undefined,
+                                suporte_whatsapp: adminProfilePhone.trim() || undefined,
+                                nome: clientName.trim() || 'Cliente',
+                                codigo: clientCode.trim() || 'CÓDIGO',
+                                app: clientAppName.trim() || 'NEW HYBRID',
+                                tempo_app: tempApp,
+                                vencimento_streaming: venc,
+                                telefone: clientPhone.trim() || undefined,
+                              });
+                            } catch { return clientLink; }
+                          })()}
+                        </p>
+                        <div className="flex items-center gap-2 text-[11px] text-emerald-300">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0"></span>
+                          Todos os dados do perfil, cliente e aplicativo serão incluídos automaticamente
+                        </div>
+                      </div>
+                    )}
+
 
                     <button type="submit" className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-600/30 text-sm">
                       Cadastrar Cliente
                     </button>
                   </form>
+
 
                   {/* Lista de Clientes com Barra de Pesquisa */}
                   {(() => {

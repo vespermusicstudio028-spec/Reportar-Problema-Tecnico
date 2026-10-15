@@ -21,11 +21,12 @@ import {
   Maximize2,
   Play,
   ExternalLink,
-  Video
+  Video,
+  RotateCw
 } from 'lucide-react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from '../types/trial';
 import { supabase } from '../lib/supabase';
-import { getVideoEmbedInfo, isVideoUrl, ensureAbsoluteUrl } from '../lib/videoUtils';
+import { getVideoEmbedInfo, isVideoUrl, ensureAbsoluteUrl, lockOrientationLandscape, unlockOrientation, isMobileDevice } from '../lib/videoUtils';
 
 interface Props {
   config: TrialConfig;
@@ -60,6 +61,7 @@ interface Props {
 const enterFullscreen = (elem: any) => {
   if (!elem) return;
   try {
+    lockOrientationLandscape(elem);
     if (elem.requestFullscreen) {
       elem.requestFullscreen().catch(() => {});
     } else if (elem.webkitEnterFullscreen) {
@@ -91,17 +93,47 @@ const TrialScreenWrapper = React.memo(function TrialScreenWrapper({
   return (
     <div
       ref={containerRef}
-      className="w-full min-h-full flex-1 flex flex-col justify-center items-center py-2 sm:py-4 px-2 sm:px-4 md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:overflow-y-auto md:py-10 md:px-6"
+      className="w-full min-h-screen flex-1 flex flex-col justify-start sm:justify-center items-center py-4 px-2 sm:px-4 overflow-y-auto md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:py-10 md:px-6"
     >
+      {/* Botão de rotação rápida no topo para mobile */}
+      <div className="flex md:hidden fixed top-3 left-3 z-[100] items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => lockOrientationLandscape()}
+          className="px-2.5 py-1.5 rounded-full bg-indigo-600/90 hover:bg-indigo-600 text-white text-[11px] font-bold shadow-lg flex items-center gap-1 backdrop-blur-md active:scale-95 transition-all border border-indigo-400/30"
+          title="Girar tela para horizontal"
+        >
+          <RotateCw size={13} />
+          <span>Girar Horizontal</span>
+        </button>
+      </div>
+
+      {/* Botão de fechar no mobile */}
       <button
         type="button"
-        onClick={onClose}
+        onClick={() => {
+          unlockOrientation();
+          onClose();
+        }}
+        className="flex md:hidden fixed top-3 right-3 w-9 h-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[100] group shadow-xl active:scale-95"
+        title="Fechar teste grátis"
+      >
+        <X size={18} />
+      </button>
+
+      {/* Botão de fechar no desktop */}
+      <button
+        type="button"
+        onClick={() => {
+          unlockOrientation();
+          onClose();
+        }}
         className="hidden md:flex fixed top-6 right-6 w-11 h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[100] group shadow-xl"
         title="Fechar teste grátis"
       >
         <X size={22} className="group-hover:scale-110 transition-transform" />
       </button>
-      <div className="w-full max-w-lg md:max-w-3xl mx-auto my-auto relative flex flex-col justify-center">
+      <div className="w-full max-w-lg md:max-w-3xl mx-auto my-auto relative flex flex-col justify-center pt-8 sm:pt-0">
         {children}
       </div>
     </div>
@@ -148,6 +180,22 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   useEffect(() => { selectedSubOptionIdRef.current = selectedSubOptionId; }, [selectedSubOptionId]);
   useEffect(() => { showRegisterModalRef.current = showRegisterModal; }, [showRegisterModal]);
   useEffect(() => { showSuccessModalRef.current = showSuccessModal; }, [showSuccessModal]);
+
+  // Garante orientação horizontal (landscape) no celular ao navegar no teste grátis ou ao assistir vídeo
+  useEffect(() => {
+    if (isMobileDevice()) {
+      lockOrientationLandscape();
+    }
+    return () => {
+      unlockOrientation();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeVideoModal && isMobileDevice()) {
+      lockOrientationLandscape();
+    }
+  }, [activeVideoModal]);
 
   // Trava o scroll da window enquanto o modal fullscreen de Teste Grátis estiver aberto.
   // Isso impede que o browser role a página para cima ao focar inputs dentro de

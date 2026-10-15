@@ -160,3 +160,73 @@ export function getVideoEmbedInfo(url?: string | null): VideoEmbedInfo {
     serviceName: 'Vídeo Externo'
   };
 }
+
+/**
+ * Detecta se o dispositivo atual é móvel (celular ou tablet)
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+  return /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua) || (window.innerWidth <= 768);
+}
+
+/**
+ * Trava a orientação da tela do celular na horizontal (landscape).
+ * Executa imediatamente na ação de toque do usuário para atender aos requisitos de segurança do navegador.
+ */
+export async function lockOrientationLandscape(element?: HTMLElement | null): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+  try {
+    const target = element || document.documentElement;
+
+    // 1. Tentar Fullscreen (a API Screen Orientation exige fullscreen na maioria dos navegadores mobile)
+    if (target.requestFullscreen && !document.fullscreenElement) {
+      await target.requestFullscreen().catch(() => {});
+    } else if ((target as any).webkitRequestFullscreen && !(document as any).webkitFullscreenElement) {
+      await (target as any).webkitRequestFullscreen().catch(() => {});
+    }
+
+    // 2. Travar orientação em landscape / paisagem
+    const screenAny = window.screen as any;
+    if (screenAny && screenAny.orientation && typeof screenAny.orientation.lock === 'function') {
+      await screenAny.orientation.lock('landscape').catch(() => {});
+      return true;
+    } else if (screenAny && typeof screenAny.lockOrientation === 'function') {
+      screenAny.lockOrientation('landscape');
+      return true;
+    } else if (screenAny && typeof screenAny.mozLockOrientation === 'function') {
+      screenAny.mozLockOrientation('landscape');
+      return true;
+    } else if (screenAny && typeof screenAny.msLockOrientation === 'function') {
+      screenAny.msLockOrientation('landscape');
+      return true;
+    }
+  } catch (err) {
+    console.warn('Orientação paisagem não suportada pelo navegador ou travada pelo sistema:', err);
+  }
+  return false;
+}
+
+/**
+ * Destrava a orientação e restaura a tela normal (vertical / auto)
+ */
+export function unlockOrientation(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const screenAny = window.screen as any;
+    if (screenAny && screenAny.orientation && typeof screenAny.orientation.unlock === 'function') {
+      screenAny.orientation.unlock();
+    } else if (screenAny && typeof screenAny.unlockOrientation === 'function') {
+      screenAny.unlockOrientation();
+    }
+
+    // Sair de tela cheia se ainda estiver ativo
+    const docAny = document as any;
+    if (docAny.fullscreenElement && docAny.exitFullscreen) {
+      docAny.exitFullscreen().catch(() => {});
+    } else if (docAny.webkitFullscreenElement && docAny.webkitExitFullscreen) {
+      docAny.webkitExitFullscreen().catch(() => {});
+    }
+  } catch (err) {}
+}
+

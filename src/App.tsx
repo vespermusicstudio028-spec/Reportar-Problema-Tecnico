@@ -16,7 +16,6 @@ import { AdminExpiryCalendarModal } from './components/AdminExpiryCalendarModal'
 import { ClientHomeExpiryCard } from './components/ClientHomeExpiryCard';
 import { computeClientExpiryNotice } from './lib/clientExpiryNotice';
 import { buildCanvasClientUrl } from './lib/canvasUrlBuilder';
-import { lockOrientationLandscape, unlockOrientation } from './lib/videoUtils';
 
 import { 
   RefreshCcw,
@@ -2045,10 +2044,7 @@ export default function App() {
               <div className="w-full mb-0.5">
                 <button
                   type="button"
-                  onClick={() => {
-                    lockOrientationLandscape();
-                    setTrialState('devices');
-                  }}
+                  onClick={() => setTrialState('devices')}
                   className="w-full relative overflow-hidden group rounded-2xl p-0.5 transition-all duration-300 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 shadow-2xl shadow-teal-500/20 hover:shadow-teal-500/40 hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <div className="absolute inset-0 bg-white/20 group-hover:bg-white/0 transition-colors duration-300" />

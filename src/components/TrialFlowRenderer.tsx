@@ -21,8 +21,7 @@ import {
   Maximize2,
   Play,
   ExternalLink,
-  Video,
-  RotateCw
+  Video
 } from 'lucide-react';
 import { TrialConfig, TrialDevice, TrialSubOption, TrialContentBlock } from '../types/trial';
 import { supabase } from '../lib/supabase';
@@ -95,19 +94,6 @@ const TrialScreenWrapper = React.memo(function TrialScreenWrapper({
       ref={containerRef}
       className="w-full min-h-screen flex-1 flex flex-col justify-start sm:justify-center items-center py-4 px-2 sm:px-4 overflow-y-auto md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:py-10 md:px-6"
     >
-      {/* Botão de rotação rápida no topo para mobile */}
-      <div className="flex md:hidden fixed top-3 left-3 z-[100] items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => lockOrientationLandscape()}
-          className="px-2.5 py-1.5 rounded-full bg-indigo-600/90 hover:bg-indigo-600 text-white text-[11px] font-bold shadow-lg flex items-center gap-1 backdrop-blur-md active:scale-95 transition-all border border-indigo-400/30"
-          title="Girar tela para horizontal"
-        >
-          <RotateCw size={13} />
-          <span>Girar Horizontal</span>
-        </button>
-      </div>
-
       {/* Botão de fechar no mobile */}
       <button
         type="button"
@@ -181,21 +167,33 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
   useEffect(() => { showRegisterModalRef.current = showRegisterModal; }, [showRegisterModal]);
   useEffect(() => { showSuccessModalRef.current = showSuccessModal; }, [showSuccessModal]);
 
-  // Garante orientação horizontal (landscape) no celular ao navegar no teste grátis ou ao assistir vídeo
+  // Destrava a orientação e volta à vertical/normal quando o usuário sair do modo tela cheia do vídeo
   useEffect(() => {
-    if (isMobileDevice()) {
-      lockOrientationLandscape();
-    }
+    const handleFullscreenChange = () => {
+      const isFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      if (!isFullscreen) {
+        unlockOrientation();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
     return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
       unlockOrientation();
     };
   }, []);
-
-  useEffect(() => {
-    if (activeVideoModal && isMobileDevice()) {
-      lockOrientationLandscape();
-    }
-  }, [activeVideoModal]);
 
   // Trava o scroll da window enquanto o modal fullscreen de Teste Grátis estiver aberto.
   // Isso impede que o browser role a página para cima ao focar inputs dentro de
@@ -878,6 +876,21 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                 </h3>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const playerContainer = document.getElementById('active-video-player-container');
+                    if (playerContainer) {
+                      const vid = playerContainer.querySelector('video') || playerContainer.querySelector('iframe') || playerContainer;
+                      enterFullscreen(vid);
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-colors flex items-center gap-1.5 shadow active:scale-95"
+                  title="Expandir na horizontal"
+                >
+                  <Maximize2 size={13} />
+                  <span>Expandir</span>
+                </button>
                 <a
                   href={ensureAbsoluteUrl(activeVideoModal.url)}
                   target="_blank"
@@ -890,7 +903,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                 </a>
                 <button
                   type="button"
-                  onClick={() => setActiveVideoModal(null)}
+                  onClick={() => {
+                    unlockOrientation();
+                    setActiveVideoModal(null);
+                  }}
                   className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
                   title="Fechar vídeo"
                 >
@@ -900,30 +916,58 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
             </div>
 
             {/* Corpo do Player */}
-            <div className="w-full aspect-video bg-black relative flex items-center justify-center">
+            <div id="active-video-player-container" className="w-full aspect-video bg-black relative flex items-center justify-center group">
               {(() => {
                 const embedInfo = getVideoEmbedInfo(activeVideoModal.url);
                 if (embedInfo.type === 'direct') {
                   return (
-                    <video
-                      src={embedInfo.embedUrl}
-                      controls
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-contain bg-black"
-                    />
+                    <div className="relative w-full h-full flex items-center justify-center">
+                      <video
+                        src={embedInfo.embedUrl}
+                        controls
+                        autoPlay
+                        playsInline
+                        className="w-full h-full object-contain bg-black"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          const video = e.currentTarget.parentElement?.querySelector('video');
+                          if (video) enterFullscreen(video);
+                        }}
+                        className="absolute top-3 right-3 p-2 rounded-xl bg-black/75 hover:bg-black/95 text-white backdrop-blur-md border border-white/20 transition-all z-20 shadow-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
+                        title="Expandir na horizontal"
+                      >
+                        <Maximize2 size={14} />
+                        <span className="text-xs">Tela Cheia</span>
+                      </button>
+                    </div>
                   );
                 }
                 if (embedInfo.isIframe) {
                   return (
-                    <iframe
-                      src={embedInfo.embedUrl}
-                      title={activeVideoModal.title}
-                      className="w-full h-full border-0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
-                      allowFullScreen
-                      referrerPolicy="strict-origin-when-cross-origin"
-                    />
+                    <div className="relative w-full h-full">
+                      <iframe
+                        src={embedInfo.embedUrl}
+                        title={activeVideoModal.title}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                        allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          const container = e.currentTarget.parentElement;
+                          if (container) enterFullscreen(container);
+                        }}
+                        className="absolute top-3 right-3 p-2 rounded-xl bg-black/75 hover:bg-black/95 text-white backdrop-blur-md border border-white/20 transition-all z-20 shadow-lg flex items-center gap-1.5 text-xs font-semibold cursor-pointer active:scale-95"
+                        title="Expandir na horizontal"
+                      >
+                        <Maximize2 size={14} />
+                        <span className="text-xs">Tela Cheia</span>
+                      </button>
+                    </div>
                   );
                 }
                 return (
@@ -1007,9 +1051,6 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                               src={embed.embedUrl} 
                               controls 
                               playsInline 
-                              onPlay={(e) => {
-                                enterFullscreen(e.currentTarget);
-                              }}
                               className="w-full h-full object-contain rounded-xl bg-black cursor-pointer" 
                             />
                             <button

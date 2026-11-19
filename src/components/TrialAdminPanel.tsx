@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Reorder } from 'motion/react';
 import { TrialConfig, defaultTrialConfig, TrialDevice, TrialSubOption, TrialContentBlock, TrialLink, TrialMedia } from '../types/trial';
-import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2, Eye, EyeOff, Copy, AlertTriangle, Play, ExternalLink } from 'lucide-react';
+import { Save, Plus, Trash2, Edit2, ChevronLeft, Link as LinkIcon, ArrowRight, UploadCloud, X, ImageIcon, Video, Loader2, Eye, EyeOff, Copy, AlertTriangle, Play, ExternalLink, Key } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getVideoEmbedInfo, isVideoUrl, ensureAbsoluteUrl } from '../lib/videoUtils';
 
@@ -607,20 +607,44 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
           </div>
 
           {c.showMacInput && (
-            <div className="pt-3 border-t border-slate-800 space-y-2">
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
-                Nome do Aplicativo (Enviado automaticamente no WhatsApp)
-              </label>
-              <input
-                type="text"
-                value={c.macAppName || ''}
-                onChange={e => setField({ macAppName: e.target.value })}
-                placeholder="Ex: IBO Player, XCIPTV, Smarters Pro, Smart STB"
-                className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-4 py-2.5 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
-              />
-              <p className="text-[11px] text-slate-500">
-                Quando o cliente preencher o MAC ou Código, o nome deste aplicativo será anexado automaticamente na mensagem do WhatsApp.
-              </p>
+            <div className="pt-3 border-t border-slate-800 space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Nome do Aplicativo (Enviado automaticamente no WhatsApp)
+                </label>
+                <input
+                  type="text"
+                  value={c.macAppName || ''}
+                  onChange={e => setField({ macAppName: e.target.value })}
+                  placeholder="Ex: IBO Player, XCIPTV, Smarters Pro, Smart STB"
+                  className="w-full bg-[#15181e] border border-slate-700 text-slate-50 px-4 py-2.5 rounded-xl text-sm outline-none focus:border-indigo-500 transition-colors"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Quando o cliente preencher o MAC ou Código, o nome deste aplicativo será anexado automaticamente na mensagem do WhatsApp.
+                </p>
+              </div>
+
+              {/* Opção para Ocultar / Exibir campo Device Key / Código do App */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#15181e] border border-slate-700/80">
+                <div className="pr-3">
+                  <h6 className="font-bold text-xs text-slate-200 flex items-center gap-1.5">
+                    <Key size={14} className="text-amber-400" />
+                    Ocultar "Device Key / Código do App"
+                  </h6>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Ative esta opção para ocultar o campo "Device Key / Código do App" para este aplicativo específico.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={c.hideDeviceKey || false}
+                    onChange={e => setField({ hideDeviceKey: e.target.checked })}
+                  />
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+                </label>
+              </div>
             </div>
           )}
         </div>
@@ -745,6 +769,39 @@ export function TrialAdminPanel({ config, onSave, onRegisterStepBack }: Props) {
               </div>
             </div>
           )}
+        </div>
+
+        {/* CONFIGURAÇÃO GLOBAL: OCULTAR DEVICE KEY */}
+        <div className="bg-[#0c0e12] border border-slate-800 p-5 rounded-2xl mb-6 shadow-lg">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400 shrink-0 mt-0.5">
+                <Key size={20} />
+              </div>
+              <div>
+                <h4 className="text-white font-bold text-sm flex items-center gap-2">
+                  Ocultar "Device Key / Código do App" (Global)
+                  {localConfig.hideDeviceKeyGlobal && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Ocultado
+                    </span>
+                  )}
+                </h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Ative esta opção para ocultar o campo "Device Key / Código do App" em todos os dispositivos e aplicativos do Teste Grátis de 3h com um único clique.
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                className="sr-only peer"
+                checked={localConfig.hideDeviceKeyGlobal || false}
+                onChange={e => setLocalConfig({ ...localConfig, hideDeviceKeyGlobal: e.target.checked })}
+              />
+              <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
         </div>
 
         {/* LISTA DE DISPOSITIVOS DRAGGABLE */}

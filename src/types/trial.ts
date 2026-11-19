@@ -24,6 +24,7 @@ export interface TrialContentBlock {
   bottomAlert?: { type: 'info' | 'warning' | 'danger'; text: string };
   changelog?: { version: string; items: string[] };
   showMacInput?: boolean;
+  hideDeviceKey?: boolean; // Oculta o campo Device Key / Código do App nesta tela
   macAppName?: string;
   warningAlert?: string; // Campo legado usado no conteúdo padrão de Celular
 }
@@ -47,6 +48,7 @@ export interface TrialDevice {
 
 export interface TrialConfig {
   devices: TrialDevice[];
+  hideDeviceKeyGlobal?: boolean; // Oculta o campo Device Key / Código do App globalmente em todas as telas
   globalAlert?: {
     enabled: boolean;
     title: string;

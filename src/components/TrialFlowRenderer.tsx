@@ -355,7 +355,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
       // 3. Montar mensagem do cliente com o link de pagamento
       const paymentMarker = `[PAYMENT_LINK:${payLink}|||${payLabel}|||${payValue}]`;
 
-      let msgText = `➕ *Solicitação de Ponto Adicional (+1 Tela)*\n\n👤 *Cliente:* ${activeName}\n🔑 *Código:* ${activeCode}\n\n📺 *Novo Ponto (Tela ${newScreenNumber}):* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}\n\n💰 *Taxa de Ativação do Ponto:* ${payValue}\n💰 *Valor das Próximas Renovações:* R$ ${newPlanPrice},00 (${updatedScreens.length} Telas)\n\n${paymentMarker}`;
+      const isDeviceKeyHidden = Boolean(content?.hideDeviceKey || config?.hideDeviceKeyGlobal);
+      const keyLine = isDeviceKeyHidden ? '' : `\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+
+      let msgText = `➕ *Solicitação de Ponto Adicional (+1 Tela)*\n\n👤 *Cliente:* ${activeName}\n🔑 *Código:* ${activeCode}\n\n📺 *Novo Ponto (Tela ${newScreenNumber}):* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}${keyLine}\n\n💰 *Taxa de Ativação do Ponto:* ${payValue}\n💰 *Valor das Próximas Renovações:* R$ ${newPlanPrice},00 (${updatedScreens.length} Telas)\n\n${paymentMarker}`;
 
       if (imagePreview && attachedImage) {
         const payload = {
@@ -431,7 +434,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
       const appName = content.macAppName || selectedSubOption?.name || content.title || selectedDevice?.name || 'Aplicativo';
       const deviceTitle = selectedDevice?.name || 'Dispositivo';
 
-      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+      const isDeviceKeyHidden = Boolean(content?.hideDeviceKey || config?.hideDeviceKeyGlobal);
+      const keyLine = isDeviceKeyHidden ? '' : `\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+
+      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}${keyLine}`;
 
       if (imagePreview && attachedImage) {
         const payload = {
@@ -594,7 +600,10 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
         paymentMarker = `[PAYMENT_LINK:https://mpago.la/1hXh4nb|||Contratar 1 Ponto (R$ 30,00)|||R$ 30,00]\n[PAYMENT_LINK:https://mpago.la/2Dpsfqh|||Contratar 2 Pontos (R$ 55,00)|||R$ 55,00]`;
       }
 
-      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n👤 *Cliente Novo:* ${regName.trim()}\n📱 *WhatsApp:* ${regPhone.trim()}\n🔑 *Código de Acesso:* ${newCode}\n💰 *Valor do Plano:* R$ ${calculatedPrice},00 (${calculatedPlan})${isPromo30Device ? ' (1 Ponto R$ 30,00 | 2 Pontos R$ 55,00)' : ''}\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}${paymentMarker ? `\n\n${paymentMarker}` : ''}`;
+      const isDeviceKeyHidden = Boolean(content?.hideDeviceKey || config?.hideDeviceKeyGlobal);
+      const keyLine = isDeviceKeyHidden ? '' : `\n🔑 *Device Key / Código:* ${deviceKey.trim() || 'Não informado'}`;
+
+      let msgText = `🎁 *Solicitação de Teste Grátis de 3h*\n\n👤 *Cliente Novo:* ${regName.trim()}\n📱 *WhatsApp:* ${regPhone.trim()}\n🔑 *Código de Acesso:* ${newCode}\n💰 *Valor do Plano:* R$ ${calculatedPrice},00 (${calculatedPlan})${isPromo30Device ? ' (1 Ponto R$ 30,00 | 2 Pontos R$ 55,00)' : ''}\n\n📺 *Dispositivo:* ${deviceTitle}\n📲 *Aplicativo:* ${appName}\n🔢 *Código MAC:* ${macCode.trim() || 'Não informado'}${keyLine}${paymentMarker ? `\n\n${paymentMarker}` : ''}`;
 
       if (imagePreview && attachedImage) {
         const payload = {
@@ -1281,16 +1290,18 @@ export function TrialFlowRenderer({ config, mode = 'trial', onClose, onOpenChat,
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">Device Key / Código do App</label>
-                  <input
-                    type="text"
-                    value={deviceKey}
-                    onChange={(e) => setDeviceKey(e.target.value)}
-                    placeholder="Ex: 123456"
-                    className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
-                  />
-                </div>
+                {!Boolean(content.hideDeviceKey || config?.hideDeviceKeyGlobal) && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1 uppercase tracking-wider">Device Key / Código do App</label>
+                    <input
+                      type="text"
+                      value={deviceKey}
+                      onChange={(e) => setDeviceKey(e.target.value)}
+                      placeholder="Ex: 123456"
+                      className="w-full bg-[#0c0e12] border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500 transition-colors uppercase text-sm"
+                    />
+                  </div>
+                )}
 
                 {/* Upload de Foto da Tela do App (Opcional) */}
                 <div className="pt-1">

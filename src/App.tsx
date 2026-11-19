@@ -16,6 +16,7 @@ import { AdminExpiryCalendarModal } from './components/AdminExpiryCalendarModal'
 import { ClientHomeExpiryCard } from './components/ClientHomeExpiryCard';
 import { computeClientExpiryNotice } from './lib/clientExpiryNotice';
 import { buildCanvasClientUrl } from './lib/canvasUrlBuilder';
+import { unlockOrientation } from './lib/videoUtils';
 
 import { 
   RefreshCcw,
@@ -1730,6 +1731,11 @@ export default function App() {
             onClose={() => {
               unlockOrientation();
               setTrialState(null);
+              setActiveView('dashboard');
+              if (window.history.state?.page === 'trial') {
+                window.history.replaceState({ app: 'tbi', page: 'dashboard', depth: 0 }, '', window.location.href);
+              }
+              window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onRegisterStepBack={(handler) => {
               trialStepBackRef.current = handler;

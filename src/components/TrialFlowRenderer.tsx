@@ -80,13 +80,12 @@ const enterFullscreen = (elem: any) => {
 
 interface TrialScreenWrapperProps {
   containerRef: React.RefObject<HTMLDivElement>;
-  onClose: () => void;
+  onClose?: () => void;
   children: React.ReactNode;
 }
 
 const TrialScreenWrapper = React.memo(function TrialScreenWrapper({
   containerRef,
-  onClose,
   children,
 }: TrialScreenWrapperProps) {
   return (
@@ -94,32 +93,7 @@ const TrialScreenWrapper = React.memo(function TrialScreenWrapper({
       ref={containerRef}
       className="w-full min-h-screen flex-1 flex flex-col justify-start sm:justify-center items-center py-4 px-2 sm:px-4 overflow-y-auto md:fixed md:inset-0 md:z-[80] md:bg-[#07090e]/95 md:backdrop-blur-xl md:py-10 md:px-6"
     >
-      {/* Botão de fechar no mobile */}
-      <button
-        type="button"
-        onClick={() => {
-          unlockOrientation();
-          onClose();
-        }}
-        className="flex md:hidden fixed top-3 right-3 w-9 h-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[100] group shadow-xl active:scale-95"
-        title="Fechar teste grátis"
-      >
-        <X size={18} />
-      </button>
-
-      {/* Botão de fechar no desktop */}
-      <button
-        type="button"
-        onClick={() => {
-          unlockOrientation();
-          onClose();
-        }}
-        className="hidden md:flex fixed top-6 right-6 w-11 h-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white transition-all backdrop-blur-md border border-white/10 z-[100] group shadow-xl"
-        title="Fechar teste grátis"
-      >
-        <X size={22} className="group-hover:scale-110 transition-transform" />
-      </button>
-      <div className="w-full max-w-lg md:max-w-3xl mx-auto my-auto relative flex flex-col justify-center pt-8 sm:pt-0">
+      <div className="w-full max-w-lg md:max-w-3xl mx-auto my-auto relative flex flex-col justify-center">
         {children}
       </div>
     </div>

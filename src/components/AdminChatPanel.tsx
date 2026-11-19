@@ -377,6 +377,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     messages.forEach((msg) => {
       const clientInfo = clientsList.find((c) => c.code === msg.client_code);
       const isSupportName = msg.client_name && msg.client_name.toLowerCase().includes('suporte');
+      // Prioridade: 1) nome do cadastro, 2) client_name da msg (se não for "Suporte"), 3) fallback com código
       const name = clientInfo?.name || (!isSupportName ? msg.client_name : null) || `Cliente (${msg.client_code})`;
 
       const existing = map.get(msg.client_code);
@@ -393,9 +394,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         });
       } else {
         // Garante que o título da conversa seja sempre o nome real do cliente (tipo WhatsApp)
+        // Sempre atualiza se encontrou no cadastro — tem prioridade máxima
         if (clientInfo?.name) {
           existing.client_name = clientInfo.name;
-        } else if (!isSupportName && msg.client_name) {
+        } else if (!isSupportName && msg.client_name && msg.sender === 'client') {
+          // Só atualiza pelo nome da mensagem se vier do próprio cliente (evita sobrescrever com nome de bot)
+          existing.client_name = msg.client_name;
+        } else if (existing.client_name.startsWith('Cliente (') && !isSupportName && msg.client_name) {
+          // Se ainda é o fallback genérico e o nome não é "Suporte", usa o que tiver
           existing.client_name = msg.client_name;
         }
         existing.last_message = msg.message;
@@ -1453,8 +1459,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           {selectedClientCode ? (
             <>
               {/* Header do Chat Ativo */}
-              <div className="p-3.5 md:px-6 bg-[#121620] border-b border-slate-800/80 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="p-3.5 md:px-6 bg-[#121620] border-b border-slate-800/80 flex items-center justify-between gap-2 overflow-hidden">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   {/* Botão Voltar — só aparece no mobile */}
                   <button
                     type="button"
@@ -1470,14 +1476,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   <div className="w-10 h-10 rounded-full bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold">
                     {activeClientName.charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-white text-sm md:text-base">{activeClientName}</h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-white text-sm md:text-base truncate">{activeClientName}</h3>
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full shrink-0">
                         Código: {selectedClientCode}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
+                    <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5 flex-wrap">
                       {selectedClientInfo?.phone && (
                         <a
                           href={`https://wa.me/${selectedClientInfo.phone.replace(/\D/g, '')}`}
@@ -1502,41 +1508,45 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                {/* Botões de ação — roláveis horizontalmente no mobile para caber todos */}
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5 max-w-[58%] sm:max-w-none flex-shrink-0">
                   <button
                     type="button"
                     onClick={handleOpenRenovarAppSite}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-emerald-950/40 active:scale-95 border border-emerald-400/40 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs transition-all flex items-center gap-1 shadow-md shadow-emerald-950/40 active:scale-95 border border-emerald-400/40 cursor-pointer whitespace-nowrap shrink-0"
                     title="Abrir site AtiveApp para renovar aplicativo deste cliente"
                   >
                     <Smartphone size={14} className="text-emerald-100" />
-                    <span>Renovar App ↗</span>
+                    <span className="hidden sm:inline">Renovar App ↗</span>
+                    <span className="sm:hidden">App ↗</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleOpenRenovarStreamingSite}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-blue-950/40 active:scale-95 border border-blue-400/40 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs transition-all flex items-center gap-1 shadow-md shadow-blue-950/40 active:scale-95 border border-blue-400/40 cursor-pointer whitespace-nowrap shrink-0"
                     title="Abrir Painel.fun para renovar streaming deste cliente"
                   >
                     <Tv size={14} className="text-blue-100" />
-                    <span>Renovar Streaming ↗</span>
+                    <span className="hidden sm:inline">Renovar Streaming ↗</span>
+                    <span className="sm:hidden">Stream ↗</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleOpenPedirCreditoSite}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-amber-950/40 active:scale-95 border border-amber-400/40 cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition-all flex items-center gap-1 shadow-md shadow-amber-950/40 active:scale-95 border border-amber-400/40 cursor-pointer whitespace-nowrap shrink-0"
                     title="Acesso Turbo Gestor — Thebes (Pedir Crédito)"
                   >
                     <CreditCard size={14} className="text-amber-100" />
-                    <span>Pedir Crédito ↗</span>
+                    <span className="hidden sm:inline">Pedir Crédito ↗</span>
+                    <span className="sm:hidden">Crédito ↗</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setShowMemoryModal(true)}
-                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-purple-900/20 active:scale-95"
+                    className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-indigo-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 text-purple-200 hover:text-white border border-purple-500/40 text-xs font-bold transition-all flex items-center gap-1 shadow-md shadow-purple-900/20 active:scale-95 whitespace-nowrap shrink-0"
                     title="Ver e Gerenciar Memória do Cliente"
                   >
                     <Brain size={15} className="text-purple-300" />
@@ -1546,7 +1556,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   <button
                     type="button"
                     onClick={handleDeleteConversation}
-                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all border border-red-500/20"
+                    className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all border border-red-500/20 shrink-0"
                     title="Apagar conversa deste cliente"
                   >
                     <Trash2 size={16} />

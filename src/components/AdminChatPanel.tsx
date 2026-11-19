@@ -29,7 +29,8 @@ import {
   Smartphone,
   Tv,
   AlertTriangle,
-  Zap
+  Zap,
+  CreditCard
 } from 'lucide-react';
 import { PixPdfCard } from './PixPdfCard';
 import { isPixPdfMessage, parsePixPdfMessage, getAutomatedPixConfirmedMessage } from '../lib/pixUtils';
@@ -537,6 +538,22 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     }
   };
 
+  // Abrir site Turbo Gestor para pedir crédito (Thebes)
+  const handleOpenPedirCreditoSite = () => {
+    window.open('https://turbogestor.online/login', '_blank', 'noopener,noreferrer');
+
+    try {
+      navigator.clipboard.writeText('thebestiptv10@gmail.com');
+      alert(
+        `🌐 Acesso Turbo Gestor — Thebes aberto!\n\n📋 Login copiado para a área de transferência: thebestiptv10@gmail.com\n🔑 Senha: Ppem032212\n\n📌 Link: https://turbogestor.online/login`
+      );
+    } catch {
+      alert(
+        `🌐 Acesso Turbo Gestor — Thebes aberto!\n\n🔑 Credenciais de Acesso:\n• Login: thebestiptv10@gmail.com\n• Senha: Ppem032212\n\n📌 Link: https://turbogestor.online/login`
+      );
+    }
+  };
+
   // Enviar resposta do administrador sem delay (feedback instantâneo)
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || replyText).trim();
@@ -904,7 +921,18 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       icon: '📺',
       action: handleOpenRenovarStreamingSite,
     },
-  ], [handleOpenRenovarAppSite, handleOpenRenovarStreamingSite]);
+    {
+      id: 'pedir-credito',
+      command: '/credito',
+      aliases: ['/pedircredito', '/turbogestor', '/turbo'],
+      label: '💳 Pedir Crédito (Turbo Gestor — Thebes)',
+      description: 'Abre o site Turbo Gestor para comprar créditos com credenciais copiadas',
+      badge: 'Atalho Web',
+      badgeColor: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+      icon: '💳',
+      action: handleOpenPedirCreditoSite,
+    },
+  ], [handleOpenRenovarAppSite, handleOpenRenovarStreamingSite, handleOpenPedirCreditoSite]);
 
   // Atalhos personalizados convertidos para SlashCommandItem
   const customSlashItems: SlashCommandItem[] = React.useMemo(() =>
@@ -1219,6 +1247,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
             </button>
 
             <button
+              onClick={handleOpenPedirCreditoSite}
+              className="p-2 rounded-xl bg-amber-600/25 hover:bg-amber-600/40 text-amber-300 hover:text-white border border-amber-500/40 transition-all shrink-0 flex items-center gap-1 cursor-pointer"
+              title="Acesso Turbo Gestor — Thebes (Pedir Crédito)"
+            >
+              <CreditCard size={15} />
+            </button>
+
+            <button
               onClick={() => setShowStoreManager(true)}
               className="p-2 rounded-xl bg-amber-600/20 hover:bg-amber-600/35 text-amber-300 border border-amber-500/30 transition-all shrink-0"
               title="Loja & Produtos"
@@ -1485,6 +1521,16 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                   >
                     <Tv size={14} className="text-blue-100" />
                     <span>Renovar Streaming ↗</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenPedirCreditoSite}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md shadow-amber-950/40 active:scale-95 border border-amber-400/40 cursor-pointer"
+                    title="Acesso Turbo Gestor — Thebes (Pedir Crédito)"
+                  >
+                    <CreditCard size={14} className="text-amber-100" />
+                    <span>Pedir Crédito ↗</span>
                   </button>
 
                   <button
@@ -1968,6 +2014,14 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                 >
                   <Tv size={16} />
                   <span>Renovar Streaming (Painel.fun) ↗</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenPedirCreditoSite}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs shadow-lg shadow-amber-950/40 transition-all flex items-center gap-2 active:scale-95 border border-amber-400/40 cursor-pointer"
+                >
+                  <CreditCard size={16} />
+                  <span>Pedir Crédito (Turbo Gestor) ↗</span>
                 </button>
               </div>
             </div>

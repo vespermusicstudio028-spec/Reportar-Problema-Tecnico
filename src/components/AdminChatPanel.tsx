@@ -375,7 +375,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
     // Primeiro preencher com clientes que enviaram mensagens
     messages.forEach((msg) => {
       const clientInfo = clientsList.find((c) => c.code === msg.client_code);
-      const name = msg.client_name || clientInfo?.name || `Cliente (${msg.client_code})`;
+      const isSupportName = msg.client_name && msg.client_name.toLowerCase().includes('suporte');
+      const name = clientInfo?.name || (!isSupportName ? msg.client_name : null) || `Cliente (${msg.client_code})`;
 
       const existing = map.get(msg.client_code);
       const isUnread = msg.sender === 'client' && !msg.read_by_admin;
@@ -390,6 +391,12 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
           last_sender: msg.sender
         });
       } else {
+        // Garante que o título da conversa seja sempre o nome real do cliente (tipo WhatsApp)
+        if (clientInfo?.name) {
+          existing.client_name = clientInfo.name;
+        } else if (!isSupportName && msg.client_name) {
+          existing.client_name = msg.client_name;
+        }
         existing.last_message = msg.message;
         existing.last_message_time = msg.created_at;
         existing.last_sender = msg.sender;
@@ -691,7 +698,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       const optimisticMsg: ChatMessage = {
         id: 'opt-pix-conf-' + Date.now(),
         client_code: clientCode,
-        client_name: 'Suporte The Best IPTV+',
+        client_name: clientName || 'Cliente',
         sender: 'admin',
         message: confirmMsg,
         created_at: new Date().toISOString(),
@@ -702,7 +709,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
 
       const { error } = await supabase.from('chat_messages').insert({
         client_code: clientCode,
-        client_name: 'Suporte The Best IPTV+',
+        client_name: clientName || 'Cliente',
         sender: 'admin',
         message: confirmMsg,
         read_by_admin: true,
@@ -992,7 +999,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       const turnMsg = getAutomatedTurnReachedMessage(activeClientName);
       await supabase.from('chat_messages').insert({
         client_code: selectedClientCode,
-        client_name: 'Suporte The Best IPTV+',
+        client_name: activeClientName || 'Cliente',
         sender: 'admin',
         message: turnMsg,
         read_by_admin: true,
@@ -1011,7 +1018,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
       const finishMsg = getAutomatedFinishAttendanceMessage(activeClientName);
       await supabase.from('chat_messages').insert({
         client_code: selectedClientCode,
-        client_name: 'Suporte The Best IPTV+',
+        client_name: activeClientName || 'Cliente',
         sender: 'admin',
         message: finishMsg,
         read_by_admin: true,
@@ -1030,7 +1037,7 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
         const turnMsg = getAutomatedTurnReachedMessage(nextInQueue.client_name);
         await supabase.from('chat_messages').insert({
           client_code: nextInQueue.client_code,
-          client_name: 'Suporte The Best IPTV+',
+          client_name: nextInQueue.client_name || 'Cliente',
           sender: 'admin',
           message: turnMsg,
           read_by_admin: true,

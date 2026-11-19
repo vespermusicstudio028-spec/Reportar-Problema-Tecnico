@@ -389,7 +389,7 @@ export async function checkAndSendAutomaticExpiryNotices(
 
       const { error: insertErr } = await supabase.from('chat_messages').insert({
         client_code: client.code,
-        client_name: 'Suporte The Best IPTV+',
+        client_name: client.name || 'Cliente',
         sender: 'admin',
         message: formattedMessage,
         read_by_admin: true,

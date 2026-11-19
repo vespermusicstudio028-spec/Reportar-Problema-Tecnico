@@ -1,8 +1,10 @@
 {
-  "name": "The Best IPTV – Suporte",
-  "short_name": "IPTV Suporte",
-  "description": "Envie comprovantes de pagamento e fale com o suporte da The Best IPTV.",
+  "id": "/",
+  "name": "Reportar Problema Técnico",
+  "short_name": "Reportar Problema",
+  "description": "Painel de suporte técnico e envio de comprovantes",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",
@@ -32,15 +34,7 @@
           "name": "comprovante",
           "accept": [
             "application/pdf",
-            "image/jpeg",
-            "image/jpg",
-            "image/png",
-            "image/webp",
-            ".pdf",
-            ".jpg",
-            ".jpeg",
-            ".png",
-            ".webp"
+            "image/*"
           ]
         }
       ]

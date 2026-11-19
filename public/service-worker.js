@@ -46,14 +46,25 @@ self.addEventListener('fetch', (event) => {
 async function handleShareTarget(request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('comprovante');
+    // Tenta obter pelo nome 'comprovante', ou pega o primeiro File/Blob recebido
+    let file = formData.get('comprovante');
+    if (!file || !(file instanceof File || file instanceof Blob)) {
+      for (const value of formData.values()) {
+        if (value instanceof File || value instanceof Blob) {
+          file = value;
+          break;
+        }
+      }
+    }
 
     if (file && (file instanceof File || file instanceof Blob)) {
       const cache = await caches.open(SHARE_CACHE);
+      const defaultName = file.type === 'application/pdf' ? 'comprovante.pdf' : 'comprovante.jpg';
+      const fileName = (file instanceof File && file.name) ? file.name : defaultName;
       const fileResponse = new Response(file, {
         headers: {
           'Content-Type': file.type || 'application/octet-stream',
-          'X-File-Name': (file instanceof File ? file.name : 'comprovante') || 'comprovante',
+          'X-File-Name': fileName,
           'X-File-Size': String(file.size || 0)
         }
       });

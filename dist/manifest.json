@@ -1,8 +1,10 @@
 {
-  "name": "Suporte Técnico",
-  "short_name": "Suporte",
-  "description": "Painel de suporte técnico",
+  "id": "/",
+  "name": "Reportar Problema Técnico",
+  "short_name": "Reportar Problema",
+  "description": "Painel de suporte técnico e envio de comprovantes",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",
@@ -18,5 +20,24 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/share-comprovante",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "comprovante",
+          "accept": [
+            "application/pdf",
+            "image/*"
+          ]
+        }
+      ]
+    }
+  }
 }

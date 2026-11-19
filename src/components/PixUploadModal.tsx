@@ -1,44 +1,84 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, Upload, X, Loader2, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FileText, Image, Upload, X, Loader2, Sparkles, CheckCircle2, AlertCircle, Share2 } from 'lucide-react';
 import { formatFileSize, buildPixPdfMessage } from '../lib/pixUtils';
 
 interface PixUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSendPixPayload: (messagePayload: string, fileName: string) => Promise<void>;
+  /** Arquivo pré-carregado via Web Share Target (PWA compartilhamento Android) */
+  preloadedFile?: File | null;
+}
+
+/** Tipos de arquivo aceitos como comprovante */
+const ACCEPTED_TYPES = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const ACCEPTED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.webp'];
+const MAX_SIZE = 12 * 1024 * 1024; // 12MB
+
+function isAcceptedFile(file: File): boolean {
+  return (
+    ACCEPTED_TYPES.includes(file.type) ||
+    ACCEPTED_EXTENSIONS.some(ext => file.name.toLowerCase().endsWith(ext))
+  );
+}
+
+function isPdfFile(file: File): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
 export const PixUploadModal: React.FC<PixUploadModalProps> = ({
   isOpen,
   onClose,
-  onSendPixPayload
+  onSendPixPayload,
+  preloadedFile
 }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileBase64, setFileBase64] = useState<string>('');
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string>('');
   const [caption, setCaption] = useState<string>('Comprovante de pagamento via Pix');
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isSharedFile, setIsSharedFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setErrorMsg('');
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Carrega automaticamente o arquivo pré-carregado via share target
+  useEffect(() => {
+    if (isOpen && preloadedFile) {
+      setIsSharedFile(true);
+      loadFile(preloadedFile);
+    }
+  }, [isOpen, preloadedFile]);
 
-    // Verificar se é PDF
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      setErrorMsg('Por favor, selecione um arquivo em formato PDF (.pdf).');
+  // Limpa preview ao fechar
+  useEffect(() => {
+    if (!isOpen) {
+      if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    }
+  }, [isOpen]);
+
+  const loadFile = (file: File) => {
+    setErrorMsg('');
+
+    if (!isAcceptedFile(file)) {
+      setErrorMsg('Formato não suportado. Use PDF, JPG, PNG ou WebP.');
       return;
     }
-
-    // Limite de 12MB
-    if (file.size > 12 * 1024 * 1024) {
-      setErrorMsg('O arquivo PDF não pode ultrapassar 12MB.');
+    if (file.size > MAX_SIZE) {
+      setErrorMsg('O arquivo não pode ultrapassar 12MB.');
       return;
     }
 
     setSelectedFile(file);
+
+    // Preview de imagem
+    if (!isPdfFile(file)) {
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreviewUrl(previewUrl);
+    } else {
+      setImagePreviewUrl('');
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       setFileBase64(reader.result as string);
@@ -47,6 +87,13 @@ export const PixUploadModal: React.FC<PixUploadModalProps> = ({
       setErrorMsg('Erro ao ler o arquivo selecionado.');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsSharedFile(false);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    loadFile(file);
   };
 
   const handleSend = async () => {
@@ -74,13 +121,18 @@ export const PixUploadModal: React.FC<PixUploadModalProps> = ({
   const handleClose = () => {
     setSelectedFile(null);
     setFileBase64('');
+    if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+    setImagePreviewUrl('');
     setCaption('Comprovante de pagamento via Pix');
     setErrorMsg('');
     setIsProcessing(false);
+    setIsSharedFile(false);
     onClose();
   };
 
   if (!isOpen) return null;
+
+  const isImage = selectedFile && !isPdfFile(selectedFile);
 
   return (
     <AnimatePresence>
@@ -99,7 +151,7 @@ export const PixUploadModal: React.FC<PixUploadModalProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-white text-base sm:text-lg">Enviar Comprovante Pix</h3>
-                <p className="text-xs text-slate-400">Anexe o arquivo em PDF do seu pagamento</p>
+                <p className="text-xs text-slate-400">Anexe PDF ou foto do comprovante</p>
               </div>
             </div>
 
@@ -111,6 +163,14 @@ export const PixUploadModal: React.FC<PixUploadModalProps> = ({
               <X size={20} />
             </button>
           </div>
+
+          {/* Badge "Compartilhado via app" */}
+          {isSharedFile && selectedFile && (
+            <div className="mt-3 px-3 py-2 rounded-xl bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs flex items-center gap-2">
+              <Share2 size={14} className="shrink-0" />
+              <span>Arquivo recebido via compartilhamento Android — pronto para enviar!</span>
+            </div>
+          )}
 
           {/* Conteúdo */}
           <div className="mt-4 space-y-4">
@@ -130,16 +190,21 @@ export const PixUploadModal: React.FC<PixUploadModalProps> = ({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="application/pdf,.pdf"
+                  accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp"
                   onChange={handleFileChange}
                   className="hidden"
                 />
-                <div className="w-14 h-14 rounded-2xl bg-red-500/15 group-hover:bg-red-500/25 text-red-400 flex items-center justify-center transition-all group-hover:scale-110">
-                  <FileText size={28} />
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/15 group-hover:bg-red-500/25 text-red-400 flex items-center justify-center transition-all group-hover:scale-110">
+                    <FileText size={24} />
+                  </div>
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/15 group-hover:bg-blue-500/25 text-blue-400 flex items-center justify-center transition-all group-hover:scale-110">
+                    <Image size={24} />
+                  </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-bold text-white text-sm">Clique para escolher o arquivo PDF</p>
-                  <p className="text-xs text-slate-400">Formatos aceitos: PDF (máx. 12MB)</p>
+                  <p className="font-bold text-white text-sm">Clique para escolher o comprovante</p>
+                  <p className="text-xs text-slate-400">PDF, JPG, PNG ou WebP — máx. 12MB</p>
                 </div>
                 <span className="mt-2 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
                   <Upload size={12} /> Selecionar Comprovante
@@ -147,51 +212,75 @@ export const PixUploadModal: React.FC<PixUploadModalProps> = ({
               </div>
             ) : (
               /* Arquivo Selecionado */
-              <div className="p-4 rounded-2xl bg-[#141828] border border-slate-700/80 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0 pr-2">
-                    <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white shadow-md shrink-0">
-                      <FileText size={22} />
+              <div className="rounded-2xl bg-[#141828] border border-slate-700/80 overflow-hidden">
+                {/* Preview de Imagem (se for foto) */}
+                {isImage && imagePreviewUrl && (
+                  <div className="relative w-full max-h-56 overflow-hidden bg-black/40">
+                    <img
+                      src={imagePreviewUrl}
+                      alt="Prévia do comprovante"
+                      className="w-full object-contain max-h-56"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#141828]/60 pointer-events-none" />
+                  </div>
+                )}
+
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0 pr-2">
+                      <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white shadow-md shrink-0 ${
+                        isImage
+                          ? 'bg-gradient-to-br from-blue-600 to-indigo-700'
+                          : 'bg-gradient-to-br from-red-600 to-rose-700'
+                      }`}>
+                        {isImage ? <Image size={22} /> : <FileText size={22} />}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-bold text-white truncate">{selectedFile.name}</h4>
+                        <p className="text-xs text-slate-400">
+                          {formatFileSize(selectedFile.size)} • {isImage ? 'Imagem Pronta' : 'PDF Pronto'}
+                          {isSharedFile && <span className="ml-1 text-indigo-400">• via Android</span>}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="text-sm font-bold text-white truncate">{selectedFile.name}</h4>
-                      <p className="text-xs text-slate-400">{formatFileSize(selectedFile.size)} • PDF Pronto</p>
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        setFileBase64('');
+                        if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
+                        setImagePreviewUrl('');
+                        setIsSharedFile(false);
+                      }}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors shrink-0"
+                      title="Remover e escolher outro"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setFileBase64('');
-                    }}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors shrink-0"
-                    title="Remover e escolher outro"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <div className="space-y-1.5 pt-2 border-t border-slate-800">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
-                    Mensagem Opcional
-                  </label>
-                  <input
-                    type="text"
-                    value={caption}
-                    onChange={(e) => setCaption(e.target.value)}
-                    placeholder="Ex: Segue comprovante referente à renovação"
-                    className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none transition-all placeholder-slate-500"
-                  />
+                  <div className="space-y-1.5 pt-2 border-t border-slate-800">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                      Mensagem Opcional
+                    </label>
+                    <input
+                      type="text"
+                      value={caption}
+                      onChange={(e) => setCaption(e.target.value)}
+                      placeholder="Ex: Segue comprovante referente à renovação"
+                      className="w-full bg-slate-900 border border-slate-700 focus:border-emerald-500 text-white text-xs px-3.5 py-2.5 rounded-xl outline-none transition-all placeholder-slate-500"
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Benefício / Informação */}
+            {/* Informação */}
             <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300 flex items-start gap-2.5">
               <CheckCircle2 size={18} className="text-emerald-400 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
-                Ao enviar o comprovante, nosso sistema de atendimento registrará seu pagamento automaticamente e notificará a equipe para liberação imediata.
+                Ao enviar o comprovante, nosso sistema registrará seu pagamento automaticamente e notificará a equipe para liberação imediata.
               </p>
             </div>
 

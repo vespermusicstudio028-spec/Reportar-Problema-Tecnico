@@ -110,6 +110,7 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const [customClientName, setCustomClientName] = useState('');
   const [showScheduleInfo, setShowScheduleInfo] = useState(false);
   const [showPixUploadModal, setShowPixUploadModal] = useState(false);
+  const [sharedComprovanteFile, setSharedComprovanteFile] = useState<File | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showStoreModal, setShowStoreModal] = useState(false);
   const [isStoreButtonVisible, setIsStoreButtonVisible] = useState(true);
@@ -119,6 +120,40 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
   const [showScrollBottomBtn, setShowScrollBottomBtn] = useState(false);
+
+  // ——— WEB SHARE TARGET: detecta arquivo compartilhado via Android ———
+  // Quando o usuário escolhe o PWA na lista de compartilhamento do Android,
+  // o service worker salva o arquivo no Cache e redireciona para /?pwa_share=comprovante
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('pwa_share') === 'comprovante') {
+      // Remove o parâmetro da URL sem recarregar a página
+      window.history.replaceState({}, '', window.location.pathname);
+
+      // Lê o arquivo do Cache do Service Worker
+      if ('caches' in window) {
+        caches.open('tbi-share-target-v1').then(async (cache) => {
+          const response = await cache.match('/tbi-shared-file');
+          if (response) {
+            const blob = await response.blob();
+            const fileName = response.headers.get('X-File-Name') || 'comprovante';
+            const fileType = response.headers.get('Content-Type') || blob.type || 'application/octet-stream';
+            const file = new File([blob], fileName, { type: fileType });
+
+            // Remove do cache após leitura
+            await cache.delete('/tbi-shared-file');
+
+            // Abre o chat e o modal com o arquivo pré-carregado
+            setSharedComprovanteFile(file);
+            setIsOpen(true);
+            setShowPixUploadModal(true);
+          }
+        }).catch((err) => {
+          console.error('[PWA Share] Erro ao ler arquivo compartilhado:', err);
+        });
+      }
+    }
+  }, []);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -1400,11 +1435,15 @@ export const ClientChatWidget: React.FC<ClientChatWidgetProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Modal de Comprovante Pix PDF (mantido para compatibilidade) */}
+      {/* Modal de Comprovante Pix — aceita PDF, JPG e PNG; recebe arquivo do share target Android */}
       <PixUploadModal
         isOpen={showPixUploadModal}
-        onClose={() => setShowPixUploadModal(false)}
+        onClose={() => {
+          setShowPixUploadModal(false);
+          setSharedComprovanteFile(null);
+        }}
         onSendPixPayload={handleSendPixAttachment}
+        preloadedFile={sharedComprovanteFile}
       />
 
       {/* Modal de Envio de Fotos ao Suporte */}

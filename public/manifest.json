@@ -1,7 +1,7 @@
 {
-  "name": "Suporte Técnico",
-  "short_name": "Suporte",
-  "description": "Painel de suporte técnico",
+  "name": "The Best IPTV – Suporte",
+  "short_name": "IPTV Suporte",
+  "description": "Envie comprovantes de pagamento e fale com o suporte da The Best IPTV.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#09090b",
@@ -18,5 +18,32 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/share-comprovante",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "comprovante",
+          "accept": [
+            "application/pdf",
+            "image/jpeg",
+            "image/jpg",
+            "image/png",
+            "image/webp",
+            ".pdf",
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp"
+          ]
+        }
+      ]
+    }
+  }
 }

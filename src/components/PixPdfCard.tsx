@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, Eye, CheckCircle2, ShieldCheck, X, Sparkles, ExternalLink } from 'lucide-react';
+import { FileText, Image, Download, Eye, CheckCircle2, X, Sparkles, ExternalLink } from 'lucide-react';
 import { PixAttachmentPayload } from '../lib/pixUtils';
 
 interface PixPdfCardProps {
@@ -9,6 +9,14 @@ interface PixPdfCardProps {
   isClientSender?: boolean;
 }
 
+/** Verifica se o arquivo é uma imagem (JPG, PNG, WebP) pelo nome ou base64 */
+function isImagePayload(payload: PixAttachmentPayload): boolean {
+  const name = (payload.fileName || '').toLowerCase();
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.webp')) return true;
+  const data = payload.fileData || '';
+  return data.startsWith('data:image/');
+}
+
 export const PixPdfCard: React.FC<PixPdfCardProps> = ({
   payload,
   isAdmin = false,
@@ -16,24 +24,29 @@ export const PixPdfCard: React.FC<PixPdfCardProps> = ({
   isClientSender = true
 }) => {
   const [showViewer, setShowViewer] = useState(false);
+  const isImage = isImagePayload(payload);
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const link = document.createElement('a');
       link.href = payload.fileData;
-      link.download = payload.fileName || 'comprovante_pix.pdf';
+      link.download = payload.fileName || (isImage ? 'comprovante_pix.jpg' : 'comprovante_pix.pdf');
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      console.error('Erro ao baixar PDF:', err);
+      console.error('Erro ao baixar comprovante:', err);
       window.open(payload.fileData, '_blank');
     }
   };
 
   const handleOpenNewTab = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isImage) {
+      window.open(payload.fileData, '_blank');
+      return;
+    }
     try {
       const pdfWindow = window.open('');
       if (pdfWindow) {
@@ -51,78 +64,114 @@ export const PixPdfCard: React.FC<PixPdfCardProps> = ({
 
   return (
     <div className="w-full max-w-md my-1.5 select-none">
-      {/* Card do Documento PDF */}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#121622] to-[#181d2e] border border-red-500/30 hover:border-red-500/50 shadow-xl transition-all">
-        {/* Cabeçalho do Anexo */}
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center text-white shadow-lg shadow-red-600/30 shrink-0">
-            <FileText size={24} className="stroke-[2.2]" />
-          </div>
+      {/* Card do Comprovante */}
+      <div className={`rounded-2xl bg-gradient-to-br from-[#121622] to-[#181d2e] border shadow-xl transition-all overflow-hidden ${
+        isImage ? 'border-blue-500/30 hover:border-blue-500/50' : 'border-red-500/30 hover:border-red-500/50'
+      }`}>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                <Sparkles size={11} className="text-emerald-400" /> Comprovante Pix
-              </span>
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700/60">
-                {payload.fileSize}
-              </span>
+        {/* Preview de Imagem (se for foto do comprovante) */}
+        {isImage && (
+          <div
+            className="relative w-full max-h-56 overflow-hidden bg-black/40 cursor-pointer"
+            onClick={() => setShowViewer(true)}
+          >
+            <img
+              src={payload.fileData}
+              alt={payload.fileName || 'Comprovante'}
+              className="w-full object-contain max-h-56 hover:scale-105 transition-transform duration-300"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#181d2e]/70 pointer-events-none" />
+            <div className="absolute bottom-2 right-2 px-2 py-1 rounded-lg bg-black/50 text-white text-[10px] font-bold flex items-center gap-1 backdrop-blur-sm">
+              <Eye size={11} /> Toque para ampliar
+            </div>
+          </div>
+        )}
+
+        <div className="p-3.5">
+          {/* Cabeçalho do Anexo */}
+          <div className="flex items-start gap-3">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-lg shrink-0 ${
+              isImage
+                ? 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-blue-600/30'
+                : 'bg-gradient-to-br from-red-600 to-rose-700 shadow-red-600/30'
+            }`}>
+              {isImage ? <Image size={24} className="stroke-[2.2]" /> : <FileText size={24} className="stroke-[2.2]" />}
             </div>
 
-            <h4 className="text-white font-bold text-xs sm:text-sm mt-1 truncate" title={payload.fileName}>
-              {payload.fileName}
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Documento PDF de pagamento via Pix
-            </p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <Sparkles size={11} className="text-emerald-400" /> Comprovante Pix
+                </span>
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700/60">
+                  {payload.fileSize}
+                </span>
+                {isImage && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                    📷 Foto
+                  </span>
+                )}
+              </div>
+
+              <h4 className="text-white font-bold text-xs sm:text-sm mt-1 truncate" title={payload.fileName}>
+                {payload.fileName}
+              </h4>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {isImage ? 'Foto do comprovante de pagamento via Pix' : 'Documento PDF de pagamento via Pix'}
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Legenda Opcional do Cliente */}
-        {payload.caption && (
-          <div className="mt-2.5 pt-2 border-t border-slate-700/60 text-xs text-slate-300 italic">
-            "{payload.caption}"
-          </div>
-        )}
+          {/* Legenda Opcional do Cliente */}
+          {payload.caption && (
+            <div className="mt-2.5 pt-2 border-t border-slate-700/60 text-xs text-slate-300 italic">
+              "{payload.caption}"
+            </div>
+          )}
 
-        {/* Botões de Ação do PDF */}
-        <div className="mt-3 grid grid-cols-2 gap-2 pt-2 border-t border-slate-700/50">
-          <button
-            type="button"
-            onClick={() => setShowViewer(true)}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border border-red-500/30 text-xs font-bold transition-all active:scale-[0.98]"
-          >
-            <Eye size={14} /> Visualizar
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDownload}
-            className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition-all active:scale-[0.98]"
-          >
-            <Download size={14} /> Baixar
-          </button>
-        </div>
-
-        {/* Ação Especial Exclusiva do Administrador */}
-        {isAdmin && onConfirmPixPayment && (
-          <div className="mt-3 pt-2.5 border-t border-slate-700/60">
+          {/* Botões de Ação */}
+          <div className="mt-3 grid grid-cols-2 gap-2 pt-2 border-t border-slate-700/50">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConfirmPixPayment();
-              }}
-              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all transform hover:scale-[1.01] active:scale-[0.98]"
+              onClick={() => setShowViewer(true)}
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all active:scale-[0.98] border ${
+                isImage
+                  ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 hover:text-blue-200 border-blue-500/30'
+                  : 'bg-red-500/15 hover:bg-red-500/25 text-red-300 hover:text-red-200 border-red-500/30'
+              }`}
             >
-              <CheckCircle2 size={15} />
-              Reconhecer & Confirmar Pagamento Pix
+              <Eye size={14} /> Visualizar
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold transition-all active:scale-[0.98]"
+            >
+              <Download size={14} /> Baixar
             </button>
           </div>
-        )}
+
+          {/* Ação Especial Exclusiva do Administrador */}
+          {isAdmin && onConfirmPixPayment && (
+            <div className="mt-3 pt-2.5 border-t border-slate-700/60">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onConfirmPixPayment();
+                }}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-1.5 transition-all transform hover:scale-[1.01] active:scale-[0.98]"
+              >
+                <CheckCircle2 size={15} />
+                Reconhecer & Confirmar Pagamento Pix
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Modal de Visualização de PDF em Tela Cheia */}
+      {/* Modal de Visualização em Tela Cheia */}
       {showViewer && (
         <div
           className="fixed inset-0 z-[120] flex items-center justify-center p-2 sm:p-4 bg-black/90 backdrop-blur-md"
@@ -135,7 +184,7 @@ export const PixPdfCard: React.FC<PixPdfCardProps> = ({
             {/* Header do Visualizador */}
             <div className="p-3.5 px-4 bg-[#181d2c] border-b border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2.5 min-w-0 pr-2">
-                <FileText size={20} className="text-red-400 shrink-0" />
+                {isImage ? <Image size={20} className="text-blue-400 shrink-0" /> : <FileText size={20} className="text-red-400 shrink-0" />}
                 <span className="font-bold text-white text-sm truncate">{payload.fileName}</span>
                 <span className="text-[11px] text-slate-400 shrink-0">({payload.fileSize})</span>
               </div>
@@ -153,7 +202,7 @@ export const PixPdfCard: React.FC<PixPdfCardProps> = ({
                   type="button"
                   onClick={handleDownload}
                   className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors"
-                  title="Baixar PDF"
+                  title="Baixar"
                 >
                   <Download size={16} />
                 </button>
@@ -161,20 +210,28 @@ export const PixPdfCard: React.FC<PixPdfCardProps> = ({
                   type="button"
                   onClick={() => setShowViewer(false)}
                   className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-white transition-colors"
-                  title="Fechar (ESC)"
+                  title="Fechar"
                 >
                   <X size={18} />
                 </button>
               </div>
             </div>
 
-            {/* Iframe com o Conteúdo do PDF */}
-            <div className="flex-1 w-full bg-slate-900 overflow-hidden relative">
-              <iframe
-                src={payload.fileData}
-                title={payload.fileName}
-                className="w-full h-full border-0"
-              />
+            {/* Conteúdo: imagem ou PDF */}
+            <div className="flex-1 w-full bg-slate-900 overflow-auto flex items-center justify-center">
+              {isImage ? (
+                <img
+                  src={payload.fileData}
+                  alt={payload.fileName || 'Comprovante'}
+                  className="max-w-full max-h-full object-contain p-2"
+                />
+              ) : (
+                <iframe
+                  src={payload.fileData}
+                  title={payload.fileName}
+                  className="w-full h-full border-0"
+                />
+              )}
             </div>
           </div>
         </div>

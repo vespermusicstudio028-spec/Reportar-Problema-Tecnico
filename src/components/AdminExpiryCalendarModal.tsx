@@ -40,6 +40,8 @@ export interface CalendarClientItem {
   formattedTime: string;
   relativeText: string;
   dateObj: Date;
+  notes?: string;
+  isPaidAdvance?: boolean;
 }
 
 interface AdminExpiryCalendarModalProps {
@@ -54,19 +56,23 @@ interface AdminExpiryCalendarModalProps {
     plan?: string;
     price?: number;
     expirationDate?: string;
+    notes?: string;
+    isPaidAdvance?: boolean;
   }>;
   onOpenClientChat?: (clientCode: string) => void;
   onRenewClient?: (clientId: string, days?: number) => void;
+  onTogglePaidAdvance?: (clientId: string, isPaid: boolean) => Promise<void> | void;
 }
 
-type TabCategory = 'todos' | 'ja_venceu' | 'hoje' | 'amanha' | '2dias' | '3dias' | 'vao_vencer';
+type TabCategory = 'todos' | 'ja_venceu' | 'hoje' | 'amanha' | '2dias' | '3dias' | 'vao_vencer' | 'pagos';
 
 export function AdminExpiryCalendarModal({
   isOpen,
   onClose,
   clients,
   onOpenClientChat,
-  onRenewClient
+  onRenewClient,
+  onTogglePaidAdvance
 }: AdminExpiryCalendarModalProps) {
   const [activeTab, setActiveTab] = useState<TabCategory>('todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,6 +163,8 @@ export function AdminExpiryCalendarModal({
         relativeText = `Vence em ${diffDays} dias (${formattedDate})`;
       }
 
+      const isPaidAdvance = Boolean(c.isPaidAdvance || (c.notes && c.notes.includes('PAGO_ANTECIPADO')));
+
       items.push({
         id: c.id,
         name: c.name,
@@ -174,7 +182,9 @@ export function AdminExpiryCalendarModal({
         formattedDate,
         formattedTime,
         relativeText,
-        dateObj: exp
+        dateObj: exp,
+        notes: c.notes,
+        isPaidAdvance
       });
     }
 
@@ -205,6 +215,7 @@ export function AdminExpiryCalendarModal({
       '2dias': processedClients.filter(c => c.category === '2dias').length,
       '3dias': processedClients.filter(c => c.category === '3dias').length,
       vao_vencer: processedClients.filter(c => c.category === 'vao_vencer').length,
+      pagos: processedClients.filter(c => c.isPaidAdvance).length,
     };
   }, [processedClients]);
 
@@ -234,7 +245,9 @@ export function AdminExpiryCalendarModal({
         if (key !== selectedCalendarDate) return false;
       } else {
         // Se nenhuma data pontual estiver selecionada, respeita a aba
-        if (activeTab !== 'todos' && item.category !== activeTab) {
+        if (activeTab === 'pagos') {
+          if (!item.isPaidAdvance) return false;
+        } else if (activeTab !== 'todos' && item.category !== activeTab) {
           return false;
         }
       }
@@ -438,6 +451,7 @@ export function AdminExpiryCalendarModal({
               { id: '2dias' as TabCategory, label: 'Vence em 2 dias', count: counts['2dias'], icon: <Clock size={14} />, color: 'bg-amber-500/20 text-amber-300 border-amber-500/40', badge: 'bg-amber-500' },
               { id: '3dias' as TabCategory, label: 'Vence em 3 dias', count: counts['3dias'], icon: <Clock size={14} />, color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/40', badge: 'bg-yellow-400' },
               { id: 'vao_vencer' as TabCategory, label: 'Vão Vencer (Futuro)', count: counts.vao_vencer, icon: <CheckCircle2 size={14} />, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', badge: 'bg-emerald-500' },
+              { id: 'pagos' as TabCategory, label: 'Pagos Antecipado', count: counts.pagos, icon: <CheckCircle2 size={14} />, color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40', badge: 'bg-emerald-500' },
             ].map(tab => {
               const isActive = activeTab === tab.id && !selectedCalendarDate;
               return (
@@ -770,7 +784,11 @@ export function AdminExpiryCalendarModal({
                     return (
                       <div
                         key={client.id}
-                        className="p-3.5 sm:p-4 rounded-2xl bg-[#111522]/90 border border-slate-800/80 hover:border-slate-700/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group shadow-md"
+                        className={`p-3.5 sm:p-4 rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 group shadow-md border ${
+                          client.isPaidAdvance
+                            ? 'bg-[#0c1622]/95 border-emerald-500/50 hover:border-emerald-400/80 shadow-emerald-950/20'
+                            : 'bg-[#111522]/90 border-slate-800/80 hover:border-slate-700/80'
+                        }`}
                       >
                         {/* Informações Principais */}
                         <div className="min-w-0 flex-1 space-y-1.5">
@@ -809,6 +827,14 @@ export function AdminExpiryCalendarModal({
 
                           {/* Data de Vencimento e Status */}
                           <div className="flex items-center gap-2 flex-wrap text-xs">
+                            {/* Badge Destacado de Pago Antecipadamente */}
+                            {client.isPaidAdvance && (
+                              <span className="px-2.5 py-0.5 rounded-md border text-[11px] font-black bg-emerald-500/25 text-emerald-300 border-emerald-500/60 shadow-sm shadow-emerald-500/20 flex items-center gap-1">
+                                <CheckCircle2 size={12} className="text-emerald-400" />
+                                Pago Antecipado
+                              </span>
+                            )}
+
                             <span className={`px-2 py-0.5 rounded-md border text-[11px] ${client.badgeStyle}`}>
                               {client.categoryLabel}
                             </span>
@@ -828,7 +854,33 @@ export function AdminExpiryCalendarModal({
                         </div>
 
                         {/* Botões de Ações Rápidas */}
-                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-wrap">
+                          {/* Botão de Marcar / Desmarcar Pago Antecipado */}
+                          {onTogglePaidAdvance && (
+                            <button
+                              type="button"
+                              onClick={() => onTogglePaidAdvance(client.id, !client.isPaidAdvance)}
+                              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95 border ${
+                                client.isPaidAdvance
+                                  ? 'bg-emerald-500/25 hover:bg-rose-500/20 text-emerald-300 hover:text-rose-300 border-emerald-500/50 hover:border-rose-500/40'
+                                  : 'bg-slate-800/80 hover:bg-emerald-600/30 text-slate-300 hover:text-emerald-300 border-slate-700/80 hover:border-emerald-500/40'
+                              }`}
+                              title={client.isPaidAdvance ? "Cliente já pagou antecipadamente. Clique para desmarcar" : "Marcar como já pago antecipadamente"}
+                            >
+                              {client.isPaidAdvance ? (
+                                <>
+                                  <CheckCircle2 size={13} className="text-emerald-400" />
+                                  <span>Pago</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Check size={13} className="text-slate-400" />
+                                  <span>Marcar Pago</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
                           {/* Botão de WhatsApp */}
                           {waLink && (
                             <a

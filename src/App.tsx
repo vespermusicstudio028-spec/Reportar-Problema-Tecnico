@@ -662,7 +662,9 @@ export default function App() {
             activeApp: c.active_app || '',
             accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
             addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at,
-            expirationDate: c.expiration_date || c.due_date || undefined
+            expirationDate: c.expiration_date || c.due_date || undefined,
+            notes: c.notes || undefined,
+            isPaidAdvance: Boolean(c.notes && c.notes.includes('PAGO_ANTECIPADO'))
           }));
           setClients(mapped);
           try { localStorage.setItem('tbi_cached_clients', JSON.stringify(mapped)); } catch {}
@@ -809,7 +811,9 @@ export default function App() {
             activeApp: c.active_app || '',
             accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
             addedAt: c.added_at, lastRecoveryAt: c.last_recovery_at,
-            expirationDate: c.expiration_date || c.due_date || undefined
+            expirationDate: c.expiration_date || c.due_date || undefined,
+            notes: c.notes || undefined,
+            isPaidAdvance: Boolean(c.notes && c.notes.includes('PAGO_ANTECIPADO'))
           }));
           setClients(mapped);
           try { localStorage.setItem('tbi_cached_clients', JSON.stringify(mapped)); } catch {}
@@ -1106,6 +1110,8 @@ export default function App() {
     addedAt: string;
     lastRecoveryAt?: string;
     expirationDate?: string;
+    notes?: string;
+    isPaidAdvance?: boolean;
   }
   const [clients, setClients] = useState<Client[]>(() => {
     try {
@@ -3731,7 +3737,9 @@ export default function App() {
           accessPoints: Array.isArray(c.access_points) ? c.access_points : (c.access_points ? JSON.parse(c.access_points) : []),
           addedAt: c.added_at,
           lastRecoveryAt: c.last_recovery_at,
-          expirationDate: c.expiration_date || c.due_date || undefined
+          expirationDate: c.expiration_date || c.due_date || undefined,
+          notes: c.notes || undefined,
+          isPaidAdvance: Boolean(c.notes && c.notes.includes('PAGO_ANTECIPADO'))
         })));
       }
 
@@ -3799,24 +3807,77 @@ export default function App() {
     const nextDateISO = nextDate.toISOString();
     const newPlan = isTrial ? 'Sinal do Streaming' : (targetClient.plan || 'Sinal do Streaming');
 
+    // Ao renovar por +30 dias, limpa a marcação de pago antecipado das notas (novo ciclo)
+    const cleanNotes = (targetClient.notes || '')
+      .replace(/\s*\|\s*PAGO_ANTECIPADO/g, '')
+      .replace(/PAGO_ANTECIPADO\s*\|\s*/g, '')
+      .replace(/PAGO_ANTECIPADO/g, '')
+      .trim();
+
     try {
       const { error } = await supabase
         .from('clients')
         .update({ 
           due_date: nextDateISO,
-          plan: newPlan
+          plan: newPlan,
+          notes: cleanNotes || null
         })
         .eq('id', clientId);
 
       if (error) throw error;
 
-      setClients(prev => prev.map(c => c.id === clientId ? { ...c, expirationDate: nextDateISO, plan: newPlan } : c));
+      setClients(prev => prev.map(c => c.id === clientId ? {
+        ...c,
+        expirationDate: nextDateISO,
+        plan: newPlan,
+        notes: cleanNotes || undefined,
+        isPaidAdvance: false
+      } : c));
 
       const formattedDate = nextDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const formattedTime = nextDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       alert(`✅ Sinal de "${targetClient.name}" renovado por mais ${daysToAdd} dias corridos!\n\n📅 Novo vencimento: ${formattedDate} às ${formattedTime}`);
     } catch (err: any) {
       alert('Erro ao renovar sinal: ' + (err.message || 'Erro desconhecido.'));
+    }
+  };
+
+  const handleTogglePaidAdvance = async (clientId: string, isPaid: boolean) => {
+    const targetClient = clients.find(c => c.id === clientId);
+    if (!targetClient) return;
+
+    let newNotes = targetClient.notes || '';
+    if (isPaid) {
+      if (!newNotes.includes('PAGO_ANTECIPADO')) {
+        newNotes = newNotes.trim() ? `${newNotes.trim()} | PAGO_ANTECIPADO` : 'PAGO_ANTECIPADO';
+      }
+    } else {
+      newNotes = newNotes
+        .replace(/\s*\|\s*PAGO_ANTECIPADO/g, '')
+        .replace(/PAGO_ANTECIPADO\s*\|\s*/g, '')
+        .replace(/PAGO_ANTECIPADO/g, '')
+        .trim();
+    }
+
+    // Atualização otimista no estado local
+    setClients(prev => prev.map(c => c.id === clientId ? {
+      ...c,
+      notes: newNotes || undefined,
+      isPaidAdvance: isPaid
+    } : c));
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .update({ notes: newNotes || null })
+        .eq('id', clientId);
+
+      if (error) throw error;
+    } catch (err: any) {
+      console.error('Erro ao alternar status de pagamento antecipado:', err);
+      alert('Erro ao salvar no banco: ' + (err.message || 'Erro desconhecido.'));
+      // Reverte em caso de falha
+      setClients(prev => prev.map(c => c.id === clientId ? targetClient : c));
     }
   };
 
@@ -7729,6 +7790,7 @@ export default function App() {
             }, 0);
           }}
           onRenewClient={handleQuickRenewClient}
+          onTogglePaidAdvance={handleTogglePaidAdvance}
         />
       )}
 
@@ -7748,6 +7810,7 @@ export default function App() {
             }, 0);
           }}
           onRenewClient={handleQuickRenewClient}
+          onTogglePaidAdvance={handleTogglePaidAdvance}
         />
       )}
 

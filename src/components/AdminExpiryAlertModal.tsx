@@ -23,6 +23,8 @@ export interface ExpiringClientItem {
   badgeStyle: string;
   formattedDate: string;
   formattedTime: string;
+  notes?: string;
+  isPaidAdvance?: boolean;
 }
 
 interface AdminExpiryAlertModalProps {
@@ -33,11 +35,14 @@ interface AdminExpiryAlertModalProps {
     phone?: string;
     expirationDate?: string;
     plan?: string;
+    notes?: string;
+    isPaidAdvance?: boolean;
   }>;
   isOpen: boolean;
   onClose: () => void;
   onOpenClientChat?: (clientCode: string) => void;
   onRenewClient?: (clientId: string, days?: number) => void;
+  onTogglePaidAdvance?: (clientId: string, isPaid: boolean) => Promise<void> | void;
 }
 
 export function AdminExpiryAlertModal({
@@ -45,7 +50,8 @@ export function AdminExpiryAlertModal({
   isOpen,
   onClose,
   onOpenClientChat,
-  onRenewClient
+  onRenewClient,
+  onTogglePaidAdvance
 }: AdminExpiryAlertModalProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(100);
@@ -88,6 +94,7 @@ export function AdminExpiryAlertModal({
       const formattedTime = exp.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       const isTrial = c.plan === 'Teste 3h' || (c.plan && c.plan.toLowerCase().includes('teste'));
+      const isPaidAdvance = Boolean(c.isPaidAdvance || (c.notes && c.notes.includes('PAGO_ANTECIPADO')));
 
       if (exp >= todayStart && exp <= todayEnd) {
         list.push({
@@ -101,6 +108,8 @@ export function AdminExpiryAlertModal({
           badgeStyle: 'bg-rose-600/30 text-rose-200 border-rose-500/50 font-extrabold animate-pulse',
           formattedDate,
           formattedTime,
+          notes: c.notes,
+          isPaidAdvance
         });
       } else if (exp >= tomorrowStart && exp <= tomorrowEnd) {
         list.push({
@@ -114,6 +123,8 @@ export function AdminExpiryAlertModal({
           badgeStyle: 'bg-orange-500/25 text-orange-200 border-orange-500/40 font-bold',
           formattedDate,
           formattedTime,
+          notes: c.notes,
+          isPaidAdvance
         });
       } else if (exp >= day2Start && exp <= day2End) {
         list.push({
@@ -127,6 +138,8 @@ export function AdminExpiryAlertModal({
           badgeStyle: 'bg-amber-500/20 text-amber-200 border-amber-500/40 font-semibold',
           formattedDate,
           formattedTime,
+          notes: c.notes,
+          isPaidAdvance
         });
       } else if (exp >= day3Start && exp <= day3End) {
         list.push({
@@ -140,6 +153,8 @@ export function AdminExpiryAlertModal({
           badgeStyle: 'bg-yellow-500/20 text-yellow-200 border-yellow-500/40 font-semibold',
           formattedDate,
           formattedTime,
+          notes: c.notes,
+          isPaidAdvance
         });
       }
     }
@@ -195,6 +210,7 @@ export function AdminExpiryAlertModal({
   const countAmanha = expiringClients.filter(c => c.category === 'amanha').length;
   const count2Dias = expiringClients.filter(c => c.category === '2dias').length;
   const count3Dias = expiringClients.filter(c => c.category === '3dias').length;
+  const countPagos = expiringClients.filter(c => c.isPaidAdvance).length;
 
   return (
     <AnimatePresence>
@@ -261,6 +277,12 @@ export function AdminExpiryAlertModal({
                 Em 3 dias: {count3Dias}
               </span>
             )}
+            {countPagos > 0 && (
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold flex items-center gap-1">
+                <CheckCircle2 size={11} className="text-emerald-400" />
+                Já Pagaram: {countPagos}
+              </span>
+            )}
           </div>
         )}
 
@@ -278,7 +300,11 @@ export function AdminExpiryAlertModal({
             expiringClients.map((item) => (
               <div
                 key={item.id}
-                className="p-2.5 sm:p-3 rounded-2xl bg-[#141924]/80 border border-slate-800/80 hover:border-slate-700 transition-all flex items-center justify-between gap-3 group"
+                className={`p-2.5 sm:p-3 rounded-2xl transition-all flex items-center justify-between gap-3 group border ${
+                  item.isPaidAdvance
+                    ? 'bg-[#0a181b]/95 border-emerald-500/50 shadow-md shadow-emerald-950/20'
+                    : 'bg-[#141924]/80 border-slate-800/80 hover:border-slate-700'
+                }`}
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -291,6 +317,14 @@ export function AdminExpiryAlertModal({
                   </div>
 
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {/* Badge de Pago Antecipadamente se marcado */}
+                    {item.isPaidAdvance && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md border font-black bg-emerald-500/25 text-emerald-300 border-emerald-500/60 shadow-sm flex items-center gap-1">
+                        <CheckCircle2 size={11} className="text-emerald-400" />
+                        Já Pagou Antecipado
+                      </span>
+                    )}
+
                     <span className={`text-[10px] px-2 py-0.5 rounded-md border ${item.badgeStyle}`}>
                       {item.categoryLabel}
                     </span>
@@ -302,6 +336,32 @@ export function AdminExpiryAlertModal({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Botão de Alternar Status de Pagamento */}
+                  {onTogglePaidAdvance && (
+                    <button
+                      type="button"
+                      onClick={() => onTogglePaidAdvance(item.id, !item.isPaidAdvance)}
+                      className={`px-2 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border active:scale-95 ${
+                        item.isPaidAdvance
+                          ? 'bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-300 hover:text-rose-300 border-emerald-500/40 hover:border-rose-500/40'
+                          : 'bg-slate-800/80 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border-slate-700 hover:border-emerald-500/40'
+                      }`}
+                      title={item.isPaidAdvance ? "Cliente já pagou antecipadamente. Clique para desmarcar" : "Marcar como já pago antecipadamente"}
+                    >
+                      {item.isPaidAdvance ? (
+                        <>
+                          <CheckCircle2 size={12} className="text-emerald-400" />
+                          <span className="hidden sm:inline">Pago</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={12} className="text-slate-400" />
+                          <span className="hidden sm:inline">Pago?</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
                   {onRenewClient && (
                     <button
                       type="button"

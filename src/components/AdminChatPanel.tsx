@@ -1428,6 +1428,8 @@ export const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ clientsList = []
                             ? '📷 [Fotos Enviadas]'
                             : conv.last_message.includes('[AVISO_TESTE_3H_VENCEU]')
                             ? '⏱️ [Aviso: Teste 3h Venceu]'
+                            : conv.last_message.includes('[AVISO_PENDENCIA_PAGAMENTO]')
+                            ? '🚨 [Aviso: Pendência de Pagamento]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_HOJE]')
                             ? '🚨 [Aviso: Vence Hoje]'
                             : conv.last_message.includes('[AVISO_VENCIMENTO_AMANHA]')

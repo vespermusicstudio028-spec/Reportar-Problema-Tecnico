@@ -14,11 +14,12 @@ export const isExpiryNotice3DMessage = (msg: string): boolean =>
   (msg.includes('[AVISO_VENCIMENTO_2D]') && msg.includes('[/AVISO_VENCIMENTO_2D]')) ||
   (msg.includes('[AVISO_VENCIMENTO_AMANHA]') && msg.includes('[/AVISO_VENCIMENTO_AMANHA]')) ||
   (msg.includes('[AVISO_VENCIMENTO_HOJE]') && msg.includes('[/AVISO_VENCIMENTO_HOJE]')) ||
-  (msg.includes('[AVISO_TESTE_3H_VENCEU]') && msg.includes('[/AVISO_TESTE_3H_VENCEU]'));
+  (msg.includes('[AVISO_TESTE_3H_VENCEU]') && msg.includes('[/AVISO_TESTE_3H_VENCEU]')) ||
+  (msg.includes('[AVISO_PENDENCIA_PAGAMENTO]') && msg.includes('[/AVISO_PENDENCIA_PAGAMENTO]'));
 
 export const parseExpiryNotice3DMessage = (msg: string): ExpiryNoticePayload | null => {
   try {
-    const match = msg.match(/\[AVISO_(?:VENCIMENTO_(?:3D|2D|AMANHA|HOJE)|TESTE_3H_VENCEU)\]([\s\S]*?)\[\/AVISO_(?:VENCIMENTO_(?:3D|2D|AMANHA|HOJE)|TESTE_3H_VENCEU)\]/);
+    const match = msg.match(/\[AVISO_(?:VENCIMENTO_(?:3D|2D|AMANHA|HOJE)|TESTE_3H_VENCEU|PENDENCIA_PAGAMENTO)\]([\s\S]*?)\[\/AVISO_(?:VENCIMENTO_(?:3D|2D|AMANHA|HOJE)|TESTE_3H_VENCEU|PENDENCIA_PAGAMENTO)\]/);
     if (!match) return null;
     return JSON.parse(match[1]);
   } catch {
@@ -43,6 +44,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
   const [showImageModal, setShowImageModal] = useState(false);
 
   const isTestExpired = payload.days === -1 || (payload.imageUrl && payload.imageUrl.includes('teste-3h-venceu'));
+  const isPending = (payload.days !== undefined && payload.days < 0 && !isTestExpired) || (payload.text ? payload.text.toLowerCase().includes('pendencia') : false);
   const isToday = payload.days === 0 || (payload.imageUrl && payload.imageUrl.includes('vence-hoje'));
   const isTomorrow = payload.days === 1 || (payload.imageUrl && payload.imageUrl.includes('vence-amanha'));
   const is2Days = payload.days === 2 || (payload.imageUrl && payload.imageUrl.includes('vence-em-2-dias'));
@@ -50,6 +52,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
   const whatsappNumber = payload.whatsapp || '5521959368651';
   const imageUrl = payload.imageUrl || (
     isTestExpired ? '/teste-3h-venceu.jpg' :
+    isPending ? '/vence-hoje.jpg' :
     isToday ? '/vence-hoje.jpg' :
     isTomorrow ? '/vence-amanha.png' :
     is2Days ? '/vence-em-2-dias.jpg' :
@@ -80,7 +83,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
   return (
     <>
       <div className={`w-full max-w-sm sm:max-w-md my-2 rounded-2xl overflow-hidden border ${
-        isTestExpired
+        isTestExpired || isPending
           ? 'border-red-600/60 shadow-red-950/50'
           : isToday
           ? 'border-red-500/50 shadow-red-950/40'
@@ -92,7 +95,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
       } bg-gradient-to-b from-[#181d2c] via-[#121622] to-[#0c0f17] shadow-2xl text-white select-none`}>
         {/* Cabeçalho do Card */}
         <div className={`px-3.5 py-2.5 border-b flex items-center justify-between ${
-          isTestExpired
+          isTestExpired || isPending
             ? 'bg-gradient-to-r from-red-700/60 via-rose-700/45 to-red-900/40 border-red-500/40'
             : isToday
             ? 'bg-gradient-to-r from-red-600/40 via-rose-600/30 to-red-600/20 border-red-500/30'
@@ -104,7 +107,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
         }`}>
           <div className="flex items-center gap-2">
             <div className={`w-6 h-6 rounded-lg border flex items-center justify-center ${
-              isTestExpired
+              isTestExpired || isPending
                 ? 'bg-red-600/40 border-red-400/50 text-red-200'
                 : isToday
                 ? 'bg-red-500/30 border-red-400/40 text-red-300'
@@ -114,17 +117,19 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
                 ? 'bg-amber-500/30 border-amber-400/40 text-amber-300'
                 : 'bg-amber-500/30 border-amber-400/40 text-amber-300'
             }`}>
-              {isTestExpired || isToday || isTomorrow ? <AlertTriangle size={14} className="animate-pulse" /> : <Clock size={14} className="animate-pulse" />}
+              {isTestExpired || isPending || isToday || isTomorrow ? <AlertTriangle size={14} className="animate-pulse" /> : <Clock size={14} className="animate-pulse" />}
             </div>
             <span className={`text-xs font-black tracking-wider uppercase ${
-              isTestExpired ? 'text-red-100' : isToday ? 'text-red-200' : isTomorrow ? 'text-orange-200' : 'text-amber-200'
+              isTestExpired ? 'text-red-100' : isPending ? 'text-rose-100' : isToday ? 'text-red-200' : isTomorrow ? 'text-orange-200' : 'text-amber-200'
             }`}>
-              {isTestExpired ? 'Aviso Importante' : 'Aviso de Vencimento'}
+              {isTestExpired ? 'Aviso Importante' : isPending ? 'Pendência de Pagamento' : 'Aviso de Vencimento'}
             </span>
           </div>
           <span className={`px-2.5 py-0.5 rounded-full text-white text-[10px] font-black uppercase tracking-wide shadow-sm ${
             isTestExpired
               ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 animate-pulse font-black'
+              : isPending
+              ? 'bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 animate-pulse font-black'
               : isToday
               ? 'bg-gradient-to-r from-red-600 to-rose-600 animate-pulse'
               : isTomorrow
@@ -133,7 +138,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
               ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 font-bold'
               : 'bg-gradient-to-r from-rose-500 to-amber-500'
           }`}>
-            {isTestExpired ? '⏱️ Teste Vencido' : isToday ? '🚨 Vence Hoje' : isTomorrow ? '⚠️ Vence Amanhã' : is2Days ? '⏳ Vence em 2 Dias' : 'Vence em 3 Dias'}
+            {isTestExpired ? '⏱️ Teste Vencido' : isPending ? '🚨 Sinal Vencido' : isToday ? '🚨 Vence Hoje' : isTomorrow ? '⚠️ Vence Amanhã' : is2Days ? '⏳ Vence em 2 Dias' : 'Vence em 3 Dias'}
           </span>
         </div>
 
@@ -164,7 +169,7 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
         {/* Mensagem de Texto Explicativa */}
         <div className="p-4 space-y-3 bg-[#111520]/80 border-t border-slate-800">
           <div className={`p-3 rounded-xl border space-y-1.5 text-xs text-slate-200 leading-relaxed ${
-            isTestExpired
+            isTestExpired || isPending
               ? 'bg-red-500/15 border-red-500/35'
               : isToday
               ? 'bg-red-500/10 border-red-500/25'
@@ -175,11 +180,23 @@ export const ExpiryNoticeCard: React.FC<ExpiryNoticeCardProps> = ({
               : 'bg-amber-500/10 border-amber-500/25'
           }`}>
             <p className={`font-extrabold text-sm flex items-center gap-1.5 ${
-              isTestExpired ? 'text-red-300' : isToday ? 'text-red-400' : isTomorrow ? 'text-orange-400' : 'text-amber-300'
+              isTestExpired || isPending ? 'text-red-300' : isToday ? 'text-red-400' : isTomorrow ? 'text-orange-400' : 'text-amber-300'
             }`}>
-              <span>☀️</span> Bom dia!
+              <span>{isPending ? '⚠️' : '☀️'}</span> {isPending ? 'Aviso de Pendência' : 'Bom dia!'}
             </p>
-            {isTestExpired ? (
+            {isPending ? (
+              <>
+                <p>
+                  Constatamos que o seu plano de streaming <strong className="text-red-300 font-black">está VENCIDO</strong> e consta uma pendência de pagamento.
+                </p>
+                <p className="text-red-100 font-medium">
+                  Para reativar seu sinal imediatamente e continuar assistindo a todos os seus <strong className="text-emerald-300 font-extrabold">canais, filmes e séries</strong>, realize o pagamento via Pix ou clique no botão <strong className="text-indigo-300 font-extrabold">Renovar</strong> abaixo:
+                </p>
+                <p className="text-amber-200/90 text-[11px] font-semibold">
+                  Caso já tenha realizado o pagamento, basta nos enviar o comprovante em PDF aqui pelo chat!
+                </p>
+              </>
+            ) : isTestExpired ? (
               <>
                 <p>
                   Informamos que o seu teste gratuito de <strong className="text-red-300 font-black">3 HORAS JÁ VENCEU</strong>!

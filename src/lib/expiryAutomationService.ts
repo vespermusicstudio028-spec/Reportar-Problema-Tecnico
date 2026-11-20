@@ -86,7 +86,8 @@ export function isExpiryNoticeMessage(message?: string): boolean {
     message.includes('[AVISO_VENCIMENTO_2D]') ||
     message.includes('[AVISO_VENCIMENTO_AMANHA]') ||
     message.includes('[AVISO_VENCIMENTO_HOJE]') ||
-    message.includes('[AVISO_TESTE_3H_VENCEU]')
+    message.includes('[AVISO_TESTE_3H_VENCEU]') ||
+    message.includes('[AVISO_PENDENCIA_PAGAMENTO]')
   );
 }
 
@@ -99,9 +100,18 @@ export function isPaymentReceiptMessage(message: string): boolean {
   // 1. PDF de comprovante Pix oficial
   if (isPixPdfMessage(message)) return true;
 
-  // 2. Fotos enviadas via suporte com legenda de comprovante
+  // 2. Arquivo PDF anexado de qualquer banco/comprovante
+  const lower = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (
+    message.includes('.pdf') ||
+    lower.includes('comprovante') ||
+    lower.includes('comprovante_')
+  ) {
+    return true;
+  }
+
+  // 3. Fotos enviadas via suporte com legenda de comprovante
   if (isSupportPhotosMessage(message)) {
-    const lower = message.toLowerCase();
     if (
       lower.includes('comprovante') ||
       lower.includes('pix') ||
@@ -113,8 +123,7 @@ export function isPaymentReceiptMessage(message: string): boolean {
     }
   }
 
-  // 3. Texto do cliente indicando claramente que enviou ou realizou o pagamento
-  const lower = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  // 4. Texto do cliente indicando claramente que enviou ou realizou o pagamento
   if (
     lower.includes('segue o comprovante') ||
     lower.includes('segue comprovante') ||
@@ -137,9 +146,10 @@ export function isPaymentReceiptMessage(message: string): boolean {
 /**
  * Lê e processa o comprovante de pagamento:
  * 1. Renova o vencimento do cliente no Supabase em +30 dias.
- * 2. Atualiza os access_points.
- * 3. Envia mensagem de confirmação no chat.
- * 4. Interrompe as cobranças do ciclo atual até o próximo vencimento.
+ * 2. Marca o cliente automaticamente como Pago (PAGO_ANTECIPADO em notes).
+ * 3. Atualiza os access_points.
+ * 4. Envia mensagem de confirmação no chat.
+ * 5. Interrompe as cobranças do ciclo atual até o próximo vencimento.
  */
 export async function autoProcessPaymentReceiptAndRenew(
   clientCode: string,
@@ -151,7 +161,7 @@ export async function autoProcessPaymentReceiptAndRenew(
     // 1. Buscar dados atuais do cliente
     const { data: client, error: fetchErr } = await supabase
       .from('clients')
-      .select('id, name, due_date, access_points, plan, plan_price')
+      .select('id, name, due_date, access_points, plan, plan_price, notes')
       .eq('code', clientCode)
       .maybeSingle();
 
@@ -189,27 +199,35 @@ export async function autoProcessPaymentReceiptAndRenew(
       } catch {}
     }
 
-    // 2. Atualizar no Supabase
+    // 2. Marcar automaticamente o cliente como Pago (PAGO_ANTECIPADO)
+    const currentNotes = (client as any).notes || '';
+    let newNotes = currentNotes;
+    if (!newNotes.includes('PAGO_ANTECIPADO')) {
+      newNotes = newNotes.trim() ? `${newNotes.trim()} | PAGO_ANTECIPADO` : 'PAGO_ANTECIPADO';
+    }
+
+    // 3. Atualizar no Supabase
     const { error: updateErr } = await supabase
       .from('clients')
       .update({
         due_date: nextDateISO,
         access_points: updatedPoints,
-        status: 'active'
+        status: 'active',
+        notes: newNotes
       })
       .eq('id', client.id);
 
     if (updateErr) {
-      console.error('Erro ao atualizar data de vencimento do cliente:', updateErr);
+      console.error('Erro ao atualizar data de vencimento e status de pago do cliente:', updateErr);
       return { success: false, error: updateErr.message };
     }
 
-    // 3. Enviar mensagem de confirmação de pagamento e quitação do ciclo no chat
+    // 4. Enviar mensagem de confirmação de pagamento e quitação do ciclo no chat
     const confirmMessage = `🎉 **COMPROVANTE DE PAGAMENTO RECONHECIDO!** 🎉
 
 Olá, ${client.name || clientName}! Seu comprovante de pagamento foi validado e baixado em nosso sistema com sucesso!
 
-🟢 **Status do Pagamento:** APROVADO & CONFIRMADO
+🟢 **Status do Pagamento:** APROVADO & CONFIRMADO (Marcado como PAGO ✅)
 📅 **Novo Vencimento:** ${formattedNextDate}
 🚫 **Avisos de Cobrança:** Suspensos para este ciclo!
 🍿 **Acesso aos Canais, Filmes e Séries:** Garantido e 100% Liberado.

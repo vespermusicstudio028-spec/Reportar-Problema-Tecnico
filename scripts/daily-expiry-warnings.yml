@@ -1,0 +1,28 @@
+name: Envio Automático de Vencimentos e Pendências de Pagamento
+
+on:
+  schedule:
+    # 11:00 UTC = 08:00 Horário de Brasília (envio principal matutino)
+    # 17:00 UTC = 14:00 Horário de Brasília (checagem vespertina de pendências)
+    - cron: '0 11,17 * * *'
+  workflow_dispatch: # Permite disparar manualmente pelo painel do GitHub a qualquer momento
+
+jobs:
+  send-expiry-warnings:
+    name: Disparar Avisos e Pendências aos Clientes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Executar envio automático dos avisos e pendências
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://kcarjbybxaeyfechklko.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'sb_publishable_DO0U-CVM5jIFEZKQ4oTcDw_8-zmbAPA' }}
+        run: node scripts/send-daily-warnings.js

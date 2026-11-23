@@ -85,12 +85,12 @@ export function AdminExpiryAlertModal({
     const list: ExpiringClientItem[] = [];
 
     for (const c of clients) {
-      if (!c.expirationDate) continue;
-      const exp = new Date(c.expirationDate);
+      const dateVal = c.expirationDate || (c as any).due_date || (c as any).expiration_date;
+      if (!dateVal) continue;
+      const exp = new Date(dateVal);
       if (isNaN(exp.getTime())) continue;
 
       // Só inclui se estiver estritamente dentro dos períodos: de hoje até no máximo 3 dias
-      // Clientes vencidos em dias anteriores (passado) ou além de 3 dias NÃO entram
       if (exp < todayStart || exp > day3End) continue;
 
       const formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
@@ -105,7 +105,7 @@ export function AdminExpiryAlertModal({
           name: c.name,
           code: c.code,
           phone: c.phone,
-          expirationDate: c.expirationDate,
+          expirationDate: String(dateVal),
           category: 'hoje',
           categoryLabel: isTrial ? 'Vence Hoje (Teste 3h)' : 'Vence Hoje',
           badgeStyle: 'bg-rose-600/30 text-rose-200 border-rose-500/50 font-extrabold animate-pulse',
@@ -120,7 +120,7 @@ export function AdminExpiryAlertModal({
           name: c.name,
           code: c.code,
           phone: c.phone,
-          expirationDate: c.expirationDate,
+          expirationDate: String(dateVal),
           category: 'amanha',
           categoryLabel: 'Vence Amanhã',
           badgeStyle: 'bg-orange-500/25 text-orange-200 border-orange-500/40 font-bold',
@@ -135,7 +135,7 @@ export function AdminExpiryAlertModal({
           name: c.name,
           code: c.code,
           phone: c.phone,
-          expirationDate: c.expirationDate,
+          expirationDate: String(dateVal),
           category: '2dias',
           categoryLabel: 'Vence em 2 dias',
           badgeStyle: 'bg-amber-500/20 text-amber-200 border-amber-500/40 font-semibold',
@@ -150,7 +150,7 @@ export function AdminExpiryAlertModal({
           name: c.name,
           code: c.code,
           phone: c.phone,
-          expirationDate: c.expirationDate,
+          expirationDate: String(dateVal),
           category: '3dias',
           categoryLabel: 'Vence em 3 dias',
           badgeStyle: 'bg-yellow-500/20 text-yellow-200 border-yellow-500/40 font-semibold',
@@ -166,7 +166,7 @@ export function AdminExpiryAlertModal({
     return list.sort((a, b) => priority[a.category] - priority[b.category]);
   }, [clients]);
 
-  // Fecha ao pressionar ESC ou clicar fora
+  // Fecha ao pressionar ESC
   useEffect(() => {
     if (!isOpen) return;
 
@@ -176,23 +176,8 @@ export function AdminExpiryAlertModal({
       }
     };
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-        onCloseRef.current();
-      }
-    };
-
     window.addEventListener('keydown', handleKeyDown);
-    // Timeout para não capturar o próprio clique que abriu o modal
-    const timerClick = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    }, 50);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      clearTimeout(timerClick);
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   // Timer decrescente de 5 segundos — executado APENAS se autoClose for verdadeiro
@@ -246,15 +231,20 @@ export function AdminExpiryAlertModal({
 
   return (
     <AnimatePresence>
+      {/* Backdrop para fechar ao clicar fora */}
+      <div 
+        className="fixed inset-0 z-[115] bg-black/40 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
       <motion.div
         ref={modalRef}
-        initial={{ opacity: 0, y: -20, scale: 0.95 }}
+        initial={{ opacity: 0, y: -15, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -20, scale: 0.95 }}
-        transition={{ duration: 0.25 }}
+        exit={{ opacity: 0, y: -15, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[120] w-[calc(100%-2rem)] sm:w-[460px] max-w-lg bg-[#0e121a]/95 backdrop-blur-2xl border border-amber-500/40 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden text-slate-100"
+        className="fixed top-16 right-3 sm:top-20 sm:right-6 z-[120] w-[calc(100%-1.5rem)] sm:w-[480px] max-w-lg bg-[#0e121a] border border-amber-500/50 rounded-3xl shadow-2xl shadow-black/90 overflow-hidden text-slate-100"
       >
         {/* Cabeçalho */}
         <div className="p-4 sm:p-5 border-b border-slate-800/80 flex items-center justify-between gap-3 bg-gradient-to-r from-amber-950/20 via-slate-900/40 to-transparent">

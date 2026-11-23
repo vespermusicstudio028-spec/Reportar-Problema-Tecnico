@@ -107,8 +107,9 @@ export function AdminExpiryCalendarModal({
     const items: CalendarClientItem[] = [];
 
     for (const c of clients) {
-      if (!c.expirationDate) continue;
-      const exp = new Date(c.expirationDate);
+      const dateVal = c.expirationDate || (c as any).due_date || (c as any).expiration_date;
+      if (!dateVal) continue;
+      const exp = new Date(dateVal);
       if (isNaN(exp.getTime())) continue;
 
       const formattedDate = exp.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -173,7 +174,7 @@ export function AdminExpiryCalendarModal({
         email: c.email,
         plan: c.plan,
         price: c.price,
-        expirationDate: c.expirationDate,
+        expirationDate: String(dateVal),
         category,
         categoryLabel,
         badgeStyle,

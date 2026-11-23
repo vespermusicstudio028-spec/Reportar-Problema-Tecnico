@@ -1158,12 +1158,9 @@ export default function App() {
 
   const hasShownHomeExpiryAlertRef = useRef(false);
 
-  // Monitora navegação: se o usuário sair da tela inicial para qualquer outra página/tela ou abrir um modal, fecha o aviso
+  // Navegação: fecha modais secundários ao transitar se necessário
   useEffect(() => {
-    if (!isHomeScreen) {
-      setShowExpiryAlert(false);
-      hasShownHomeExpiryAlertRef.current = false;
-    }
+    // Não força fechamento do showExpiryAlert aqui, permitindo que o admin abra via sininho onde desejar
   }, [isHomeScreen]);
 
   // Image Viewer State
@@ -7700,7 +7697,8 @@ export default function App() {
             {isAdminLogged && (
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setShowExpiryAlert(prev => !prev);
                 }}
                 className={`flex items-center justify-center transition-all h-11 w-11 sm:h-12 sm:w-12 active:scale-95 shadow-lg shadow-black/30 shrink-0 relative rounded-2xl border ${
@@ -7716,8 +7714,9 @@ export default function App() {
                   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
                   const day3End = new Date(todayStart.getTime() + 4 * 24 * 60 * 60 * 1000 - 1);
                   const count = clients.filter(c => {
-                    if (!c.expirationDate) return false;
-                    const exp = new Date(c.expirationDate);
+                    const dateVal = c.expirationDate || (c as any).due_date || (c as any).expiration_date;
+                    if (!dateVal) return false;
+                    const exp = new Date(dateVal);
                     return !isNaN(exp.getTime()) && exp >= todayStart && exp <= day3End;
                   }).length;
                   if (count === 0) return null;
@@ -7771,10 +7770,10 @@ export default function App() {
         </div>
       </main>
       {/* Alerta de Vencimentos de Clientes para o Administrador — Abre ao clicar no ícone de notificação (sininho) */}
-      {isAdminLogged && isHomeScreen && (
+      {isAdminLogged && showExpiryAlert && (
         <AdminExpiryAlertModal
           clients={clients}
-          isOpen={showExpiryAlert && isHomeScreen}
+          isOpen={showExpiryAlert}
           onClose={() => setShowExpiryAlert(false)}
           autoClose={false}
           onOpenClientChat={(code) => {

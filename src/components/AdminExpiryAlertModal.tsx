@@ -43,6 +43,7 @@ interface AdminExpiryAlertModalProps {
   onOpenClientChat?: (clientCode: string) => void;
   onRenewClient?: (clientId: string, days?: number) => void;
   onTogglePaidAdvance?: (clientId: string, isPaid: boolean) => Promise<void> | void;
+  autoClose?: boolean;
 }
 
 export function AdminExpiryAlertModal({
@@ -51,10 +52,12 @@ export function AdminExpiryAlertModal({
   onClose,
   onOpenClientChat,
   onRenewClient,
-  onTogglePaidAdvance
+  onTogglePaidAdvance,
+  autoClose = false
 }: AdminExpiryAlertModalProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(100);
+  const modalRef = useRef<HTMLDivElement>(null);
   const DURATION_MS = 5000;
   const INTERVAL_MS = 50;
 
@@ -163,9 +166,38 @@ export function AdminExpiryAlertModal({
     return list.sort((a, b) => priority[a.category] - priority[b.category]);
   }, [clients]);
 
-  // Timer decrescente de 5 segundos — recria APENAS quando o modal abre/fecha
+  // Fecha ao pressionar ESC ou clicar fora
   useEffect(() => {
-    if (!isOpen) {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onCloseRef.current();
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        onCloseRef.current();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    // Timeout para não capturar o próprio clique que abriu o modal
+    const timerClick = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 50);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      clearTimeout(timerClick);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Timer decrescente de 5 segundos — executado APENAS se autoClose for verdadeiro
+  useEffect(() => {
+    if (!isOpen || !autoClose) {
       setProgress(100);
       return;
     }
@@ -201,10 +233,10 @@ export function AdminExpiryAlertModal({
       clearInterval(timer);
       clearInterval(closedWatcher);
     };
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, autoClose]);
 
-  // Se não estiver aberto ou não houver nenhum cliente vencendo nesses períodos específicos, não exibe nada
-  if (!isOpen || expiringClients.length === 0) return null;
+  // Se não estiver aberto, não exibe nada
+  if (!isOpen) return null;
 
   const countHoje = expiringClients.filter(c => c.category === 'hoje').length;
   const countAmanha = expiringClients.filter(c => c.category === 'amanha').length;
@@ -215,6 +247,7 @@ export function AdminExpiryAlertModal({
   return (
     <AnimatePresence>
       <motion.div
+        ref={modalRef}
         initial={{ opacity: 0, y: -20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -393,13 +426,15 @@ export function AdminExpiryAlertModal({
           )}
         </div>
 
-        {/* Rodapé com Barra de Progresso de 5s */}
-        <div className="h-1.5 w-full bg-slate-800/60 relative overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 transition-all duration-75"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
+        {/* Rodapé com Barra de Progresso quando autoClose for ativo */}
+        {autoClose && (
+          <div className="h-1.5 w-full bg-slate-800/60 relative overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 transition-all duration-75"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

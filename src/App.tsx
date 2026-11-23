@@ -1158,40 +1158,13 @@ export default function App() {
 
   const hasShownHomeExpiryAlertRef = useRef(false);
 
-  // Monitora navegação: se o usuário sair da tela inicial para qualquer outra página/tela, oculta o aviso imediatamente
+  // Monitora navegação: se o usuário sair da tela inicial para qualquer outra página/tela ou abrir um modal, fecha o aviso
   useEffect(() => {
     if (!isHomeScreen) {
       setShowExpiryAlert(false);
       hasShownHomeExpiryAlertRef.current = false;
     }
   }, [isHomeScreen]);
-
-  // Alerta automático de vencimentos de clientes (5 segundos) ao entrar na tela inicial como admin
-  // Só abre se REALMENTE estiver na tela inicial e houver clientes vencendo hoje, amanhã, em 2 dias ou em 3 dias
-  useEffect(() => {
-    if (isAdminLogged && isHomeScreen) {
-      // Se já disparou nesta visita à tela inicial, não fica reabrindo a cada sync em segundo plano
-      if (hasShownHomeExpiryAlertRef.current) return;
-
-      const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const day3End = new Date(todayStart.getTime() + 4 * 24 * 60 * 60 * 1000 - 1);
-
-      const hasExpiring = clients.some(c => {
-        if (!c.expirationDate) return false;
-        const exp = new Date(c.expirationDate);
-        if (isNaN(exp.getTime())) return false;
-        return exp >= todayStart && exp <= day3End;
-      });
-
-      if (hasExpiring) {
-        setShowExpiryAlert(true);
-        hasShownHomeExpiryAlertRef.current = true;
-      } else {
-        setShowExpiryAlert(false);
-      }
-    }
-  }, [isAdminLogged, isHomeScreen, clients]);
 
   // Image Viewer State
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -7728,35 +7701,14 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => {
-                  const now = new Date();
-                  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-                  const day3End = new Date(todayStart.getTime() + 4 * 24 * 60 * 60 * 1000 - 1);
-                  const count = clients.filter(c => {
-                    if (!c.expirationDate) return false;
-                    const exp = new Date(c.expirationDate);
-                    return !isNaN(exp.getTime()) && exp >= todayStart && exp <= day3End;
-                  }).length;
-
-                  if (count > 0) {
-                    // Garante navegação limpa para a tela inicial ao clicar no aviso do sininho
-                    setActiveView('dashboard');
-                    setIsReportContentOpen(false);
-                    setIsPedirConteudoOpen(false);
-                    setContentType(null);
-                    setTrialState(null);
-                    setShowLoginModal(false);
-                    setShowExpiryCalendarModal(false);
-                    setShowCodeModal(false);
-                    setShowForgotCodeModal(false);
-                    setShowUpdatesModal(false);
-                    setShowRequestModal(false);
-                    setShowExpiryAlert(true);
-                  } else {
-                    alert('Nenhum cliente com sinal de streaming vencendo hoje, amanhã, em 2 dias ou em 3 dias.');
-                  }
+                  setShowExpiryAlert(prev => !prev);
                 }}
-                className="flex items-center justify-center bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-2xl text-amber-300 hover:text-amber-200 transition-all h-11 w-11 sm:h-12 sm:w-12 active:scale-95 shadow-lg shadow-black/30 shrink-0 relative"
-                title="Avisos de Vencimentos (hoje, amanhã, 2 dias e 3 dias)"
+                className={`flex items-center justify-center transition-all h-11 w-11 sm:h-12 sm:w-12 active:scale-95 shadow-lg shadow-black/30 shrink-0 relative rounded-2xl border ${
+                  showExpiryAlert
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-amber-500/30'
+                    : 'bg-amber-500/20 hover:bg-amber-500/30 border-amber-500/40 text-amber-300 hover:text-amber-200'
+                }`}
+                title="Avisos de Vencimentos (clique para abrir/fechar)"
               >
                 <Bell size={20} className="sm:w-[22px] sm:h-[22px]" />
                 {(() => {
@@ -7770,7 +7722,7 @@ export default function App() {
                   }).length;
                   if (count === 0) return null;
                   return (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-slate-900 shadow">
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-slate-900 shadow animate-pulse">
                       {count}
                     </span>
                   );
@@ -7780,7 +7732,10 @@ export default function App() {
             {isAdminLogged && (
               <button
                 type="button"
-                onClick={() => setShowLoginModal(true)}
+                onClick={() => {
+                  setShowExpiryAlert(false);
+                  setShowLoginModal(true);
+                }}
                 className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold transition-all text-xs sm:text-sm h-11 sm:h-12 rounded-2xl shadow-lg shadow-amber-600/25 border border-amber-500/40 active:scale-95 shrink-0 relative"
                 title="Abrir Painel do Administrador"
               >
@@ -7815,12 +7770,13 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
-      {/* Alerta de Vencimentos de Clientes para o Administrador (5s) — EXIBIDO ESTRITAMENTE NA TELA INICIAL */}
+      {/* Alerta de Vencimentos de Clientes para o Administrador — Abre ao clicar no ícone de notificação (sininho) */}
       {isAdminLogged && isHomeScreen && (
         <AdminExpiryAlertModal
           clients={clients}
           isOpen={showExpiryAlert && isHomeScreen}
           onClose={() => setShowExpiryAlert(false)}
+          autoClose={false}
           onOpenClientChat={(code) => {
             // Reset para null primeiro garante que o useEffect do AdminChatPanel
             // sempre detecta a mudança, mesmo que o código seja o mesmo
